@@ -63,25 +63,72 @@ class TokenService extends ChangeNotifier {
   final String sandboxUrl =
       'https://cloud-api.livekit.io/api/sandbox/connection-details';
 
+  // Custom token server endpoint
+  final String customTokenServerUrl = 'http://localhost:3000/get-token';
+
   /// Main method to get connection details
-  /// First tries hardcoded credentials, then falls back to sandbox
+  /// Prioritizes custom server, then hardcoded, then sandbox
   Future<ConnectionDetails?> fetchConnectionDetails({
     required String roomName,
     required String participantName,
   }) async {
-    final hardcodedDetails = fetchHardcodedConnectionDetails(
+    // 1. Try custom server
+    ConnectionDetails? details = await fetchConnectionDetailsFromCustomServer(
       roomName: roomName,
       participantName: participantName,
     );
 
-    if (hardcodedDetails != null) {
-      return hardcodedDetails;
+    if (details != null) {
+      return details;
     }
 
+    // 2. Try hardcoded credentials (development only)
+    details = fetchHardcodedConnectionDetails(
+      roomName: roomName,
+      participantName: participantName,
+    );
+
+    if (details != null) {
+      return details;
+    }
+
+    // 3. Try LiveKit Cloud Sandbox (development only)
     return await fetchConnectionDetailsFromSandbox(
       roomName: roomName,
       participantName: participantName,
     );
+  }
+
+  Future<ConnectionDetails?> fetchConnectionDetailsFromCustomServer({
+    required String roomName,
+    required String participantName,
+  }) async {
+    final uri = Uri.parse(customTokenServerUrl).replace(queryParameters: {
+      'roomName': roomName,
+      'participantName': participantName,
+    });
+
+    try {
+      final response = await http.get(uri);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        try {
+          final data = jsonDecode(response.body);
+          return ConnectionDetails.fromJson(data);
+        } catch (e) {
+          debugPrint(
+              'Error parsing connection details from custom server, response: ${response.body}');
+          return null;
+        }
+      } else {
+        debugPrint(
+            'Error from custom server: ${response.statusCode}, response: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Failed to connect to custom server: $e');
+      return null;
+    }
   }
 
   Future<ConnectionDetails?> fetchConnectionDetailsFromSandbox({
