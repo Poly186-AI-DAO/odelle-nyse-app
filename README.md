@@ -73,7 +73,7 @@ Follow these steps to set up the ON application for local development:
     ```
 5.  **Run the Application:**
     ```bash
-    flutter run
+    flutter run -d 84BD4C47-F305-4829-91EB-5789D8EE0848
     ```
     This command will launch the application on your connected device or emulator.
 

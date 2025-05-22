@@ -32,8 +32,8 @@ class HomeScreen extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppColors.background.withOpacity(0.9), // Example
-              AppColors.background.withOpacity(0.7), // Example
+              AppColors.background.withValues(alpha: 0.9), // Example
+              AppColors.background.withValues(alpha: 0.7), // Example
             ],
           ),
         ),

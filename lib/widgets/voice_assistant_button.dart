@@ -19,7 +19,7 @@ class VoiceAssistantButton extends StatelessWidget {
         height: 60,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
@@ -29,7 +29,7 @@ class VoiceAssistantButton extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.secondary.withOpacity(0.3), // #219EBC
+              color: AppColors.secondary.withValues(alpha: 0.3), // #219EBC
               blurRadius: 15,
               spreadRadius: 1,
             ),

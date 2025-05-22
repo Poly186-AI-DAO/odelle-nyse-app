@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:livekit_client/livekit_client.dart';
 import 'package:odelle_nyse/constants/colors.dart';
-import 'package:livekit_components/livekit_components.dart'
-    show RoomContext, TranscriptionBuilder;
-import 'package:provider/provider.dart';
 import 'package:odelle_nyse/screens/home_screen.dart';
 // import './widgets/control_bar.dart'; // Old, to be removed if unused
 // import './services/token_service.dart'; // Old, to be re-evaluated
@@ -29,14 +25,12 @@ class MyApp extends StatelessWidget {
       title: 'Odelle Nyse',
       theme: ThemeData(
         primaryColor: AppColors.primary,
-        colorScheme: ColorScheme.light(
+        colorScheme: const ColorScheme.light(
           primary: AppColors.primary,
           secondary: AppColors.secondary,
-          background: AppColors.background,
           surface: AppColors.background, // For Scaffold background
           onPrimary: Colors.white, // Text on primary color
-          onSecondary: Colors.white, // Text on secondary color
-          onBackground: AppColors.textPrimary, // Text on background color
+          onSecondary: Colors.white, // Text on background color
           onSurface: AppColors.textPrimary, // Text on surface color
           error: Colors.red, // Standard error color
           onError: Colors.white, // Text on error color
@@ -62,7 +56,7 @@ class MyApp extends StatelessWidget {
             fontWeight: FontWeight.w400, // As per doc: Heading Weights: Light (300) and Regular (400)
             fontSize: 20, // Adjust as needed
           ),
-          iconTheme: IconThemeData(color: AppColors.textPrimary), // Icons in AppBar
+          iconTheme: const IconThemeData(color: AppColors.textPrimary), // Icons in AppBar
         ),
         useMaterial3: true,
       ),

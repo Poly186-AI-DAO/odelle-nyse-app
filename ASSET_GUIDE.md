@@ -7,11 +7,12 @@ This guide provides instructions on how to incorporate your visual assets (app i
 You need to replace the default Flutter app icons with your custom Odelle Nyse icons.
 
 **Design Requirements (from project documentation):**
-*   **Primary Logo Concept:** An elegant, minimalist representation of the letter "O" with a subtle spiritual element.
-*   **Resolution:** 1024x1024px for the primary logo.
-*   **Format:** PNG with transparency.
-*   **Style:** Clean, modern, with a hint of depth.
-*   **Color:** Use the app's primary color palette (#8ECAE6, #219EBC).
+
+* **Primary Logo Concept:** An elegant, minimalist representation of the letter "O" with a subtle spiritual element.
+* **Resolution:** 1024x1024px for the primary logo.
+* **Format:** PNG with transparency.
+* **Style:** Clean, modern, with a hint of depth.
+* **Color:** Use the app's primary color palette (#8ECAE6, #219EBC).
 *   **iOS:** Follow Apple's icon guidelines with all required sizes.
 *   **Android:** Follow Material Design icon guidelines.
 
