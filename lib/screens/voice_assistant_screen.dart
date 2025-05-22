@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:odelle_nyse/constants/colors.dart'; // Placeholder for AppColors
-// import 'package:odelle_nyse/widgets/audio_waveform_visualizer.dart'; // Placeholder
-// import 'package:odelle_nyse/widgets/transcription_view.dart'; // Placeholder
-// import 'package:odelle_nyse/widgets/voice_control_bar.dart'; // Placeholder
+import 'package:odelle_nyse/constants/colors.dart';
+import 'package:odelle_nyse/widgets/glassmorphism.dart';
 
 class VoiceAssistantScreen extends StatelessWidget {
   const VoiceAssistantScreen({super.key});
@@ -10,43 +8,58 @@ class VoiceAssistantScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: Colors.transparent, // From spec
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(56),
+        child: GlassMorphism(
+          blur: 18,
+          opacity: 0.13,
+          color: AppColors.background,
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: AppColors.textPrimary),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
         ),
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.background.withValues(alpha: 0.9),
-              AppColors.background.withValues(alpha: 0.7),
-            ],
+            colors: [AppColors.primary, AppColors.secondary],
           ),
         ),
         child: const SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                flex: 1,
-                // child: AudioWaveformVisualizer(), // Placeholder
-                child: Center(child: Text("AudioWaveformVisualizer Placeholder")),
-              ),
-              Expanded(
-                flex: 2,
-                // child: TranscriptionView(), // Placeholder
-                child: Center(child: Text("TranscriptionView Placeholder")),
-              ),
-              // VoiceControlBar(), // Placeholder
-              SizedBox(height: 80, child: Center(child: Text("VoiceControlBar Placeholder"))),
-            ],
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: GlassMorphism(
+                    child: Center(child: Text("AudioWaveformVisualizer Placeholder")),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Expanded(
+                  flex: 2,
+                  child: GlassMorphism(
+                    child: Center(child: Text("TranscriptionView Placeholder")),
+                  ),
+                ),
+                SizedBox(height: 16),
+                SizedBox(
+                  height: 80,
+                  child: GlassMorphism(
+                    child: Center(child: Text("VoiceControlBar Placeholder")),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
