@@ -31,3 +31,10 @@ doc/api/
 
 .idea/
 *.iml
+
+# Editor/IDE and tool-specific
+.history/
+.cursorignore
+
+# Python virtual environments
+.venv/
