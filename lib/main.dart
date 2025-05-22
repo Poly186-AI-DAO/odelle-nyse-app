@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:odelle_nyse/constants/colors.dart';
 import 'package:odelle_nyse/screens/home_screen.dart';
+import 'package:odelle_nyse/services/logging_service.dart'; // Import LoggingService
 // import './widgets/control_bar.dart'; // Old, to be removed if unused
 // import './services/token_service.dart'; // Old, to be re-evaluated
 // import 'widgets/agent_status.dart'; // Old, to be removed if unused
@@ -12,6 +13,7 @@ import 'package:odelle_nyse/screens/home_screen.dart';
 // This is used to configure the LiveKit sandbox ID for development
 void main() async {
   await dotenv.load(fileName: ".env");
+  LoggingService.info("Application starting..."); // Add logging
   runApp(const MyApp());
 }
 
