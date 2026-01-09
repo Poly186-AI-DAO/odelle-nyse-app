@@ -11,7 +11,6 @@ import '../models/journal_entry.dart';
 import '../utils/logger.dart';
 import '../widgets/voice/conversation_text.dart';
 import '../widgets/voice/voice_waveform_animated.dart';
-import '../widgets/panels/bottom_panel.dart';
 
 /// Voice Screen - Primary interaction point
 /// Clean minimal design with transcription display
@@ -42,14 +41,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
   String _partialTranscription = '';
   String _finalTranscription = '';
 
-  // Recent entries for display
-  List<JournalEntry> _recentEntries = [];
-
   @override
   void initState() {
     super.initState();
     _checkPermissionStatus();
-    _loadRecentEntries();
     _setupCallbacks();
   }
 
@@ -118,13 +113,6 @@ class _VoiceScreenState extends State<VoiceScreen> {
       _hasPermission = result.isGranted;
     });
     return result.isGranted;
-  }
-
-  Future<void> _loadRecentEntries() async {
-    final entries = await _database.getJournalEntries(limit: 3);
-    setState(() {
-      _recentEntries = entries;
-    });
   }
 
   Future<void> _connect() async {
@@ -209,7 +197,6 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
       await _database.insertJournalEntry(entry);
       Logger.info('Journal entry saved', tag: _tag);
-      await _loadRecentEntries();
     } catch (e) {
       Logger.error('Failed to save entry: $e', tag: _tag);
     }
@@ -222,170 +209,115 @@ class _VoiceScreenState extends State<VoiceScreen> {
     super.dispose();
   }
 
+  // Check if we have transcription content to show
+  bool get _hasTranscription =>
+      _finalTranscription.isNotEmpty ||
+      _partialTranscription.isNotEmpty ||
+      _isRecording;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Top section - Dark gradient area with greeting/transcription
-        Expanded(
-          flex: 3,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: _buildConversationArea(),
+    return GestureDetector(
+      onTap: _isConnected ? null : _connect,
+      onLongPressStart: _isConnected ? (_) => _startRecording() : null,
+      onLongPressEnd: _isConnected ? (_) => _stopRecording() : null,
+      behavior: HitTestBehavior.opaque,
+      child: Stack(
+        children: [
+          // Main content - greeting centered
+          Positioned.fill(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: _buildIdleContent(),
+              ),
             ),
           ),
-        ),
 
-        // Bottom section - White panel with recent entries
-        _buildBottomPanel(),
-      ],
+          // Animated top transcription panel - slides down when active
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+            top: _hasTranscription ? 0 : -300,
+            left: 0,
+            right: 0,
+            child: _buildTranscriptionPanel(),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildBottomPanel() {
-    return BottomPanel(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+  /// Top panel that slides down with transcription
+  Widget _buildTranscriptionPanel() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            ThemeConstants.deepNavy.withValues(alpha: 0.95),
+            ThemeConstants.darkTeal.withValues(alpha: 0.9),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Section header
+          // Status label
           Text(
-            'RECENT THOUGHTS',
+            _isRecording ? 'LISTENING' : 'TRANSCRIPTION',
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: ThemeConstants.textSecondary,
-              letterSpacing: 1.5,
+              color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
+              letterSpacing: 2,
             ),
           ),
+          const SizedBox(height: 16),
 
-          const SizedBox(height: 12),
-
-          // Recent entries list or empty state
-          SizedBox(
-            height: 100,
-            child: _recentEntries.isEmpty
-                ? Center(
-                    child: Text(
-                      'Your voice notes will appear here',
-                      style: GoogleFonts.inter(
-                        color: ThemeConstants.textMuted,
-                        fontSize: 14,
-                      ),
-                    ),
-                  )
-                : ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: EdgeInsets.zero,
-                    itemCount: _recentEntries.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      final entry = _recentEntries[index];
-                      return _buildEntryCard(entry);
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEntryCard(JournalEntry entry) {
-    return Container(
-      width: 180,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: ThemeConstants.panelCream,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _formatTime(entry.timestamp),
-            style: GoogleFonts.inter(
-              color: ThemeConstants.textMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: Text(
-              entry.transcription,
+          // Transcription content
+          if (_isRecording && _partialTranscription.isEmpty)
+            VoiceWaveformAnimated(
+              barCount: 5,
+              size: 32,
+              color: ThemeConstants.textOnDark,
+              isActive: true,
+            )
+          else
+            Text(
+              _partialTranscription.isNotEmpty
+                  ? _partialTranscription
+                  : _finalTranscription,
+              textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                color: ThemeConstants.textOnLight,
-                fontSize: 13,
-                height: 1.3,
+                fontSize: 20,
+                fontWeight: FontWeight.w300,
+                color: ThemeConstants.textOnDark,
+                height: 1.5,
               ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
         ],
       ),
     );
   }
 
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final diff = now.difference(time);
-
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${time.month}/${time.day}';
-  }
-
-  Widget _buildConversationArea() {
-    // Show transcription if available
-    if (_finalTranscription.isNotEmpty) {
-      return ConversationText(
-        text: _finalTranscription,
-        isTyping: false,
-        fontSize: 22,
-        textColor: ThemeConstants.textOnDark,
-      );
-    }
-
-    // Show partial transcription while recording
-    if (_partialTranscription.isNotEmpty) {
-      return ConversationText(
-        text: _partialTranscription,
-        isTyping: true,
-        fontSize: 22,
-        textColor: ThemeConstants.textOnDark,
-      );
-    }
-
-    // Show waveform while recording
-    if (_isRecording) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          VoiceWaveformAnimated(
-            barCount: 5,
-            size: 48,
-            color: ThemeConstants.textOnDark,
-            isActive: true,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Listening...',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              color: ThemeConstants.textOnDark.withValues(alpha: 0.6),
-              letterSpacing: 1,
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Show connecting state
+  /// Idle/greeting content when not transcribing
+  Widget _buildIdleContent() {
     if (_isConnecting) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -411,7 +343,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
       );
     }
 
-    // Default idle state - greeting
+    // Show greeting when idle or has transcription (greeting shows behind panel)
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

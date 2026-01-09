@@ -82,14 +82,30 @@ class _HomeScreenState extends State<HomeScreen> {
     // Stop recording
   }
 
+  // Get gradient based on current page
+  LinearGradient _getGradientForPage(int page) {
+    switch (page) {
+      case 0: // Body
+        return ThemeConstants.fintechDarkGradient;
+      case 1: // Voice - calmer gradient
+        return ThemeConstants.voiceGradient;
+      case 2: // Mind
+        return ThemeConstants.fintechDarkGradient;
+      default:
+        return ThemeConstants.voiceGradient;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: ThemeConstants.deepNavy,
       extendBody: true,
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          gradient: ThemeConstants.fintechDarkGradient,
+          gradient: _getGradientForPage(_currentPage),
         ),
         child: SafeArea(
           bottom: false,

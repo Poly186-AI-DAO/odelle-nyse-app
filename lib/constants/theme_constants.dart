@@ -9,17 +9,22 @@ class ThemeConstants {
   // =========================================================
 
   // ---- Fintech Palette (Primary) --------------------------------------
-  // Dark gradient backgrounds - top of screen
+  // Dark gradient backgrounds - calming blue to silver
   static const Color deepNavy = Color(0xFF0A1628);
   static const Color darkTeal = Color(0xFF1E3A5F);
   static const Color steelBlue = Color(0xFF4A6B7C);
+  static const Color calmSilver = Color(0xFF7A8B9A);
+  static const Color softSilver = Color(0xFF9EAAB6);
+  static const Color warmSilver = Color(0xFFB8C0C8);
+
+  // Legacy warm tones (for other screens)
   static const Color warmTaupe = Color(0xFF8B7355);
   static const Color sunsetGold = Color(0xFFC4A574);
 
-  // Voice/Conversation gradient
+  // Voice/Conversation gradient - calm and peaceful
   static const Color darkSlate = Color(0xFF2D3E50);
   static const Color coolGray = Color(0xFF5A6B7A);
-  static const Color softSilver = Color(0xFF8E9EAD);
+  static const Color mistGray = Color(0xFF8E9EAD);
 
   // Surface colors
   static const Color panelWhite = Color(0xFFFFFFFF);
@@ -179,6 +184,7 @@ class ThemeConstants {
         stops: [0.0, 0.5, 1.0],
       );
 
+  // Calming voice gradient - deep navy to soft silver
   static LinearGradient get fintechFullGradient => const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
@@ -186,21 +192,23 @@ class ThemeConstants {
           deepNavy,
           darkTeal,
           steelBlue,
-          warmTaupe,
-          sunsetGold,
+          calmSilver,
+          softSilver,
         ],
         stops: [0.0, 0.25, 0.5, 0.75, 1.0],
       );
 
+  // Voice screen gradient - calm and peaceful
   static LinearGradient get voiceGradient => const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          darkSlate,
-          coolGray,
-          softSilver,
+          deepNavy,
+          darkTeal,
+          steelBlue,
+          calmSilver,
         ],
-        stops: [0.0, 0.5, 1.0],
+        stops: [0.0, 0.35, 0.7, 1.0],
       );
 
   // Legacy gradients (backward compatibility)
