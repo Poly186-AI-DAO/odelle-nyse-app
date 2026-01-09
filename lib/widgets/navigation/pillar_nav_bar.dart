@@ -1,17 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../constants/theme_constants.dart';
 
 /// Data class for pillar navigation items
 class PillarItem {
-  final IconData icon;
-  final IconData activeIcon;
+  final IconData? icon;
+  final IconData? activeIcon;
+  final String? assetIcon;
+  final String? assetActiveIcon;
   final String label;
 
   const PillarItem({
-    required this.icon,
-    required this.activeIcon,
+    this.icon,
+    this.activeIcon,
+    this.assetIcon,
+    this.assetActiveIcon,
     required this.label,
-  });
+  }) : assert(
+          (icon != null && activeIcon != null) || assetIcon != null,
+          'Provide either icon/activeIcon or assetIcon.',
+        );
+}
+
+Widget _buildPillarIcon({
+  required PillarItem pillar,
+  required bool isActive,
+  required double size,
+  required double inactiveAlpha,
+}) {
+  final color = isActive
+      ? ThemeConstants.textOnDark
+      : ThemeConstants.textOnDark.withValues(alpha: inactiveAlpha);
+  final assetPath =
+      isActive ? (pillar.assetActiveIcon ?? pillar.assetIcon) : pillar.assetIcon;
+
+  if (assetPath != null) {
+    if (assetPath.toLowerCase().endsWith('.svg')) {
+      return SvgPicture.asset(
+        assetPath,
+        width: size,
+        height: size,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    }
+
+    return Image.asset(
+      assetPath,
+      width: size,
+      height: size,
+      color: color,
+      colorBlendMode: BlendMode.srcIn,
+    );
+  }
+
+  return Icon(
+    isActive ? pillar.activeIcon : pillar.icon,
+    size: size,
+    color: color,
+  );
 }
 
 /// Top navigation bar with thin icons and indicator underneath active icon
@@ -49,14 +95,11 @@ class PillarNavBar extends StatelessWidget {
                     // Icon
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        index == currentIndex
-                            ? pillars[index].activeIcon
-                            : pillars[index].icon,
-                        size: 24,
-                        color: index == currentIndex
-                            ? ThemeConstants.textOnDark
-                            : ThemeConstants.textOnDark.withValues(alpha: 0.4),
+                      child: _buildPillarIcon(
+                        pillar: pillars[index],
+                        isActive: index == currentIndex,
+                        size: 28,
+                        inactiveAlpha: 0.4,
                       ),
                     ),
 
@@ -115,14 +158,11 @@ class PillarNavBarThin extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Thin icon with subtle styling
-                    Icon(
-                      index == currentIndex
-                          ? pillars[index].activeIcon
-                          : pillars[index].icon,
-                      size: 20,
-                      color: index == currentIndex
-                          ? ThemeConstants.textOnDark
-                          : ThemeConstants.textOnDark.withValues(alpha: 0.35),
+                    _buildPillarIcon(
+                      pillar: pillars[index],
+                      isActive: index == currentIndex,
+                      size: 24,
+                      inactiveAlpha: 0.35,
                     ),
 
                     const SizedBox(height: 8),

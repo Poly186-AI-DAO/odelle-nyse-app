@@ -90,7 +90,8 @@ class _MindScreenState extends State<MindScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 40),
+        // Account for SafeArea + nav bar overlay
+        SizedBox(height: MediaQuery.of(context).padding.top + 70),
 
         // Daily mantra
         _buildMantraSection(),

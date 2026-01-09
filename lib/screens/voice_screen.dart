@@ -58,15 +58,17 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // "Hero Card" extending from TOP of screen
-    // Uses theme colors for consistency
-    return Column(
+    // "Hero Card" extending from TOP EDGE of screen
+    // Uses Stack to position card at y=0, extending down 80%
+    return Stack(
       children: [
-        // Top Section - The massive gradient card
-        Expanded(
-          flex: 4,
+        // The dark hero card - extends from top edge
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: MediaQuery.of(context).size.height * 0.18, // Leave 18% at bottom
           child: Container(
-            width: double.infinity,
             decoration: BoxDecoration(
               // Use theme gradient colors
               gradient: const LinearGradient(
@@ -92,32 +94,30 @@ class _VoiceScreenState extends State<VoiceScreen> {
                 ),
               ],
             ),
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  // Space for nav bar overlay
-                  const SizedBox(height: 60),
-                  
-                  const Spacer(flex: 2),
-                  
-                  // The main content area
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: _buildContent(),
-                  ),
-                  
-                  const Spacer(flex: 2),
-                ],
-              ),
-            ),
           ),
         ),
-
-        // Bottom Section - Light Silver bg (from parent gradient)
-        const Expanded(
-          flex: 1,
-          child: SizedBox(), 
+        
+        // Content positioned on the card
+        SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              // Space for nav bar overlay
+              const SizedBox(height: 70),
+              
+              const Spacer(flex: 2),
+              
+              // The main content area - CENTERED
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: _buildContent(),
+                ),
+              ),
+              
+              const Spacer(flex: 3),
+            ],
+          ),
         ),
       ],
     );
@@ -196,9 +196,11 @@ class _VoiceScreenState extends State<VoiceScreen> {
     // Default: Greeting
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           _getGreeting(),
+          textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 32,
             fontWeight: FontWeight.w300,
@@ -209,6 +211,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
         const SizedBox(height: 12),
         Text(
           _getSubtitle(),
+          textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w400,
@@ -228,7 +231,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   String _getSubtitle() {
     if (_isDisconnected) return 'Tap to connect';
-    if (_isConnected) return 'Hold to speak';
+    if (_isRecording) return 'Listening...';
+    if (_isConnected) return 'You are live';
     return '';
   }
 }

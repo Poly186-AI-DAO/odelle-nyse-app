@@ -78,7 +78,8 @@ class _BodyScreenState extends State<BodyScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 24),
+        // Account for SafeArea + nav bar overlay
+        SizedBox(height: MediaQuery.of(context).padding.top + 70),
 
         // Hero XP display
         _buildHeroXP(),

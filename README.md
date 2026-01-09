@@ -153,6 +153,13 @@ onDarkPurple: #1A0524  // Depth
 
 ---
 
+## 🧾 Attribution
+
+- Body icon - source pending for `assets/icons/body_icon.png`
+- Yin Yang icon - source pending for `assets/icons/yin_yang_icon.png`
+
+---
+
 ## 🔗 Part of Poly186 Ecosystem
 
 Odelle Nyse is a vertical within the [Poly186](https://poly186.ai) ecosystem, focused on individual self-actualization as the foundation for global improvement.

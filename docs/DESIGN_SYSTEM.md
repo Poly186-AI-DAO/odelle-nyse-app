@@ -137,12 +137,13 @@ Keep: Glassmorphism + Rive video backgrounds for ambient motion.
 │                      VOICE BUTTON                            │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│   DEFAULT STATE                    ACTIVE STATE              │
-│   ┌──────────────┐                 ┌──────────────┐         │
-│   │              │                 │   ○ ○ ○ ○    │         │
-│   │     (|)      │      →→→        │   ││││││    │         │
-│   │              │                 │   ○ ○ ○ ○    │         │
-│   └──────────────┘                 └──────────────┘         │
+│   DEFAULT              CONNECTED           RECORDING         │
+│   ┌──────────────┐     ┌──────────────┐   ┌──────────────┐  │
+│   │              │     │  ╭────────╮  │   │   ○ ○ ○ ○    │  │
+│   │     (|)      │     │  │  (|)   │  │   │   ││││││    │  │
+│   │              │     │  ╰────────╯  │   │   ○ ○ ○ ○    │  │
+│   └──────────────┘     └──────────────┘   └──────────────┘  │
+│   White button         Green ring         Blue glow + waves  │
 │                                                              │
 │   Size: 64px diameter                                        │
 │   Background: #FFFFFF                                        │
@@ -150,7 +151,12 @@ Keep: Glassmorphism + Rive video backgrounds for ambient motion.
 │   Icon: Sound wave bars (|||)                                │
 │   Icon Color: #1A1A1A                                        │
 │                                                              │
-│   Position: Bottom center, 40px from bottom                  │
+│   States:                                                    │
+│   - Default: White button, no ring                           │
+│   - Connected: Green ring (#22C55E), indicates "live"        │
+│   - Recording: Blue glow (#3B82F6), waveform animation       │
+│                                                              │
+│   Position: Bottom center, 40px from bottom (FAB)            │
 │   Z-index: Above all content                                 │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
@@ -352,33 +358,64 @@ Keep: Glassmorphism + Rive video backgrounds for ambient motion.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Screen 2: Voice Conversation
+### Screen 2: Voice Conversation (Two-Tone Hero Card)
+
+The Voice screen uses an inverted layout from Body/Mind screens. Instead of a bottom panel,
+it features a **Hero Card** extending from the top edge with a light background visible below.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                                                              │
-│   ◇           ☰        |||                                  │
-│                                                              │
-│                                                              │
-│                                                              │
-│                                                              │
-│                                                              │
-│                    Hello Alex,                               │
-│               Markets have been choppy,                      │
-│               but your Autonomous Index                      │
-│                   is up 10% YTD.                            │
-│                                                              │
-│                                                              │
-│                                                              │
-│                                                              │
-│                                                              │
-│                                                              │
-│                                                              │
-│                                                              │
-│                       (|||)                                  │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                        HERO CARD (82% height)                           │
+│   ╭────────────────────────────────────────────────────────────────╮    │
+│   │                                                                 │    │
+│   │               ◇           |||          ✦                       │    │
+│   │                           ───                                   │    │
+│   │               (Nav bar overlays on card)                       │    │
+│   │                                                                 │    │
+│   │                                                                 │    │
+│   │                                                                 │    │
+│   │                     Good Evening                                │    │
+│   │                     You are live                                │    │
+│   │                                                                 │    │
+│   │                                                                 │    │
+│   │                                                                 │    │
+│   ╰────────────────────────────────────────────────────────────────╯    │
+│         └────── Rounded bottom corners (48px) ──────┘                    │
+│                                                                          │
+│                    LIGHT SILVER BACKGROUND (18%)                        │
+│                                                                          │
+│                            (|||)                                         │
+│                      [Voice Button]                                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Hero Card Gradient** (top to bottom):
+- `#0A1628` Deep Navy (0%)
+- `#1E3A5F` Dark Teal (40%)
+- `#4A6B7C` Steel Blue (70%)
+- `#7A8B9A` Calm Silver (100%)
+
+**Background**: Light Silver gradient (`#E2E8F0` → `#CBD5E1`)
+
+**State Flow**:
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ DISCONNECTED                │ CONNECTED (LIVE)           │ RECORDING   │
+├─────────────────────────────┼────────────────────────────┼─────────────┤
+│ Good Evening                │ Good Evening               │ ~~~         │
+│ Tap to connect              │ You are live               │ Listening...│
+│                             │                            │             │
+│ [Button: White]             │ [Button: Green ring]       │ [Blue glow] │
+└─────────────────────────────┴────────────────────────────┴─────────────┘
+```
+
+**Implementation Notes**:
+- VoiceScreen uses `Stack` layout with `Positioned` for Hero Card
+- Card extends from `top: 0` to `bottom: 18% of screen height`
+- Nav bar overlays using `Stack` in HomeScreen
+- Content centered with `SafeArea` + internal spacing
 
 ### Screen 3: Portfolio Breakdown
 

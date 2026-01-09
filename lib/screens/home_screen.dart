@@ -43,8 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Pillar definitions
   static const List<PillarItem> _pillars = [
     PillarItem(
-      icon: Icons.whatshot_outlined,
-      activeIcon: Icons.whatshot,
+      assetIcon: 'assets/icons/body_icon.png',
       label: 'Body',
     ),
     PillarItem(
@@ -53,8 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
       label: 'Voice',
     ),
     PillarItem(
-      icon: Icons.auto_awesome_outlined,
-      activeIcon: Icons.auto_awesome,
+      assetIcon: 'assets/icons/yin_yang_icon.png',
       label: 'Mind',
     ),
   ];
