@@ -6,6 +6,8 @@
 **Status:** Draft / Active Development  
 **Version:** 1.0
 
+> ⚠️ **DISCLAIMER**: This document describes a personal self-improvement experiment and research framework. This is NOT medical advice. Psilocybin is a controlled substance in most jurisdictions. The author is not a medical professional. Consult healthcare professionals and understand local laws before making any decisions regarding controlled substances.
+
 ---
 
 ## 1. Abstract: Coming Full Circle
@@ -50,6 +52,10 @@ The core problem isn't just "managing data"; it is **managing the Self** in a hi
 
 A landmark study published in *Cell* titled *"Psilocybin triggers an activity-dependent rewiring of large-scale cortical networks"* provides the scientific basis for this protocol.
 
+**Citation**: Jiang Q, Shao LX, Yao S, et al. "Psilocybin triggers an activity-dependent rewiring of large-scale cortical networks." *Cell*. 2025 Dec 5. DOI: [10.1016/j.cell.2025.11.009](https://doi.org/10.1016/j.cell.2025.11.009)
+
+**Full Study**: [PubMed](https://pubmed.ncbi.nlm.nih.gov/41352354/) | [Cell Journal](https://linkinghub.elsevier.com/retrieve/pii/S0092-8674(25)01305-4)
+
 #### Key Findings:
 
 1. **Activity-Dependent Rewiring**: The brain doesn't rewire randomly during a plasticity window—it rewires based on what you're **doing, thinking, and feeling** at that time.
@@ -70,11 +76,20 @@ For decades, "set and setting" was treated as a safety guideline. This study pro
 
 ### 3.3 Microdosing Clinical Data (2024-2025)
 
-| Metric | Clinical Trial Dose (Pure Molecule) | Equivalent Dried Mushroom (Approx) |
-|--------|-------------------------------------|-----------------------------------|
-| Low Microdose | 0.5 mg - 1.0 mg | 50 mg - 100 mg (0.05 g - 0.1 g) |
-| Standard Microdose | 2.0 mg - 3.0 mg | 200 mg - 300 mg (0.2 g - 0.3 g) |
-| "Perceptible" Dose | 4.0 mg - 5.0 mg+ | 400 mg - 500 mg (0.4 g - 0.5 g) |
+**Conversion Note**: Dried *Psilocybe cubensis* mushrooms typically contain ~1% psilocybin by weight (range: 0.5-2%). Therefore:
+- 1g dried mushrooms ≈ 10mg psilocybin (average)
+- 3.5g dried mushrooms ≈ 35mg psilocybin
+
+| Category | Pure Psilocybin | Dried Mushroom Equivalent | Protocol | Source |
+|----------|-----------------|---------------------------|----------|--------|
+| **Sub-perceptual Microdose** | 0.5 - 1.0 mg | 50 - 100 mg (0.05 - 0.1 g) | 3-4 days/week | Oregon Health Authority |
+| **Standard Microdose** | 1.0 - 3.0 mg | 100 - 300 mg (0.1 - 0.3 g) | 4 days/week | [NCT07063862](https://clinicaltrials.gov/study/NCT07063862) |
+| **Perceptual Threshold** | 3.0 - 5.0 mg | 300 - 500 mg (0.3 - 0.5 g) | 1-2 days/week | Community protocols |
+| **Therapeutic Macro** | 10 - 25 mg | 1.0 - 2.5 g | Single session | Clinical trials (MDD) |
+
+**Protocol Reference**: The NCT07063862 clinical trial uses 2-3mg pure psilocybin daily, 4 days/week for depression/anxiety.
+
+**Important**: Weight-based therapeutic dosing in clinical research is typically 0.3-0.4 mg/kg body weight for full psychedelic effects.
 
 ---
 
@@ -131,6 +146,129 @@ Goal: Integrate the microdose "plasticity window" with physical activity to prim
 | 09:00 AM | Work Start (Deep Work) | Focus Mode / Do Not Disturb | Flow State: Microdose aids focus |
 | 01:00 PM | Lunch / Reset | "Energy is dipping. Suggest a 5-min protocol." | Maintenance: CBT technique for afternoon reset |
 | 05:00 PM | Work End | Debrief: "Log daily wins." | Closure: Switch off "Work Mode" |
+
+---
+
+## 5.1 The 30-Day Experiment: Protocol Design
+
+### Current Supply
+- **40 capsules × 250mg** = 10g dried mushroom equivalent
+- **250mg ≈ 2.5mg pure psilocybin** (at ~1% content) — within clinical microdose range
+
+### Dosing Schedule (Fadiman-Modified Protocol)
+
+Based on clinical trial NCT07063862 (4 days/week):
+
+| Week | Mon | Tue | Wed | Thu | Fri | Sat | Sun | Caps Used | Running Total |
+|------|-----|-----|-----|-----|-----|-----|-----|-----------|---------------|
+| 1 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 4 |
+| 2 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 8 |
+| 3 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 12 |
+| 4 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 16 |
+
+**30-Day Experiment**: 16 capsules → **24 remaining** for Month 2
+
+### Daily Routine (Dose Days vs. Off Days)
+
+#### DOSE DAYS (Mon, Tue, Thu, Fri)
+
+| Time | Activity | Duration | Tracking |
+|------|----------|----------|----------|
+| **06:30** | Wake + Hydrate | 15 min | Sleep quality logged |
+| **06:45** | 🍄 Dose (1 cap = 250mg) | — | Log in app |
+| **06:50** | Meditation/Breathwork | 20 min | YouTube playlist / Timer |
+| **07:15** | 🏋️ Gym | 60 min | Wearable sync |
+| **08:15** | Post-Gym: Cook + Protein | 30 min | Voice log intake |
+| **08:45** | Shower + Prep | 15 min | — |
+| **09:00** | 💼 Work Start (Deep Focus) | 4 hrs | Focus timer |
+| **13:00** | 🍽️ Lunch + Movement | 45 min | Protein log |
+| **13:45** | Work Block 2 | 4 hrs | Focus timer |
+| **17:45** | 🧘 Evening Wind-Down | 15 min | Breathing / Stretch |
+| **18:00** | Free Time / Social | — | Mood check-in |
+| **22:00** | Sleep Prep | — | — |
+
+#### OFF DAYS (Wed, Sat, Sun)
+
+| Time | Activity | Notes |
+|------|----------|-------|
+| **06:30** | Wake + Hydrate | Same morning routine |
+| **06:45** | No dose | Integration day |
+| **06:50** | Meditation (longer) | 30 min — process insights |
+| **07:30** | 🏋️ Gym or Active Recovery | Stretching, yoga, walk |
+| Rest | Same work schedule | — |
+
+### Control Variables (Fixed)
+
+These remain **constant** throughout the experiment:
+
+| Variable | Value | Rationale |
+|----------|-------|-----------|
+| Dose amount | 250mg (1 cap) | Standardized |
+| Dose timing | 06:45 AM | Consistent onset |
+| Gym timing | 07:15 AM | During plasticity window |
+| Work hours | 09:00 - 17:45 | 8hr fixed block |
+| Sleep target | 22:00 - 06:30 | 8.5hr window |
+
+### Outcome Variables (Measured)
+
+#### Primary Outcomes (The "Am I Happier?" Question)
+
+| Variable | Measurement | Frequency | Tool |
+|----------|-------------|-----------|------|
+| **Mood State** | 1-10 scale + notes | Daily (AM/PM) | App voice log |
+| **Anxiety Level** | 1-10 scale | Daily | App check-in |
+| **Presence/Awareness** | Qualitative | Weekly reflection | Voice journal |
+| **Peace/Rumination** | Time spent "in head" | Daily estimate | Self-report |
+
+#### Secondary Outcomes (Behavioral)
+
+| Variable | Measurement | Frequency | Tool |
+|----------|-------------|-----------|------|
+| **Gym Consistency** | Sessions/week | Weekly | Wearable |
+| **Protein Intake** | Grams/day | Daily | Voice log |
+| **Sleep Quality** | Duration + subjective | Daily | Wearable + log |
+| **Deep Work Hours** | Hours in focus | Daily | Timer |
+| **Sales Activity** | Calls/demos/closes | Daily | Manual log |
+
+#### Tertiary Outcomes (Long-term)
+
+| Variable | Measurement | Frequency |
+|----------|-------------|-----------|
+| Revenue (Poly sales) | $/month | Monthly |
+| Body composition | Weight, feeling | Weekly |
+| Relationship quality | Social interactions | Weekly reflection |
+
+### CBT Integration Points
+
+**The Protocol**: Use the plasticity window (45-120 min post-dose) to reinforce new thought patterns.
+
+| Trigger Moment | Old Pattern (DMN Loop) | CBT Reframe | When |
+|----------------|------------------------|-------------|------|
+| Morning anxiety | "So much to do, I'm behind" | "I have exactly the time I need" | During meditation |
+| Work stress | "Why isn't this working?" | "Each attempt is data, not failure" | Midday reset |
+| Money anxiety | "I'm going to fail financially" | "I'm building value; money follows" | Evening reflection |
+| Self-doubt | "I have so much but feel stuck" | "Growth feels like friction before flow" | When noticed |
+
+**Mantra Injection** (Read aloud during peak plasticity 07:00-08:00):
+```
+"I am present. I am aware. I am building."
+"The work is the reward. The process is the product."
+"I trust my path. I trust my timing."
+```
+
+### Success Criteria (30 Days)
+
+| Metric | Baseline (Day 1) | Target (Day 30) | How Measured |
+|--------|------------------|-----------------|--------------|
+| Average daily mood | ? / 10 | +2 points | Daily logs |
+| Average anxiety | ? / 10 | -2 points | Daily logs |
+| Gym sessions | ?/week | 5/week | Wearable |
+| Protein intake | ?g/day | 150g/day | Voice logs |
+| Deep work hours | ?hrs/day | 6hrs/day | Timer |
+| Sales calls | ?/week | 10/week | Manual |
+| Subjective peace | Qualitative | "Noticeably calmer" | Reflection |
+
+**Fill in baselines on Day 1 of experiment.**
 
 ---
 
@@ -388,13 +526,27 @@ On the vision:
 
 ## Appendix B: Scientific References
 
-1. Cornell University & Allen Institute for Brain Science. (2025). "Psilocybin triggers an activity-dependent rewiring of large-scale cortical networks." *Cell*.
+### Primary Studies
 
-2. Phase 1 Home Administration Safety Study. (2025). Dosages: 1.2 mg, 2.0 mg, 3.0 mg, 4.2 mg pure psilocybin.
+1. **Jiang Q, Shao LX, Yao S, et al.** (2025). "Psilocybin triggers an activity-dependent rewiring of large-scale cortical networks." *Cell*. DOI: [10.1016/j.cell.2025.11.009](https://doi.org/10.1016/j.cell.2025.11.009) | [PubMed](https://pubmed.ncbi.nlm.nih.gov/41352354/)
+   - *Key finding*: Psilocybin weakens cortico-cortical recurrent loops (Default Mode Network) while strengthening inputs from perceptual regions.
 
-3. University of Toronto Mood Study. (2025). 2 mg weekly protocol for Major Depressive Disorder.
+2. **Goodwin GM, et al.** (2022). "Single-Dose Psilocybin for a Treatment-Resistant Episode of Major Depression." *N Engl J Med* 387, 1637–1648. DOI: [10.1056/NEJMoa2206443](https://doi.org/10.1056/NEJMoa2206443)
 
-4. UBC Okanagan & Imperial College. (2024-2025). Placebo effect analysis in microdosing populations.
+3. **Carhart-Harris R, et al.** (2021). "Trial of Psilocybin versus Escitalopram for Depression." *N Engl J Med* 384, 1402–1411. DOI: [10.1056/NEJMoa2032994](https://doi.org/10.1056/NEJMoa2032994)
+
+4. **Raison CL, et al.** (2023). "Single-Dose Psilocybin Treatment for Major Depressive Disorder: A Randomized Clinical Trial." *JAMA* 330, 843–853. DOI: [10.1001/jama.2023.14530](https://doi.org/10.1001/jama.2023.14530)
+
+### Clinical Trials (Active)
+
+5. **NCT07063862** - Psilocybin Microdose for Psychological and Existential Distress. [ClinicalTrials.gov](https://clinicaltrials.gov/study/NCT07063862)
+   - *Protocol*: 2-3 mg psilocybin daily, 4 days/week for 2 weeks.
+
+### Dosing References
+
+6. **Oregon Health Authority** (2022). "Psilocybin Microdosing" - Typical microdosage: 0.1-0.5g dried mushrooms. [PDF](https://www.oregon.gov/oha/PH/PREVENTIONWELLNESS/Documents/Psilocybin%20Microdosing_wn2022.01.20.pdf)
+
+7. **Leafly Dosing Guide** - Psilocybin content in dried mushrooms (~10mg per 1g). [Leafly](https://www.leafly.com/learn/psychedelics/how-to-dose-mushrooms)
 
 ---
 

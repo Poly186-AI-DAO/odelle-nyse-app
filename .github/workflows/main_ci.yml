@@ -1,0 +1,129 @@
+name: Main Branch CI
+
+permissions:
+  contents: read # Required base permission for all jobs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "test/**"
+      - "pubspec.yaml"
+      - ".github/workflows/main_ci.yml"
+      - "ios/**"
+      - "web/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "test/**"
+      - "pubspec.yaml"
+      - ".github/workflows/main_ci.yml"
+      - "ios/**"
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate version consistency
+        run: |
+          # Get versions from different sources
+          ios_version=$(cat ios/version.txt | cut -d'+' -f1)
+          pubspec_version=$(grep '^version:' pubspec.yaml | cut -d' ' -f2)
+
+          # Validate semantic versioning format
+          semver_regex="^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
+
+          if ! [[ $ios_version =~ $semver_regex ]]; then
+            echo "Error: iOS version ($ios_version) does not follow semantic versioning"
+            exit 1
+          fi
+
+          if ! [[ $pubspec_version =~ $semver_regex ]]; then
+            echo "Error: Pubspec version ($pubspec_version) does not follow semantic versioning"
+            exit 1
+          fi
+
+          # Compare versions
+          if [ "$ios_version" != "$pubspec_version" ]; then
+            echo "Error: Version mismatch between iOS ($ios_version) and pubspec ($pubspec_version)"
+            exit 1
+          fi
+
+          echo "Version validation successful: $ios_version"
+
+  cancel-previous:
+    needs: version-check
+    runs-on: macos-latest
+    permissions:
+      actions: write # Required to cancel previous runs
+      contents: read # Required to checkout the code
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.12.1
+        with:
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+
+  quality:
+    needs: [cancel-previous, version-check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Required to checkout code
+      pull-requests: write # Required to post analysis results
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.3"
+          channel: "stable"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze project source
+        run: flutter analyze --no-fatal-infos
+
+    # Test step removed as there's no test directory in the project
+
+  build:
+    needs: [quality, version-check]
+    runs-on: macos-latest
+    permissions:
+      contents: read # Required to checkout code
+      packages: write # Required for build artifacts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.3"
+          channel: "stable"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Setup iOS build environment
+        run: |
+          flutter config --enable-ios
+          flutter precache --ios
+
+      - name: Build iOS
+        run: |
+          flutter build ios --release --no-codesign

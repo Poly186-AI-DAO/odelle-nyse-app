@@ -1,0 +1,200 @@
+name: iOS Release Deploy
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+  security-events: write
+
+on:
+  push:
+    branches:
+      - "release/**"
+
+jobs:
+  deploy:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.3"
+          channel: "stable"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Setup iOS build environment
+        run: |
+          flutter config --enable-ios
+          flutter precache --ios
+
+      - name: Install Apple Certificate
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+
+      - name: Verify Certificate Installation
+        run: |
+          echo "Available signing identities:"
+          security find-identity -v
+          echo "Available certificates:"
+          security find-certificate -a -c "Distribution" ~/Library/Keychains/login.keychain-db || true
+
+      - name: Setup provisioning profile
+        run: |
+          echo "${{ secrets.IOS_PROVISIONING_PROFILE }}" | base64 --decode > ios/Runner.mobileprovision
+
+          # Extract UUID from provisioning profile
+          PROFILE_UUID=$(security cms -D -i ios/Runner.mobileprovision | plutil -extract UUID raw - 2>/dev/null || \
+            security cms -D -i ios/Runner.mobileprovision | grep -A1 "<key>UUID</key>" | grep "<string>" | \
+            sed 's/.*<string>\(.*\)<\/string>.*/\1/' | tr -d '\n\t ')
+          
+          if [ -z "$PROFILE_UUID" ] || [ "$PROFILE_UUID" = "null" ]; then
+            echo "Error: Could not extract UUID from provisioning profile"
+            exit 1
+          fi
+          echo "Provisioning profile UUID: $PROFILE_UUID"
+
+          # Copy to correct location with UUID as filename
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp ios/Runner.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
+
+          # Verify the profile was copied
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Debug Build Environment
+        run: |
+          echo "Flutter version:"
+          flutter --version
+          echo "Xcode version:"
+          xcodebuild -version
+          echo "CocoaPods version:"
+          pod --version
+
+      - name: Process ExportOptions.plist
+        run: |
+          PROFILE_UUID=$(security cms -D -i ios/Runner.mobileprovision | plutil -extract UUID raw - 2>/dev/null || \
+            security cms -D -i ios/Runner.mobileprovision | grep -A1 "<key>UUID</key>" | grep "<string>" | \
+            sed 's/.*<string>\(.*\)<\/string>.*/\1/' | tr -d '\n\t ')
+          
+          cat ios/ExportOptions.plist | \
+          sed "s/\${TEAM_ID}/${{ secrets.TEAM_ID }}/g" | \
+          sed "s/\${IOS_BUNDLE_ID}/com.agency.poly/g" | \
+          sed "s/Poly Distribution Profile/$PROFILE_UUID/g" > ios/ExportOptions_processed.plist
+          
+          echo "Processed ExportOptions.plist:"
+          cat ios/ExportOptions_processed.plist
+
+      - name: Build iOS App
+        run: |
+          # Clean and prepare
+          flutter clean
+          flutter pub get
+
+          # Extract version info
+          VERSION=$(grep '^version: ' pubspec.yaml | sed 's/version: //' | sed 's/+.*//')
+          BUILD_NUMBER=$(grep '^version: ' pubspec.yaml | sed 's/.*+//' | grep -o '[0-9]*' || echo "1")
+          echo "Building version: $VERSION+$BUILD_NUMBER"
+
+          # Set up iOS build environment
+          cd ios
+          pod install --repo-update
+
+          # Clean any existing builds
+          rm -rf build/
+          rm -rf DerivedData/
+
+          # Set custom derived data path to avoid sandbox issues
+          CUSTOM_DERIVED_DATA="$PWD/DerivedData"
+          mkdir -p "$CUSTOM_DERIVED_DATA"
+
+          cd ..
+
+          # Build iOS app (Flutter layer only, no codesign)
+          flutter build ios \
+            --release \
+            --build-name=$VERSION \
+            --build-number=${BUILD_NUMBER:-1} \
+            --no-codesign
+
+          # Create archive and IPA manually using xcodebuild
+          cd ios
+
+          # Archive the app with code signing
+          xcodebuild -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -derivedDataPath "$CUSTOM_DERIVED_DATA" \
+            -archivePath "$PWD/../build/ios/archive/Runner.xcarchive" \
+            -allowProvisioningUpdates \
+            DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
+            archive
+
+          # Export IPA
+          xcodebuild -exportArchive \
+            -archivePath "$PWD/../build/ios/archive/Runner.xcarchive" \
+            -exportPath "$PWD/../build/ios/ipa" \
+            -exportOptionsPlist ExportOptions_processed.plist \
+            -allowProvisioningUpdates
+
+          cd ..
+
+      - name: Verify IPA
+        run: |
+          echo "Verifying IPA file..."
+          ls -la build/ios/ipa/
+          IPA_FILE=$(find build/ios/ipa -name "*.ipa" | head -1)
+          if [ -z "$IPA_FILE" ]; then
+            echo "❌ IPA file not found!"
+            exit 1
+          fi
+          echo "✅ IPA file verified: $IPA_FILE"
+          echo "IPA_FILE=$IPA_FILE" >> $GITHUB_ENV
+
+      - name: Setup App Store Connect API Key
+        run: |
+          mkdir -p ~/private_keys
+
+          KEY_ID="${{ secrets.APPSTORE_API_KEY_ID }}"
+
+          # Test if the secret is base64 encoded or raw content
+          if echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" | grep -q "BEGIN PRIVATE KEY"; then
+            echo "✅ Key is in raw PEM format, writing directly..."
+            echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${KEY_ID}.p8
+          else
+            echo "🔄 Key appears to be base64 encoded, decoding..."
+            echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" | base64 --decode > ~/private_keys/AuthKey_${KEY_ID}.p8
+          fi
+
+          chmod 600 ~/private_keys/AuthKey_${KEY_ID}.p8
+
+          # Verify the key file format
+          echo "📂 Key file created:"
+          ls -la ~/private_keys/
+          echo "🔍 First line of key file:"
+          head -1 ~/private_keys/AuthKey_${KEY_ID}.p8
+
+          # Validate it's a proper PEM format
+          if head -1 ~/private_keys/AuthKey_${KEY_ID}.p8 | grep -q "BEGIN PRIVATE KEY"; then
+            echo "✅ Key file is in correct PEM format"
+          else
+            echo "❌ Key file is NOT in correct PEM format"
+            exit 1
+          fi
+
+      - name: Upload to TestFlight
+        run: |
+          echo "🚀 Uploading to TestFlight..."
+          xcrun altool --upload-app \
+            --file "$IPA_FILE" \
+            --type ios \
+            --apiKey ${{ secrets.APPSTORE_API_KEY_ID }} \
+            --apiIssuer ${{ secrets.APPSTORE_ISSUER_ID }} \
+            --verbose
