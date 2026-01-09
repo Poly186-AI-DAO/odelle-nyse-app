@@ -11,6 +11,7 @@ import '../models/journal_entry.dart';
 import '../utils/logger.dart';
 import '../widgets/voice/conversation_text.dart';
 import '../widgets/voice/voice_waveform_animated.dart';
+import '../widgets/panels/bottom_panel.dart';
 
 /// Voice Screen - Primary interaction point
 /// Clean minimal design with transcription display
@@ -225,20 +226,117 @@ class _VoiceScreenState extends State<VoiceScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Spacer(flex: 2),
-
-        // Main conversation area
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: _buildConversationArea(),
+        // Top section - Dark gradient area with greeting/transcription
+        Expanded(
+          flex: 3,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: _buildConversationArea(),
+            ),
+          ),
         ),
 
-        const Spacer(flex: 3),
-
-        // Bottom spacing for voice button
-        const SizedBox(height: 100),
+        // Bottom section - White panel with recent entries
+        _buildBottomPanel(),
       ],
     );
+  }
+
+  Widget _buildBottomPanel() {
+    return BottomPanel(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Section header
+          Text(
+            'RECENT THOUGHTS',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textSecondary,
+              letterSpacing: 1.5,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Recent entries list or empty state
+          SizedBox(
+            height: 100,
+            child: _recentEntries.isEmpty
+                ? Center(
+                    child: Text(
+                      'Your voice notes will appear here',
+                      style: GoogleFonts.inter(
+                        color: ThemeConstants.textMuted,
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.zero,
+                    itemCount: _recentEntries.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final entry = _recentEntries[index];
+                      return _buildEntryCard(entry);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEntryCard(JournalEntry entry) {
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ThemeConstants.panelCream,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _formatTime(entry.timestamp),
+            style: GoogleFonts.inter(
+              color: ThemeConstants.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            child: Text(
+              entry.transcription,
+              style: GoogleFonts.inter(
+                color: ThemeConstants.textOnLight,
+                fontSize: 13,
+                height: 1.3,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final diff = now.difference(time);
+
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${time.month}/${time.day}';
   }
 
   Widget _buildConversationArea() {

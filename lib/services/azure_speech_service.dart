@@ -52,14 +52,18 @@ class AzureSpeechService {
 
   void _initialize() {
     // Get Azure OpenAI Realtime API configuration from .env
-    _apiKey = dotenv.env['AZURE_GPT_4O_REALTIME_PREVIEW_KEY'] ?? '';
+    // Using the new poly-ai-foundry endpoint
+    _apiKey = dotenv.env['AZURE_GPT_REALTIME_KEY'] ?? '';
 
     // Parse the target URL to get the base endpoint
-    final targetUrl =
-        dotenv.env['AZURE_GPT_4O_REALTIME_PREVIEW_TARGET_URL'] ?? '';
+    final targetUrl = dotenv.env['AZURE_GPT_REALTIME_DEPLOYMENT_URL'] ?? '';
 
     if (_apiKey.isEmpty || targetUrl.isEmpty) {
-      Logger.error('Azure API key or endpoint not found in environment',
+      Logger.error(
+          'Azure Realtime API key or endpoint not found in environment',
+          tag: _tag);
+      Logger.error(
+          'Expected env vars: AZURE_GPT_REALTIME_KEY, AZURE_GPT_REALTIME_DEPLOYMENT_URL',
           tag: _tag);
       return;
     }
