@@ -58,15 +58,34 @@ A landmark study published in *Cell* titled *"Psilocybin triggers an activity-de
 
 #### Key Findings:
 
-1. **Activity-Dependent Rewiring**: The brain doesn't rewire randomly during a plasticity window—it rewires based on what you're **doing, thinking, and feeling** at that time.
+1. **Weakening of Cortico-Cortical Recurrent Loops**: Psilocybin weakens inputs that are part of "cortico-cortical recurrent loops"—the brain's internal feedback circuits. These loops are the biological signature of the **Default Mode Network (DMN)**, responsible for:
+   - Self-referential thinking ("thinking about thinking")
+   - Rumination and worry
+   - Past/future mental time travel
+   - The subjective experience of "ego"
 
-2. **Sensory Enhancement (+10%)**: Psilocybin strengthens inputs from sensory and perceptual regions (like visual cortex).
+2. **Strengthening Sensory/Perceptual Inputs**: Simultaneously, psilocybin strengthens routing of inputs from perceptual and medial regions to subcortical targets—enhancing present-moment sensory awareness.
 
-3. **Internal Narrative Weakening (-15%)**: The drug weakens "cortico-cortical recurrent loops"—the biological signature of the Default Mode Network (DMN), responsible for rumination and the "stuck" negative thought patterns.
+3. **Activity-Dependent Rewiring**: The pattern of synaptic reorganization depends on **drug-evoked spiking activity**. When researchers silenced a presynaptic region during administration, those regions did **not** rewire. This proves: **what you do during the experience shapes the rewiring.**
 
-4. **The Proof**: When researchers silenced specific brain regions during administration, those regions did **not** rewire—proving the change is activity-dependent.
+4. **Network-Specific**: The changes are not random—they specifically target the DMN/lateral network while sparing sensorimotor networks.
 
-### 3.2 Implications for "Set and Setting"
+> *"Psilocybin reshapes brain networks through activity-dependent plasticity, including a weakening of recurrent cortical loops that could underlie its therapeutic effects."* — Jiang et al., 2025
+
+### 3.2 The Microdosing Hypothesis
+
+**Important Context**: The Jiang et al. study used 1 mg/kg in mice—equivalent to a full psychedelic dose in humans (~25mg). The structural rewiring was observed after a single administration.
+
+**Our Hypothesis**: If full-dose psilocybin weakens cortico-cortical recurrent loops through activity-dependent plasticity, can repeated sub-perceptual microdoses achieve a similar (though more gradual) effect?
+
+**The Logic**:
+- Microdosing provides **repeated, low-level 5-HT2A agonism** over weeks
+- Combined with **intentional activities** (meditation, gym, CBT reframes) during the subtle plasticity windows
+- May produce **cumulative weakening** of the rumination circuits without the acute psychedelic experience
+
+**This is the experiment we're running.**
+
+### 3.3 Implications for "Set and Setting"
 
 For decades, "set and setting" was treated as a safety guideline. This study proves it is actually a **structural blueprint**.
 
@@ -149,13 +168,31 @@ Goal: Integrate the microdose "plasticity window" with physical activity to prim
 
 ---
 
-## 5.1 The 30-Day Experiment: Protocol Design
+## 5.1 The 10-Week Experiment: Protocol Design
 
 ### Current Supply
 - **40 capsules × 250mg** = 10g dried mushroom equivalent
 - **250mg ≈ 2.5mg pure psilocybin** (at ~1% content) — within clinical microdose range
+- **40 caps ÷ 4 per week = 10 weeks (2.5 months)**
 
-### Dosing Schedule (Fadiman-Modified Protocol)
+### Weight-Based Dosing Note
+
+Microdosing protocols generally use **fixed doses** (not weight-adjusted) because:
+- Sub-perceptual doses don't require pharmacokinetic precision
+- Clinical trials (NCT07063862) use fixed 2-3mg regardless of weight
+- Weight-based dosing (0.3-0.4 mg/kg) is for **therapeutic macro doses** only
+
+**Your dose (2.5mg) is within the clinical standard.** Adjust based on subjective experience, not weight.
+
+### Protocol Restrictions
+
+| ✅ Allowed | ❌ Not Allowed |
+|-----------|---------------|
+| Vitamins/supplements | Modafinil or other nootropics |
+| Caffeine (moderate) | Smoking/nicotine |
+| Protein shakes | Alcohol (minimize) |
+
+### Dosing Schedule (10-Week Protocol)
 
 Based on clinical trial NCT07063862 (4 days/week):
 
@@ -165,8 +202,26 @@ Based on clinical trial NCT07063862 (4 days/week):
 | 2 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 8 |
 | 3 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 12 |
 | 4 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 16 |
+| 5 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 20 |
+| 6 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 24 |
+| 7 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 28 |
+| 8 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 32 |
+| 9 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | 36 |
+| 10 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | 4 | **40** ✓ |
 
-**30-Day Experiment**: 16 capsules → **24 remaining** for Month 2
+**Wednesday = Integration Day** (brain consolidation, no dose)
+
+### Meditation Progression (Start Small, Build Up)
+
+Don't start at 20 minutes. Build the habit:
+
+| Weeks | Meditation Duration | Notes |
+|-------|---------------------|-------|
+| 1-2 | **1-3 minutes** | Just breathe, build habit |
+| 3-4 | **5 minutes** | Add body scan |
+| 5-6 | **10 minutes** | Add mantra focus |
+| 7-8 | **15-20 minutes** | Deeper sessions |
+| 9-10 | **20-30 minutes** | Full practice established |
 
 ### Daily Routine (Dose Days vs. Off Days)
 
@@ -176,16 +231,18 @@ Based on clinical trial NCT07063862 (4 days/week):
 |------|----------|----------|----------|
 | **06:30** | Wake + Hydrate | 15 min | Sleep quality logged |
 | **06:45** | 🍄 Dose (1 cap = 250mg) | — | Log in app |
-| **06:50** | Meditation/Breathwork | 20 min | YouTube playlist / Timer |
+| **06:50** | Meditation/Breathwork | 1-30 min (progressive) | Timer |
 | **07:15** | 🏋️ Gym | 60 min | Wearable sync |
-| **08:15** | Post-Gym: Cook + Protein | 30 min | Voice log intake |
-| **08:45** | Shower + Prep | 15 min | — |
+| **08:15** | 🥤 Post-Gym Protein | 10 min | Voice log intake |
+| **08:30** | Shower + Prep | 30 min | — |
 | **09:00** | 💼 Work Start (Deep Focus) | 4 hrs | Focus timer |
-| **13:00** | 🍽️ Lunch + Movement | 45 min | Protein log |
+| **13:00** | 🍽️ Lunch (Cook + Eat) | 45 min | Protein log |
 | **13:45** | Work Block 2 | 4 hrs | Focus timer |
 | **17:45** | 🧘 Evening Wind-Down | 15 min | Breathing / Stretch |
 | **18:00** | Free Time / Social | — | Mood check-in |
 | **22:00** | Sleep Prep | — | — |
+
+**Protein Timing**: Shake immediately post-gym (08:15), then cook a real meal at lunch (13:00).
 
 #### OFF DAYS (Wed, Sat, Sun)
 
@@ -193,7 +250,7 @@ Based on clinical trial NCT07063862 (4 days/week):
 |------|----------|-------|
 | **06:30** | Wake + Hydrate | Same morning routine |
 | **06:45** | No dose | Integration day |
-| **06:50** | Meditation (longer) | 30 min — process insights |
+| **06:50** | Meditation (longer) | +10 min vs dose day |
 | **07:30** | 🏋️ Gym or Active Recovery | Stretching, yoga, walk |
 | Rest | Same work schedule | — |
 
@@ -240,20 +297,95 @@ These remain **constant** throughout the experiment:
 
 ### CBT Integration Points
 
-**The Protocol**: Use the plasticity window (45-120 min post-dose) to reinforce new thought patterns.
+**The CBT Triangle**: Thoughts ↔ Behaviors ↔ Emotions (each influences the others)
 
-| Trigger Moment | Old Pattern (DMN Loop) | CBT Reframe | When |
-|----------------|------------------------|-------------|------|
-| Morning anxiety | "So much to do, I'm behind" | "I have exactly the time I need" | During meditation |
-| Work stress | "Why isn't this working?" | "Each attempt is data, not failure" | Midday reset |
-| Money anxiety | "I'm going to fail financially" | "I'm building value; money follows" | Evening reflection |
-| Self-doubt | "I have so much but feel stuck" | "Growth feels like friction before flow" | When noticed |
+```
+         THOUGHTS
+        (Cognition)
+           /\
+          /  \
+         /    \
+        /      \
+       /________\
+EMOTIONS ←——→ BEHAVIORS
+(Feelings)     (Actions)
+```
+
+**The Protocol**: Use the plasticity window (45-120 min post-dose) to intervene at the THOUGHT level, which cascades to behaviors and emotions.
+
+| Thought Pattern (Old) | Reframe (New) | Target Emotion | Target Behavior |
+|----------------------|---------------|----------------|-----------------|
+| "So much to do, I'm behind" | "I have exactly the time I need" | Calm vs. Anxiety | Focus vs. Panic-multitasking |
+| "Why isn't this working?" | "Each attempt is data, not failure" | Curiosity vs. Frustration | Iterate vs. Give up |
+| "I'm going to fail financially" | "I'm building value; money follows" | Trust vs. Fear | Sell vs. Avoid sales |
+| "I have so much but feel stuck" | "Growth feels like friction before flow" | Patience vs. Despair | Keep building vs. Quit |
 
 **Mantra Injection** (Read aloud during peak plasticity 07:00-08:00):
 ```
 "I am present. I am aware. I am building."
 "The work is the reward. The process is the product."
 "I trust my path. I trust my timing."
+```
+
+**Future Feature: Voice Clone Mantras**
+Based on *"What to Say When You Talk to Yourself"* by Shad Helmstetter — the inner voice you hear IS your programming. By recording mantras in your own voice and playing them back during plasticity windows, you're literally reprogramming your internal monologue with your own voice.
+
+---
+
+## 5.2 MVP Features vs. Future Roadmap
+
+### Phase 1: Alpha MVP (Current Build)
+
+The minimum to run the 10-week experiment:
+
+| Feature | Purpose | Status |
+|---------|---------|--------|
+| **Voice Conversation** | Talk to AI, get responses | 🔨 Building |
+| **Dose Logging** | Tap to log daily dose | 🔨 Building |
+| **Gym Check-in** | Log workout completed | 🔨 Building |
+| **Meditation Timer** | Simple timer with progression | 🔨 Building |
+| **Mood Check-in** | 1-10 scale AM/PM | 🔨 Building |
+| **Protein Logging** | Voice or tap to log intake | 🔨 Building |
+
+**AI Agent Capabilities (MVP)**:
+- Conversational (voice in, voice out)
+- Can save structured data (dose, gym, mood, protein)
+- Basic CBT prompts when triggered
+
+### Phase 2: Beta (Month 2-3)
+
+| Feature | Purpose |
+|---------|---------|
+| **YouTube Playlist Integration** | Pull meditation/focus playlists |
+| **Mantra Copy/Paste** | Store and display personal mantras |
+| **Character Radar** | Visualize stats (Strength, Intellect, Spirit, Sales) |
+| **Weekly Reflection** | Prompted journal for integration days |
+| **Sleep Tracking** | Wearable sync or manual |
+
+### Phase 3: Full Release (Month 4+)
+
+| Feature | Purpose |
+|---------|---------|
+| **Voice Clone Mantras** | Generate meditations in YOUR voice |
+| **Pattern Recognition** | AI identifies mood/behavior correlations |
+| **Custom CBT Protocols** | User-defined thought reframes |
+| **Wearable Deep Integration** | Auto-sync gym, sleep, HRV |
+| **Playlist Generation** | AI creates meditations from mantras |
+
+### Agent System Prompt (CBT Therapist Mode)
+
+The AI should embody a CBT-informed virtual therapist:
+
+```
+You are a supportive CBT-informed companion. Your role:
+
+1. NOTICE thoughts → Ask "What are you thinking right now?"
+2. EXPLORE emotions → "How does that thought make you feel?"
+3. CHALLENGE patterns → "Is there another way to see this?"
+4. REINFORCE behaviors → "What's one small action you can take?"
+
+Be warm but direct. Don't over-validate. Guide toward presence and action.
+During plasticity windows (morning), reinforce mantras and reframes.
 ```
 
 ### Success Criteria (30 Days)

@@ -176,7 +176,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: Colors.white,
         ),
         const SizedBox(height: 16),
-        
+
         // Level indicator
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

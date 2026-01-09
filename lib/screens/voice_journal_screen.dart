@@ -50,7 +50,7 @@ class _VoiceJournalScreenState extends State<VoiceJournalScreen>
   void initState() {
     super.initState();
     _initAnimation();
-    _checkPermissions();
+    _checkPermissionStatus(); // Only check status, don't request
     _loadRecentEntries();
     _setupCallbacks();
   }
@@ -106,21 +106,43 @@ class _VoiceJournalScreenState extends State<VoiceJournalScreen>
     };
   }
 
-  Future<void> _checkPermissions() async {
+  /// Only check current permission status without requesting
+  Future<void> _checkPermissionStatus() async {
+    final status = await Permission.microphone.status;
+    setState(() {
+      _hasPermission = status.isGranted;
+      if (!_hasPermission) {
+        _statusText = 'Microphone permission required';
+      }
+    });
+  }
+
+  /// Request microphone permission when user taps connect
+  Future<bool> _requestMicrophonePermission() async {
     final status = await Permission.microphone.status;
     if (status.isGranted) {
-      setState(() {
-        _hasPermission = true;
-      });
-    } else {
-      final result = await Permission.microphone.request();
-      setState(() {
-        _hasPermission = result.isGranted;
-        if (!_hasPermission) {
-          _statusText = 'Microphone permission required';
-        }
-      });
+      setState(() => _hasPermission = true);
+      return true;
     }
+
+    if (status.isPermanentlyDenied) {
+      // User denied permanently, open app settings
+      setState(() {
+        _statusText = 'Permission denied - tap to open settings';
+      });
+      await openAppSettings();
+      return false;
+    }
+
+    // Request permission
+    final result = await Permission.microphone.request();
+    setState(() {
+      _hasPermission = result.isGranted;
+      if (!_hasPermission) {
+        _statusText = 'Microphone permission required';
+      }
+    });
+    return result.isGranted;
   }
 
   Future<void> _loadRecentEntries() async {
@@ -132,9 +154,11 @@ class _VoiceJournalScreenState extends State<VoiceJournalScreen>
 
   Future<void> _connect() async {
     if (_isConnecting || _isConnected) return;
+
+    // Request permission on user action
     if (!_hasPermission) {
-      await _checkPermissions();
-      if (!_hasPermission) return;
+      final granted = await _requestMicrophonePermission();
+      if (!granted) return;
     }
 
     setState(() {
@@ -379,16 +403,13 @@ class _VoiceJournalScreenState extends State<VoiceJournalScreen>
   }
 
   Widget _buildVoiceButton() {
-    return GestureDetector(
+    // Use VoiceButton's built-in gesture handling - no outer wrapper
+    return VoiceButton(
+      size: 80,
+      isListening: _isRecording,
       onTap: !_isConnected ? _connect : null,
-      onLongPressStart:
-          _isConnected && !_isRecording ? (_) => _startRecording() : null,
-      onLongPressEnd: _isRecording ? (_) => _stopRecording() : null,
-      child: VoiceButton(
-        size: 80,
-        isListening: _isRecording,
-        onTap: !_isConnected ? _connect : () {},
-      ),
+      onLongPressStart: _isConnected && !_isRecording ? _startRecording : null,
+      onLongPressEnd: _isRecording ? _stopRecording : null,
     );
   }
 

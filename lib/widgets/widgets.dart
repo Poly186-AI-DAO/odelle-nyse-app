@@ -3,6 +3,9 @@ export 'voice/voice_button.dart';
 export 'voice/voice_waveform_animated.dart';
 export 'voice/conversation_text.dart';
 
+// Navigation widgets
+export 'navigation/pillar_nav_bar.dart';
+
 // Panel widgets
 export 'panels/bottom_panel.dart';
 

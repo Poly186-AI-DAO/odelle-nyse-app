@@ -3,11 +3,37 @@ import 'dart:ui';
 
 class ThemeConstants {
   // =========================================================
-  // GLASSMORPHIC DESIGN SYSTEM
-  // Modern, voice-first, dynamic gradient backgrounds
+  // ODELLE NYSE DESIGN SYSTEM
+  // Voice-first, minimal fintech aesthetic
+  // Conversational UI with two-tone layout
   // =========================================================
 
-  // ---- Brand Palette --------------------------------------------------
+  // ---- Fintech Palette (Primary) --------------------------------------
+  // Dark gradient backgrounds - top of screen
+  static const Color deepNavy = Color(0xFF0A1628);
+  static const Color darkTeal = Color(0xFF1E3A5F);
+  static const Color steelBlue = Color(0xFF4A6B7C);
+  static const Color warmTaupe = Color(0xFF8B7355);
+  static const Color sunsetGold = Color(0xFFC4A574);
+
+  // Voice/Conversation gradient
+  static const Color darkSlate = Color(0xFF2D3E50);
+  static const Color coolGray = Color(0xFF5A6B7A);
+  static const Color softSilver = Color(0xFF8E9EAD);
+
+  // Surface colors
+  static const Color panelWhite = Color(0xFFFFFFFF);
+  static const Color panelCream = Color(0xFFF8F6F3);
+  static const Color textOnDark = Color(0xFFFFFFFF);
+  static const Color textOnLight = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textMuted = Color(0xFF9CA3AF);
+
+  // Accent colors
+  static const Color accentGreen = Color(0xFF22C55E);
+  static const Color accentBlue = Color(0xFF3B82F6);
+
+  // ---- Legacy Palette (Backward Compatibility) ------------------------
   static const Color polyPurple500 = Color(0xFF8200FF);
   static const Color polyPurple600 = Color(0xFFDC00FF);
   static const Color polyPurple700 = Color(0xFF4D0097);
@@ -29,16 +55,15 @@ class ThemeConstants {
 
   static const Color polyWhite = Color(0xFFFFFFFF);
   static const Color polyBlack = Color(0xFF000000);
-  static const Color polyDeepPurple =
-      Color(0xFF1A0033); // Dark purple for gradients
+  static const Color polyDeepPurple = Color(0xFF1A0033);
 
-  // ---- Orbyte Palette (New) -------------------------------------------
-  static const Color orbytePurple = Color(0xFF8B5CF6); // Vivid Purple
-  static const Color orbyteOrange = Color(0xFFF97316); // Vivid Orange
-  static const Color orbyteDarkBg = Color(0xFF0F0F1A); // Deep Dark Blue/Black
-  static const Color orbyteCardBg = Color(0xFF1E1E2E); // Slightly lighter dark
+  // Orbyte (deprecated - use fintech palette)
+  static const Color orbytePurple = Color(0xFF8B5CF6);
+  static const Color orbyteOrange = Color(0xFFF97316);
+  static const Color orbyteDarkBg = Color(0xFF0F0F1A);
+  static const Color orbyteCardBg = Color(0xFF1E1E2E);
   static const Color orbyteTextPrimary = Color(0xFFFFFFFF);
-  static const Color orbyteTextSecondary = Color(0xFF94A3B8); // Slate 400
+  static const Color orbyteTextSecondary = Color(0xFF94A3B8);
 
   // ---- Social Platform Colors -----------------------------------------
   static const Color polyFacebook = Color(0xFF1877F2);
@@ -63,10 +88,10 @@ class ThemeConstants {
   static const Color uiWarning = Color(0xFFF59E0B);
   static const Color uiMuted = Color(0xFF9CA3AF);
 
-  // ---- Primary Colors (Glassmorphic Design) ---------------------------
-  static const Color primaryColorConst = polyPurple500;
-  static const Color accentColorConst = polyMint400;
-  static const Color secondaryAccentConst = polyPink400;
+  // ---- Primary Colors (Fintech Design) --------------------------------
+  static const Color primaryColorConst = accentBlue;
+  static const Color accentColorConst = accentGreen;
+  static const Color secondaryAccentConst = steelBlue;
 
   static const Color textColorConst = polyWhite;
   static const Color secondaryTextColorConst = Color(0xB3FFFFFF); // white70
@@ -83,7 +108,7 @@ class ThemeConstants {
 
   // Glass surface getters
   static Color get surfaceColor => glassBackground;
-  static Color get backgroundColor => polyDeepPurple; // Base for gradients
+  static Color get backgroundColor => deepNavy; // Fintech dark background
   static Color get borderColor => glassBorder;
   static Color get primaryContainer => glassBackgroundStrong;
   static Color get errorContainer =>
@@ -142,7 +167,43 @@ class ThemeConstants {
       );
 
   // ---- Gradients ------------------------------------------------------
-  // Dynamic backgrounds for different screens
+  // Fintech gradients (Primary)
+  static LinearGradient get fintechDarkGradient => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          deepNavy,
+          darkTeal,
+          steelBlue,
+        ],
+        stops: [0.0, 0.5, 1.0],
+      );
+
+  static LinearGradient get fintechFullGradient => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          deepNavy,
+          darkTeal,
+          steelBlue,
+          warmTaupe,
+          sunsetGold,
+        ],
+        stops: [0.0, 0.25, 0.5, 0.75, 1.0],
+      );
+
+  static LinearGradient get voiceGradient => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          darkSlate,
+          coolGray,
+          softSilver,
+        ],
+        stops: [0.0, 0.5, 1.0],
+      );
+
+  // Legacy gradients (backward compatibility)
   static LinearGradient get loginGradient => const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,

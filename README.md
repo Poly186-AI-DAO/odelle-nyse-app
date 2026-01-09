@@ -3,6 +3,18 @@
 
 > *"I want to recalibrate and update my source code. I wanna update my system prompt."*
 
+---
+
+## The Pitch
+
+**5 seconds**: "An app that helps me rewire my brain to think less and live more."
+
+**10 seconds**: "I'm using microdosing to weaken my brain's 'cortico-cortical recurrent loops'—the thinking-about-thinking patterns—and an AI to help me stay present."
+
+**30 seconds**: "Research just proved that psilocybin weakens *cortico-cortical recurrent loops*—the brain's feedback circuits responsible for rumination and the Default Mode Network. I'm building an app that combines microdosing with CBT and voice AI to leverage that plasticity window. The goal? Quiet the mental chatter, raise my conscious awareness, and actually be present. It's not just self-improvement—it's source code updates for my brain."
+
+---
+
 **Odelle Nyse** (pronounced "Oh-DELL NYE-see") is a voice-first AI assistant designed to help you become the best version of yourself. The name spells **ON** — because we're turning you ON.
 
 ---
