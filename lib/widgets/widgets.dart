@@ -8,6 +8,7 @@ export 'navigation/pillar_nav_bar.dart';
 
 // Panel widgets
 export 'panels/bottom_panel.dart';
+export 'panels/top_panel.dart';
 
 // Protocol widgets
 export 'protocol/protocol_button.dart';

@@ -9,7 +9,8 @@ class VoiceButton extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPressStart;
   final VoidCallback? onLongPressEnd;
-  final bool isListening;
+  final bool isActive; // Recording/listening state
+  final bool isConnected; // Connected to voice service
   final bool isProcessing;
   final double size;
 
@@ -18,14 +19,19 @@ class VoiceButton extends StatefulWidget {
     this.onTap,
     this.onLongPressStart,
     this.onLongPressEnd,
-    this.isListening = false,
+    this.isActive = false,
+    this.isConnected = false,
     this.isProcessing = false,
     this.size = 64,
   });
 
+  // Alias for backward compatibility
+  bool get isListening => isActive;
+
   @override
   State<VoiceButton> createState() => _VoiceButtonState();
 }
+
 
 class _VoiceButtonState extends State<VoiceButton>
     with SingleTickerProviderStateMixin {
@@ -96,17 +102,32 @@ class _VoiceButtonState extends State<VoiceButton>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white,
+            // Show border when connected
+            border: widget.isConnected
+                ? Border.all(
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.5),
+                    width: 2,
+                  )
+                : null,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),
+              // Blue glow when recording
               if (widget.isListening)
                 BoxShadow(
-                  color: DesignConstants.accentBlue.withValues(alpha: 0.3),
+                  color: DesignConstants.accentBlue.withValues(alpha: 0.4),
                   blurRadius: 30,
                   spreadRadius: 5,
+                ),
+              // Green glow when connected (not recording)
+              if (widget.isConnected && !widget.isListening)
+                BoxShadow(
+                  color: const Color(0xFF22C55E).withValues(alpha: 0.25),
+                  blurRadius: 20,
+                  spreadRadius: 2,
                 ),
             ],
           ),

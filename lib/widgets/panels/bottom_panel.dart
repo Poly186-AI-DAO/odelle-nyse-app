@@ -14,7 +14,7 @@ class BottomPanel extends StatelessWidget {
     super.key,
     required this.child,
     this.minHeight,
-    this.borderRadius = 32,
+    this.borderRadius = 40, // More rounded, less boxy
     this.padding = const EdgeInsets.all(24),
     this.backgroundColor = Colors.white,
     this.showHandle = false,
@@ -33,9 +33,9 @@ class BottomPanel extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 30,
-            offset: const Offset(0, -4),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 40,
+            offset: const Offset(0, -8),
           ),
         ],
       ),

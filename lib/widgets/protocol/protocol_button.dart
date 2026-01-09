@@ -130,15 +130,10 @@ class _ProtocolButtonState extends State<ProtocolButton>
           width: widget.size,
           height: widget.size,
           decoration: BoxDecoration(
-            color: _backgroundColor,
-            borderRadius: BorderRadius.circular(widget.size * 0.28),
-            border: Border.all(
-              color: _borderColor,
-              width: widget.buttonState == ProtocolButtonState.empty ? 1.5 : 1,
-              style: widget.buttonState == ProtocolButtonState.empty
-                  ? BorderStyle.solid
-                  : BorderStyle.solid,
-            ),
+            // Use soft pastel background based on type color
+            color: _getTypeColor().withValues(alpha: 0.15),
+            // More rounded, organic shape - less boxy
+            borderRadius: BorderRadius.circular(widget.size * 0.35),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -150,14 +145,14 @@ class _ProtocolButtonState extends State<ProtocolButton>
                   fontSize: widget.size * 0.3,
                 ),
               ),
-              const SizedBox(height: 2),
-              // Label
+              const SizedBox(height: 4),
+              // Label - dark text for visibility on light panel
               Text(
                 widget.type.displayName.toUpperCase(),
                 style: TextStyle(
-                  fontSize: widget.size * 0.12,
+                  fontSize: widget.size * 0.11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: _getTypeColor().withValues(alpha: 0.9),
                   letterSpacing: 0.5,
                 ),
               ),
@@ -188,17 +183,11 @@ class _ProtocolButtonState extends State<ProtocolButton>
           style: TextStyle(
             fontSize: widget.size * 0.12,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.5),
+            color: _getTypeColor().withValues(alpha: 0.7),
           ),
         );
       case ProtocolButtonState.empty:
-        return Text(
-          '--',
-          style: TextStyle(
-            fontSize: widget.size * 0.12,
-            color: Colors.white.withValues(alpha: 0.3),
-          ),
-        );
+        return const SizedBox.shrink();
     }
   }
 }

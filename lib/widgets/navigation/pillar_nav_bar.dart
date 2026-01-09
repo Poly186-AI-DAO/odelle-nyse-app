@@ -30,48 +30,54 @@ class PillarNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const double itemSpacing = 44;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(pillars.length, (index) {
-          final pillar = pillars[index];
-          final isActive = index == currentIndex;
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < pillars.length; index++) ...[
+              if (index > 0) const SizedBox(width: itemSpacing),
+              GestureDetector(
+                onTap: () => onPillarTapped(index),
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Icon
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        index == currentIndex
+                            ? pillars[index].activeIcon
+                            : pillars[index].icon,
+                        size: 24,
+                        color: index == currentIndex
+                            ? ThemeConstants.textOnDark
+                            : ThemeConstants.textOnDark.withValues(alpha: 0.4),
+                      ),
+                    ),
 
-          return GestureDetector(
-            onTap: () => onPillarTapped(index),
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icon
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    isActive ? pillar.activeIcon : pillar.icon,
-                    size: 24,
-                    color: isActive
-                        ? ThemeConstants.textOnDark
-                        : ThemeConstants.textOnDark.withValues(alpha: 0.4),
-                  ),
+                    const SizedBox(height: 6),
+
+                    // Indicator dot underneath
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: index == currentIndex ? 4 : 0,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: ThemeConstants.textOnDark,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 6),
-
-                // Indicator dot underneath
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: isActive ? 4 : 0,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: ThemeConstants.textOnDark,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -92,46 +98,52 @@ class PillarNavBarThin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const double itemSpacing = 44;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(pillars.length, (index) {
-          final pillar = pillars[index];
-          final isActive = index == currentIndex;
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < pillars.length; index++) ...[
+              if (index > 0) const SizedBox(width: itemSpacing),
+              GestureDetector(
+                onTap: () => onPillarTapped(index),
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Thin icon with subtle styling
+                    Icon(
+                      index == currentIndex
+                          ? pillars[index].activeIcon
+                          : pillars[index].icon,
+                      size: 20,
+                      color: index == currentIndex
+                          ? ThemeConstants.textOnDark
+                          : ThemeConstants.textOnDark.withValues(alpha: 0.35),
+                    ),
 
-          return GestureDetector(
-            onTap: () => onPillarTapped(index),
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Thin icon with subtle styling
-                Icon(
-                  isActive ? pillar.activeIcon : pillar.icon,
-                  size: 20,
-                  color: isActive
-                      ? ThemeConstants.textOnDark
-                      : ThemeConstants.textOnDark.withValues(alpha: 0.35),
+                    const SizedBox(height: 8),
+
+                    // Thin line indicator
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      width: index == currentIndex ? 16 : 0,
+                      height: 2,
+                      decoration: BoxDecoration(
+                        color: ThemeConstants.textOnDark,
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 8),
-
-                // Thin line indicator
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutCubic,
-                  width: isActive ? 16 : 0,
-                  height: 2,
-                  decoration: BoxDecoration(
-                    color: ThemeConstants.textOnDark,
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

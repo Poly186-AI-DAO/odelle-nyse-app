@@ -211,6 +211,17 @@ class ThemeConstants {
         stops: [0.0, 0.35, 0.7, 1.0],
       );
 
+  // Background for Voice Screen (Light Silver)
+  // Provides contrast for the dark "Hero Card"
+  static LinearGradient get voiceBackgroundGradient => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFFE2E8F0), // Light Silver
+          Color(0xFFCBD5E1), // Slightly darker silver
+        ],
+      );
+
   // Legacy gradients (backward compatibility)
   static LinearGradient get loginGradient => const LinearGradient(
         begin: Alignment.topLeft,

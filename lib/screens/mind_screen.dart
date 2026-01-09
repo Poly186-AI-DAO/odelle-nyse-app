@@ -142,15 +142,13 @@ class _MindScreenState extends State<MindScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Meditation button (centered, larger)
+          // Meditation button (centered, properly sized)
           Center(
-            child: SizedBox(
-              width: 120,
-              child: ProtocolButton(
-                type: ProtocolType.meditation,
-                buttonState: _getProtocolState(ProtocolType.meditation),
-                onTap: () => _logProtocol(ProtocolType.meditation),
-              ),
+            child: ProtocolButton(
+              type: ProtocolType.meditation,
+              buttonState: _getProtocolState(ProtocolType.meditation),
+              onTap: () => _logProtocol(ProtocolType.meditation),
+              size: 100, // Larger for prominence
             ),
           ),
 

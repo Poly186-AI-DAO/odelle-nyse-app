@@ -9,6 +9,21 @@ import '../utils/logger.dart';
 /// Connection timeout duration
 const Duration _connectionTimeout = Duration(seconds: 10);
 
+/// Voice Live connection states
+enum VoiceLiveState {
+  disconnected, // Not connected to Azure
+  connecting, // WebSocket connecting, waiting for session.created
+  connected, // Ready to record (session active)
+  recording, // Streaming audio to Azure
+  processing, // Audio committed, waiting for transcription
+}
+
+/// Voice Live mode - determines session configuration
+enum VoiceLiveMode {
+  transcription, // Speech-to-text only (for journaling)
+  conversation, // Full voice in/out with AI responses
+}
+
 /// Azure Voice Live API Service for real-time transcription
 /// Uses WebSocket connection to Azure OpenAI Realtime API
 /// Docs: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/realtime-audio
@@ -30,6 +45,11 @@ class AzureSpeechService {
   // Connection completer for waiting on session.created
   Completer<bool>? _connectionCompleter;
 
+  // State management
+  VoiceLiveState _state = VoiceLiveState.disconnected;
+  VoiceLiveMode _mode = VoiceLiveMode.transcription;
+  final _stateController = StreamController<VoiceLiveState>.broadcast();
+
   // Callbacks
   Function(String transcription)? onTranscription;
   Function(String partialResult)? onPartialResult;
@@ -40,14 +60,30 @@ class AzureSpeechService {
   VoidCallback? onSpeechStopped;
   VoidCallback? onConnected;
 
-  // State
+  // Legacy state booleans (kept for compatibility, derived from _state)
+  bool get _isConnected =>
+      _state == VoiceLiveState.connected ||
+      _state == VoiceLiveState.recording ||
+      _state == VoiceLiveState.processing;
+  bool get _isRecording => _state == VoiceLiveState.recording;
   bool _isInitialized = false;
-  bool _isConnected = false;
-  bool _isRecording = false;
   String _sessionId = '';
+
+  // Public state access
+  VoiceLiveState get state => _state;
+  VoiceLiveMode get mode => _mode;
+  Stream<VoiceLiveState> get stateStream => _stateController.stream;
 
   AzureSpeechService() {
     _initialize();
+  }
+
+  void _setState(VoiceLiveState newState) {
+    if (_state != newState) {
+      Logger.info('State: $_state → $newState', tag: _tag);
+      _state = newState;
+      _stateController.add(newState);
+    }
   }
 
   void _initialize() {
@@ -78,7 +114,8 @@ class AzureSpeechService {
   }
 
   /// Connect to Azure OpenAI Realtime API
-  Future<bool> connect() async {
+  Future<bool> connect(
+      {VoiceLiveMode mode = VoiceLiveMode.transcription}) async {
     if (!_isInitialized) {
       onError?.call('Service not initialized');
       return false;
@@ -88,6 +125,9 @@ class AzureSpeechService {
       Logger.info('Already connected', tag: _tag);
       return true;
     }
+
+    _mode = mode;
+    _setState(VoiceLiveState.connecting);
 
     try {
       // Use the pre-configured WebSocket URL from .env and add api-key
@@ -114,12 +154,12 @@ class AzureSpeechService {
         onError: (error) {
           Logger.error('WebSocket error: $error', tag: _tag);
           onError?.call('Connection error: $error');
-          _isConnected = false;
+          _setState(VoiceLiveState.disconnected);
           _connectionCompleter?.complete(false);
         },
         onDone: () {
           Logger.info('WebSocket closed', tag: _tag);
-          _isConnected = false;
+          _setState(VoiceLiveState.disconnected);
           if (!(_connectionCompleter?.isCompleted ?? true)) {
             _connectionCompleter?.complete(false);
           }
@@ -132,6 +172,7 @@ class AzureSpeechService {
         onTimeout: () {
           Logger.error('Connection timeout', tag: _tag);
           onError?.call('Connection timeout');
+          _setState(VoiceLiveState.disconnected);
           return false;
         },
       );
@@ -142,6 +183,7 @@ class AzureSpeechService {
         'stackTrace': stackTrace.toString(),
       });
       onError?.call('Failed to connect: $e');
+      _setState(VoiceLiveState.disconnected);
       return false;
     }
   }
@@ -152,13 +194,19 @@ class AzureSpeechService {
 
     // Azure OpenAI Realtime API session configuration
     // Docs: https://github.com/azure-samples/aoai-realtime-audio-sdk
+    // Configure based on mode
+    final modalities = _mode == VoiceLiveMode.conversation
+        ? ['text', 'audio']
+        : ['text']; // Transcription-only mode
+
     final sessionConfig = {
       'type': 'session.update',
       'session': {
-        'modalities': ['text', 'audio'],
+        'modalities': modalities,
         'voice': 'alloy',
-        'instructions':
-            'You are a helpful voice journal assistant. Listen to the user and acknowledge what they say.',
+        'instructions': _mode == VoiceLiveMode.conversation
+            ? 'You are a helpful voice assistant. Respond naturally and concisely.'
+            : 'You are a transcription assistant. Listen carefully and transcribe accurately.',
         'input_audio_format': 'pcm16',
         'output_audio_format': 'pcm16',
         'input_audio_transcription': {
@@ -175,7 +223,7 @@ class AzureSpeechService {
     };
 
     _sendJson(sessionConfig);
-    Logger.info('Session configured for transcription', tag: _tag);
+    Logger.info('Session configured for ${_mode.name} mode', tag: _tag);
   }
 
   /// Handle incoming WebSocket messages
@@ -218,6 +266,8 @@ class AzureSpeechService {
             Logger.info('Transcription complete: $transcript', tag: _tag);
             onTranscription?.call(transcript);
           }
+          // Return to connected state after transcription
+          _setState(VoiceLiveState.connected);
           break;
 
         case 'response.audio.delta':
@@ -258,12 +308,14 @@ class AzureSpeechService {
   void _handleSessionCreated(Map<String, dynamic> data) {
     final session = data['session'] as Map<String, dynamic>?;
     _sessionId = session?['id'] ?? '';
-    _isConnected = true;
 
     Logger.info('Session created: $_sessionId', tag: _tag);
 
     // Complete the connection completer
     _connectionCompleter?.complete(true);
+
+    // Set state to connected
+    _setState(VoiceLiveState.connected);
 
     onConnected?.call();
 
@@ -280,7 +332,7 @@ class AzureSpeechService {
 
     _audioBuffer.clear();
     _totalAudioBytes = 0;
-    _isRecording = true;
+    _setState(VoiceLiveState.recording);
 
     Logger.info('Recording started', tag: _tag);
   }
@@ -306,7 +358,7 @@ class AzureSpeechService {
   Future<void> stopRecording() async {
     if (!_isRecording) return;
 
-    _isRecording = false;
+    _setState(VoiceLiveState.processing);
     Logger.info('Recording stopped, total bytes: $_totalAudioBytes', tag: _tag);
 
     // Commit the audio buffer to trigger transcription
@@ -323,7 +375,7 @@ class AzureSpeechService {
   void cancelRecording() {
     if (!_isRecording) return;
 
-    _isRecording = false;
+    _setState(VoiceLiveState.connected);
     _audioBuffer.clear();
     _totalAudioBytes = 0;
 
@@ -358,9 +410,8 @@ class AzureSpeechService {
     await _channel?.sink.close();
     _channel = null;
 
-    _isConnected = false;
-    _isRecording = false;
     _audioBuffer.clear();
+    _setState(VoiceLiveState.disconnected);
 
     Logger.info('Disconnected', tag: _tag);
   }
@@ -376,6 +427,7 @@ class AzureSpeechService {
 
   /// Dispose resources
   void dispose() {
+    _stateController.close();
     disconnect();
     _isInitialized = false;
   }
