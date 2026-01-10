@@ -175,84 +175,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // Lock logic
-  bool _isLocked = false;
-
   // Track recording start time to avoid buffer-too-small errors
   DateTime? _recordingStartTime;
 
-  /// FAB tap - toggle connection/recording
-  Future<void> _onVoiceButtonTap() async {
-    // Navigate to voice page if not there
-    if (_currentPage != 1) {
-      _onPillarTapped(1);
-    }
+  /// Get the appropriate mode for the current screen
+  VoiceLiveMode get _targetMode => _currentPage == 1
+      ? VoiceLiveMode.conversation
+      : VoiceLiveMode.transcription;
 
-    // State machine for tap behavior:
-    // 1. Locked + recording → stop and unlock
-    // 2. Recording (not locked) → stop
-    // 3. Connected but idle → disconnect
-    // 4. Disconnected → connect
-    if (_isLocked) {
-      // If locked, tap stops recording and unlocks
-      await _stopRecording();
-      setState(() => _isLocked = false);
-    } else if (_isRecording) {
-      // Tapped while recording (not locked) -> Stop
-      await _stopRecording();
-    } else if (_isConnected) {
-      // Connected but not recording -> Disconnect
+  /// FAB tap - screen-aware toggle
+  /// Voice Screen: toggle connect/disconnect (always-on listening)
+  /// Body/Mind: toggle recording (start/stop transcription)
+  Future<void> _onVoiceButtonTap() async {
+    if (_currentPage == 1) {
+      // Voice Screen: Toggle connection (conversation mode, always listening)
+      await _toggleVoiceConnection();
+    } else {
+      // Body/Mind: Toggle recording (transcription mode)
+      await _toggleTranscriptionRecording();
+    }
+  }
+
+  /// Toggle voice connection for Voice screen (conversation mode)
+  Future<void> _toggleVoiceConnection() async {
+    if (_isConnected) {
       await _disconnect();
     } else {
-      // Disconnected -> Connect
       await _connect();
     }
   }
 
-  /// FAB long press start - begin recording (Transcription Mode)
-  Future<void> _onVoiceButtonLongPressStart() async {
-    HapticFeedback.mediumImpact();
-
-    // Ensure on Voice Screen
-    if (_currentPage != 1) {
-      _onPillarTapped(1);
-    }
-
-    if (!_isConnected) {
-      // Use connect() return value instead of fixed delay
-      final connected =
-          await ref.read(voiceViewModelProvider.notifier).connect();
-      if (!connected) {
-        Logger.error('Failed to connect for recording', tag: _tag);
-        return;
-      }
-    }
-
-    // Read fresh state after potential connection
-    final voiceState = ref.read(voiceViewModelProvider);
-    if (voiceState.isConnected && !voiceState.isRecording) {
-      // Default to transcription mode for hold-to-talk
-      if (voiceState.activeMode != VoiceLiveMode.transcription) {
-        ref
-            .read(voiceViewModelProvider.notifier)
-            .switchMode(VoiceLiveMode.transcription);
-      }
-      await _startRecording();
-    }
-  }
-
-  /// FAB locked - switch to Live Mode
-  void _onVoiceButtonLock() {
-    setState(() => _isLocked = true);
-    // Switch to conversation mode
-    ref.read(voiceViewModelProvider.notifier).lockMode();
-  }
-
-  /// FAB long press end - stop recording (if not locked)
-  Future<void> _onVoiceButtonLongPressEnd() async {
-    if (!_isLocked && _isRecording) {
+  /// Toggle transcription recording for Body/Mind screens
+  Future<void> _toggleTranscriptionRecording() async {
+    if (_isRecording) {
+      // Stop recording
       await _stopRecording();
+    } else if (_isConnected) {
+      // Already connected, start recording
+      await _startRecording();
+    } else {
+      // Not connected, connect and start recording
+      if (!_hasPermission) {
+        final granted = await _requestMicrophonePermission();
+        if (!granted) return;
+      }
+
+      final connected = await ref
+          .read(voiceViewModelProvider.notifier)
+          .connect(mode: VoiceLiveMode.transcription);
+      
+      if (connected) {
+        await _startRecording();
+      }
     }
+  }
+
+  /// FAB long press - open debug dialog
+  void _onVoiceButtonLongPress() {
+    HapticFeedback.mediumImpact();
+    DebugLogDialog.show(context);
   }
 
   Future<void> _connect() async {
@@ -263,7 +244,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (!granted) return;
     }
 
-    await ref.read(voiceViewModelProvider.notifier).connect();
+    await ref.read(voiceViewModelProvider.notifier).connect(mode: _targetMode);
+    
+    // For Voice screen, start recording immediately after connecting
+    if (_currentPage == 1) {
+      await _startRecording();
+    }
   }
 
   Future<void> _disconnect() async {
@@ -272,7 +258,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       await _stopMicStream();
       await ref.read(voiceViewModelProvider.notifier).disconnect();
-      setState(() => _isLocked = false);
       Logger.info('Disconnected', tag: _tag);
     } catch (e) {
       Logger.error('Failed to disconnect: $e', tag: _tag);
@@ -328,8 +313,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             'Recording stopped after ${recordedDuration.inMilliseconds}ms',
             tag: _tag);
       }
-
-      setState(() => _isLocked = false);
     } catch (e) {
       Logger.error('Failed to stop recording: $e', tag: _tag);
       _recordingStartTime = null;
@@ -418,13 +401,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: const EdgeInsets.only(bottom: 16),
         child: VoiceButton(
           size: 64,
+          // Dynamic icon: soundwave for Voice, thought bubble for Body/Mind
+          icon: _currentPage == 1
+              ? Icons.graphic_eq
+              : Icons.chat_bubble_outline,
           isActive: voiceState.isRecording,
           isConnected: voiceState.isConnected,
-          isLocked: _isLocked,
           onTap: _onVoiceButtonTap,
-          onLongPressStart: _onVoiceButtonLongPressStart,
-          onLongPressEnd: _onVoiceButtonLongPressEnd,
-          onLock: _onVoiceButtonLock,
+          onLongPress: _onVoiceButtonLongPress,
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
