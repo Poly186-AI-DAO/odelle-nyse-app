@@ -328,17 +328,20 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
 
-            // Nav bar - positioned at TOP of screen
+            // Nav bar - positioned INSIDE the floating card area
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               child: SafeArea(
                 bottom: false,
-                child: PillarNavBarThin(
-                  pillars: _pillars,
-                  currentIndex: _currentPage,
-                  onPillarTapped: _onPillarTapped,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 16), // Inside card margin
+                  child: PillarNavBarThin(
+                    pillars: _pillars,
+                    currentIndex: _currentPage,
+                    onPillarTapped: _onPillarTapped,
+                  ),
                 ),
               ),
             ),

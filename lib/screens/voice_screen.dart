@@ -59,56 +59,30 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate animation values - card slides up as visibility increases
-    final cardOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
-    final cardOpacity = widget.panelVisibility.clamp(0.0, 1.0);
+    // Use FloatingHeroCard for the floating design
+    return FloatingHeroCard(
+      panelVisibility: widget.panelVisibility,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Space for nav bar overlay
+            const SizedBox(height: 70),
 
-    // "Hero Card" extending from TOP EDGE of screen
-    return Stack(
-      children: [
-        // The dark hero card - extends from top edge down to 82%
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: MediaQuery.of(context).size.height * 0.18,
-          child: Transform.translate(
-            offset: Offset(0, cardOffset),
-            child: Opacity(
-              opacity: cardOpacity,
-              child: const BreathingCard(
-                child: SizedBox.expand(),
+            const Spacer(flex: 2),
+
+            // The main content area - CENTERED
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: _buildContent(),
               ),
             ),
-          ),
+
+            const Spacer(flex: 3),
+          ],
         ),
-
-        // Content positioned on the card - also animated
-        Opacity(
-          opacity: cardOpacity,
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                // Space for nav bar overlay
-                const SizedBox(height: 70),
-
-                const Spacer(flex: 2),
-
-                // The main content area - CENTERED
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: _buildContent(),
-                  ),
-                ),
-
-                const Spacer(flex: 3),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 

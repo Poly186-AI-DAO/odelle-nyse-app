@@ -1,6 +1,97 @@
 import 'package:flutter/material.dart';
 import '../../constants/theme_constants.dart';
 
+/// A floating hero card that covers most of the screen
+/// Matching the fintech reference design with optional bottom panel
+class FloatingHeroCard extends StatelessWidget {
+  final Widget child;
+  final Widget? bottomPanel;
+  final double panelVisibility;
+  final double horizontalMargin;
+  final double topMarginExtra;
+  final double bottomPercentage;
+
+  const FloatingHeroCard({
+    super.key,
+    required this.child,
+    this.bottomPanel,
+    this.panelVisibility = 1.0,
+    this.horizontalMargin = 12.0,
+    this.topMarginExtra = 12.0,
+    this.bottomPercentage = 0.18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cardOffset = (1 - panelVisibility) * 50;
+    final cardOpacity = panelVisibility.clamp(0.0, 1.0);
+    final bottomPanelHeight = MediaQuery.of(context).size.height * 0.38;
+
+    return Stack(
+      children: [
+        // The floating dark hero card - extends BEHIND Dynamic Island
+        Positioned(
+          top: topMarginExtra, // No safe area offset - goes behind island
+          left: horizontalMargin,
+          right: horizontalMargin,
+          bottom: MediaQuery.of(context).size.height * bottomPercentage,
+          child: Transform.translate(
+            offset: Offset(0, cardOffset),
+            child: Opacity(
+              opacity: cardOpacity,
+              child: const BreathingCard(
+                borderRadius: 43,
+                child: SizedBox.expand(),
+              ),
+            ),
+          ),
+        ),
+
+        // Content layer (on the dark card)
+        Opacity(
+          opacity: cardOpacity,
+          child: child,
+        ),
+
+        // White bottom panel with rounded top corners (if provided)
+        if (bottomPanel != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: bottomPanelHeight,
+            child: Opacity(
+              opacity: cardOpacity,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x15000000),
+                      blurRadius: 20,
+                      offset: Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
+                  child: bottomPanel,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// A card with a gentle breathing animation
 /// Follows zen breathing rhythm: 4s inhale, 6s exhale (6 breaths/min)
 class BreathingCard extends StatefulWidget {
@@ -100,22 +191,32 @@ class _BreathingCardState extends State<BreathingCard>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  ThemeConstants.deepNavy,   // 0% - Deep navy
-                  Color(0xFF142740),         // 15% - Navy blend
-                  ThemeConstants.darkTeal,   // 30% - Dark teal
-                  Color(0xFF2D4A5F),         // 42% - Teal blend
-                  Color(0xFF3D5A6A),         // 52% - Warm teal
-                  ThemeConstants.steelBlue,  // 62% - Steel blue
-                  Color(0xFF5A7080),         // 72% - Steel blend
-                  Color(0xFF6A7D8A),         // 82% - Warm steel
+                  ThemeConstants.deepNavy, // 0% - Deep navy
+                  Color(0xFF142740), // 15% - Navy blend
+                  ThemeConstants.darkTeal, // 30% - Dark teal
+                  Color(0xFF2D4A5F), // 42% - Teal blend
+                  Color(0xFF3D5A6A), // 52% - Warm teal
+                  ThemeConstants.steelBlue, // 62% - Steel blue
+                  Color(0xFF5A7080), // 72% - Steel blend
+                  Color(0xFF6A7D8A), // 82% - Warm steel
                   ThemeConstants.calmSilver, // 92% - Calm silver
-                  Color(0xFF8A9AA8),         // 100% - Silver edge
+                  Color(0xFF8A9AA8), // 100% - Silver edge
                 ],
-                stops: [0.0, 0.15, 0.30, 0.42, 0.52, 0.62, 0.72, 0.82, 0.92, 1.0],
+                stops: [
+                  0.0,
+                  0.15,
+                  0.30,
+                  0.42,
+                  0.52,
+                  0.62,
+                  0.72,
+                  0.82,
+                  0.92,
+                  1.0
+                ],
               ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(widget.borderRadius),
-                bottomRight: Radius.circular(widget.borderRadius),
+              borderRadius: BorderRadius.all(
+                Radius.circular(widget.borderRadius),
               ),
               // Breathing border glow
               border: Border.all(
@@ -133,7 +234,8 @@ class _BreathingCardState extends State<BreathingCard>
                 ),
                 // Subtle inner glow
                 BoxShadow(
-                  color: ThemeConstants.calmSilver.withValues(alpha: _borderAnimation.value * 0.3),
+                  color: ThemeConstants.calmSilver
+                      .withValues(alpha: _borderAnimation.value * 0.3),
                   blurRadius: 40,
                   spreadRadius: -10,
                   offset: const Offset(0, 20),

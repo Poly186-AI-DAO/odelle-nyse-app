@@ -76,57 +76,219 @@ class _BodyScreenState extends State<BodyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate animation values
-    final cardOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
-    final cardOpacity = widget.panelVisibility.clamp(0.0, 1.0);
+    // Use FloatingHeroCard with white bottom panel
+    return FloatingHeroCard(
+      panelVisibility: widget.panelVisibility,
+      // Dark card content - Hero XP display at top
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const SizedBox(height: 70), // Space for nav bar
+            const SizedBox(height: 40),
+            _buildHeroXP(),
+          ],
+        ),
+      ),
+      // White bottom panel with stats and controls
+      bottomPanel: _buildBottomPanel(),
+    );
+  }
 
-    // Hero Card design matching VoiceScreen
-    return Stack(
-      children: [
-        // The dark hero card - extends from top edge down to 82%
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: MediaQuery.of(context).size.height * 0.18,
-          child: Transform.translate(
-            offset: Offset(0, cardOffset),
-            child: Opacity(
-              opacity: cardOpacity,
-              child: const BreathingCard(
-                child: SizedBox.expand(),
-              ),
+  Widget _buildBottomPanel() {
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'PROTOCOLS',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[600],
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                Text(
+                  'Today',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+
+            // Protocol buttons row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: _protocolTypes.map((type) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _buildWhiteProtocolButton(type),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Stats row
+            Row(
+              children: [
+                Expanded(
+                    child: _buildWhiteStat(
+                        'TODAY\'S LOGS', _todayProtocols.length.toString())),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: _buildWhiteStat('LEVEL', '${_stats?.level ?? 1}')),
+              ],
+            ),
+
+            // Recent activity
+            if (_todayProtocols.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'RECENT',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListView.separated(
+                padding: EdgeInsets.zero,
+                itemCount: _todayProtocols.take(3).length,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final entry = _todayProtocols[index];
+                  return _buildWhiteListItem(entry);
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWhiteProtocolButton(ProtocolType type) {
+    final state = _getProtocolState(type);
+    final isComplete = state == ProtocolButtonState.complete;
+
+    return GestureDetector(
+      onTap: () => _logProtocol(type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isComplete ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color:
+                isComplete ? const Color(0xFF81C784) : const Color(0xFFE0E0E0),
           ),
         ),
+        child: Column(
+          children: [
+            Text(type.emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 4),
+            Text(
+              type.displayName.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isComplete ? const Color(0xFF388E3C) : Colors.grey[600],
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-        // Content positioned on the card
-        Opacity(
-          opacity: cardOpacity,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+  Widget _buildWhiteStat(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[500],
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWhiteListItem(ProtocolEntry entry) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Text(entry.type.emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Account for SafeArea + nav bar overlay
-                SizedBox(height: MediaQuery.of(context).padding.top + 70),
-
-                // Hero XP display
-                _buildHeroXP(),
-
-                const Spacer(),
-
-                // Bottom buttons and stats - slide + opacity
-                Transform.translate(
-                  offset: Offset(0, cardOffset),
-                  child: _buildBodyControls(),
+                Text(
+                  entry.type.displayName,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
                 ),
-
-                const SizedBox(height: 120), // Bottom padding for FAB
+                Text(
+                  _formatTime(entry.timestamp),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -153,8 +315,6 @@ class _BodyScreenState extends State<BodyScreen> {
           color: ThemeConstants.textOnDark,
         ),
         const SizedBox(height: 12),
-
-        // Level indicator
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -171,160 +331,6 @@ class _BodyScreenState extends State<BodyScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBodyControls() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Protocol buttons row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: _protocolTypes.map((type) {
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: ProtocolButton(
-                  type: type,
-                  buttonState: _getProtocolState(type),
-                  onTap: () => _logProtocol(type),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Stats row (using simplified glass look)
-        Row(
-          children: [
-            Expanded(
-              child: _buildGlassStat(
-                  'Today\'s Logs', _todayProtocols.length.toString()),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildGlassStat('Level', '${_stats?.level ?? 1}'),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 20),
-
-        // Today's activity header
-        Text(
-          'TODAY',
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: ThemeConstants.textOnDark.withValues(alpha: 0.7),
-            letterSpacing: 1.5,
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // Protocol entries list - transparent
-        SizedBox(
-          height: 160,
-          child: _todayProtocols.isEmpty
-              ? Center(
-                  child: Text(
-                    'No logs yet today.\nTap a protocol to start!',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              : ListView.separated(
-                  padding: EdgeInsets.zero,
-                  itemCount: _todayProtocols.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final entry = _todayProtocols[index];
-                    return _buildDarkListItem(entry);
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGlassStat(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: ThemeConstants.textOnDark,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDarkListItem(ProtocolEntry entry) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Text(
-            entry.type.emoji,
-            style: const TextStyle(fontSize: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  entry.type.displayName,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: ThemeConstants.textOnDark,
-                  ),
-                ),
-                Text(
-                  _formatTime(entry.timestamp),
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

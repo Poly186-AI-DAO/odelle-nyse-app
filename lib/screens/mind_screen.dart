@@ -83,57 +83,33 @@ class _MindScreenState extends State<MindScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate animation values
-    final cardOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
-    final cardOpacity = widget.panelVisibility.clamp(0.0, 1.0);
+    final cardOffset = (1 - widget.panelVisibility) * 50;
 
-    // Hero Card design matching VoiceScreen
-    return Stack(
-      children: [
-        // The dark hero card - extends from top edge down to 82%
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: MediaQuery.of(context).size.height * 0.18,
-          child: Transform.translate(
-            offset: Offset(0, cardOffset),
-            child: Opacity(
-              opacity: cardOpacity,
-              child: const BreathingCard(
-                child: SizedBox.expand(),
-              ),
+    // Use FloatingHeroCard for the floating design
+    return FloatingHeroCard(
+      panelVisibility: widget.panelVisibility,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          children: [
+            // Account for SafeArea + nav bar overlay
+            SizedBox(height: MediaQuery.of(context).padding.top + 70),
+
+            // Daily mantra
+            _buildMantraSection(),
+
+            const Spacer(),
+
+            // Bottom buttons and stats - slide + opacity
+            Transform.translate(
+              offset: Offset(0, cardOffset),
+              child: _buildMindControls(),
             ),
-          ),
+
+            const SizedBox(height: 120), // Bottom padding for FAB
+          ],
         ),
-
-        // Content positioned on the card
-        Opacity(
-          opacity: cardOpacity,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                // Account for SafeArea + nav bar overlay
-                SizedBox(height: MediaQuery.of(context).padding.top + 70),
-
-                // Daily mantra
-                _buildMantraSection(),
-
-                const Spacer(),
-
-                // Bottom buttons and stats - slide + opacity
-                Transform.translate(
-                  offset: Offset(0, cardOffset),
-                  child: _buildMindControls(),
-                ),
-
-                const SizedBox(height: 120), // Bottom padding for FAB
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
