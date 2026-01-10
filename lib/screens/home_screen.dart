@@ -258,25 +258,34 @@ class _HomeScreenState extends State<HomeScreen> {
     _micStream = null;
   }
 
-  // Get gradient based on current page
-  // ALL pages use dark gradient to avoid visible edge during transitions
-  // Each screen's panels/cards create their own contrast
-  LinearGradient _getGradientForPage(int page) {
-    return ThemeConstants.fintechDarkGradient;
+  // Get interpolated background color based on scroll progress
+  Color _getInterpolatedBackground() {
+    final double progress = _scrollProgress % 3;
+    
+    // Key colors
+    const Color darkColor = ThemeConstants.deepNavy;
+    const Color voiceColor = Color(0xFFE2E8F0); // Light silver from voice background
+
+    if (progress <= 1.0) {
+      // Body (0.0) -> Voice (1.0)
+      return Color.lerp(darkColor, voiceColor, progress)!;
+    } else if (progress <= 2.0) {
+      // Voice (1.0) -> Mind (2.0)
+      return Color.lerp(voiceColor, darkColor, progress - 1.0)!;
+    } else {
+      // Mind (2.0) -> Body (3.0/0.0)
+      return Color.lerp(darkColor, darkColor, progress - 2.0)!;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ThemeConstants.deepNavy,
+      backgroundColor: _getInterpolatedBackground(),
       extendBody: true,
       extendBodyBehindAppBar: true,
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          gradient: _getGradientForPage(_currentPage),
-        ),
+      body: Container(
+        color: _getInterpolatedBackground(),
         // Use Stack so VoiceScreen can extend behind nav bar
         child: Stack(
           children: [

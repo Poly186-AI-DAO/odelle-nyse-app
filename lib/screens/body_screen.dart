@@ -87,25 +87,26 @@ class _BodyScreenState extends State<BodyScreen> {
         // Account for SafeArea + nav bar overlay
         SizedBox(height: MediaQuery.of(context).padding.top + 70),
 
-        // Hero XP display - fade with visibility
-        AnimatedOpacity(
-          duration: Duration.zero,
-          opacity: panelOpacity,
-          child: _buildHeroXP(),
-        ),
-
-        const Spacer(),
-
-        // Bottom panel with protocols - animated slide + opacity
-        Transform.translate(
-          offset: Offset(0, panelOffset),
-          child: AnimatedOpacity(
+          // Hero XP display - fade with visibility
+          AnimatedOpacity(
             duration: Duration.zero,
             opacity: panelOpacity,
-            child: _buildBottomPanel(),
+            child: _buildHeroXP(),
           ),
-        ),
-      ],
+
+          const Spacer(),
+
+          // Bottom panel with protocols - animated slide + opacity
+          Transform.translate(
+            offset: Offset(0, panelOffset),
+            child: AnimatedOpacity(
+              duration: Duration.zero,
+              opacity: panelOpacity,
+              child: _buildBottomPanel(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -149,7 +150,6 @@ class _BodyScreenState extends State<BodyScreen> {
             ),
           ),
         ),
-      ],
     );
   }
 
