@@ -252,10 +252,47 @@ xcodebuild -exportArchive \
 
 ---
 
+## Troubleshooting
+
+### iPad Multitasking Validation Error
+
+**Error:**
+```
+Invalid bundle. The "UIInterfaceOrientationPortrait" orientations were provided 
+for UISupportedInterfaceOrientations, but you need to include all of the 
+"UIInterfaceOrientationPortrait,UIInterfaceOrientationPortraitUpsideDown,
+UIInterfaceOrientationLandscapeLeft,UIInterfaceOrientationLandscapeRight" 
+orientations to support iPad multitasking.
+```
+
+**Solution:** In `ios/Runner/Info.plist`, add:
+```xml
+<key>UISupportedInterfaceOrientations~ipad</key>
+<array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+</array>
+<key>UIRequiresFullScreen</key>
+<true/>
+```
+
+### Provisioning Profile Mismatch
+
+**Error:** `Provisioning profile doesn't include signing certificate`
+
+**Solution:** Ensure the P12 certificate in GitHub secrets matches the one used to create the provisioning profile. Export both from the same machine/Keychain.
+
+---
+
 ## Version History
 
 | Date | Change |
 |------|--------|
+| 2026-01-10 | ✅ First successful TestFlight deployment |
+| 2026-01-10 | Fixed iPad orientation validation for App Store |
+| 2026-01-09 | Fixed P12 certificate mismatch with provisioning profile |
 | 2026-01-09 | Initial CI/CD setup with TestFlight deployment |
 | 2026-01-09 | Updated Bundle ID to `com.poly186.odelle` |
 | 2026-01-09 | Created Odelle Distribution provisioning profile |

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **iOS CI/CD Pipeline**: Automated build and TestFlight deployment via GitHub Actions
 - **Code Signing**: Proper provisioning profile and certificate configuration
+- **iPad Orientation Support**: Full orientation support for iPad App Store requirements
 - **BreathingCard Widget**: Animated card component with pulsing gradient effects
 - **Pillar Navigation**: Custom bottom navigation with Body, Mind, Soul pillars
 - **Voice Integration**: LiveKit WebRTC integration for real-time voice communication
@@ -23,10 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated bundle ID to `com.poly186.odelle`
 - Configured manual code signing for distribution
 - ExportOptions.plist updated with hardcoded team and bundle ID values
+- Set `UIRequiresFullScreen=true` for portrait-only experience
 
 ### Fixed
 - iOS signing certificate and provisioning profile mismatch
 - Build configuration for Release and Profile schemes
+- **iPad multitasking validation error**: Added all 4 orientations for `UISupportedInterfaceOrientations~ipad`
 
 ## [0.1.1] - 2026-01-09
 
