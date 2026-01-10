@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/theme_constants.dart';
-import '../database/app_database.dart';
 import '../models/character_stats.dart';
 import '../models/protocol_entry.dart';
+import '../providers/service_providers.dart';
 import '../utils/logger.dart';
 import '../widgets/dashboard/hero_number.dart';
 import '../widgets/effects/breathing_card.dart';
@@ -12,16 +12,16 @@ import '../widgets/protocol/protocol_button.dart';
 
 /// Body Screen - Physical tracking pillar
 /// Gym, Meal, Dose protocols with XP tracking
-class BodyScreen extends StatefulWidget {
+class BodyScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
 
   const BodyScreen({super.key, this.panelVisibility = 1.0});
 
   @override
-  State<BodyScreen> createState() => _BodyScreenState();
+  ConsumerState<BodyScreen> createState() => _BodyScreenState();
 }
 
-class _BodyScreenState extends State<BodyScreen> {
+class _BodyScreenState extends ConsumerState<BodyScreen> {
   static const String _tag = 'BodyScreen';
   static const List<String> _weekdayLabels = [
     'Mon',
@@ -119,7 +119,7 @@ class _BodyScreenState extends State<BodyScreen> {
   }
 
   Future<void> _loadData() async {
-    final db = context.read<AppDatabase>();
+    final db = ref.read(databaseProvider);
     final startOfDay = _selectedDate;
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
@@ -144,7 +144,7 @@ class _BodyScreenState extends State<BodyScreen> {
   }
 
   Future<void> _logProtocol(ProtocolType type) async {
-    final db = context.read<AppDatabase>();
+    final db = ref.read(databaseProvider);
     await db.insertProtocolEntry(
       ProtocolEntry(
         timestamp: _timestampForSelectedDate(),

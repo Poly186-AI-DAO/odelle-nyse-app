@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/theme_constants.dart';
-import '../database/app_database.dart';
 import '../models/protocol_entry.dart';
+import '../providers/service_providers.dart';
 import '../utils/logger.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/protocol/protocol_button.dart';
 
 /// Mind Screen - Mental/cognitive pillar
 /// Meditation, mantras, mindset tracking
-class MindScreen extends StatefulWidget {
+class MindScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
 
   const MindScreen({super.key, this.panelVisibility = 1.0});
 
   @override
-  State<MindScreen> createState() => _MindScreenState();
+  ConsumerState<MindScreen> createState() => _MindScreenState();
 }
 
-class _MindScreenState extends State<MindScreen> {
+class _MindScreenState extends ConsumerState<MindScreen> {
   static const String _tag = 'MindScreen';
   static const List<String> _weekdayLabels = [
     'Mon',
@@ -129,7 +129,7 @@ class _MindScreenState extends State<MindScreen> {
   }
 
   Future<void> _loadData() async {
-    final db = context.read<AppDatabase>();
+    final db = ref.read(databaseProvider);
     final startOfDay = _selectedDate;
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
@@ -150,7 +150,7 @@ class _MindScreenState extends State<MindScreen> {
   }
 
   Future<void> _logProtocol(ProtocolType type) async {
-    final db = context.read<AppDatabase>();
+    final db = ref.read(databaseProvider);
     await db.insertProtocolEntry(
       ProtocolEntry(
         timestamp: _timestampForSelectedDate(),
