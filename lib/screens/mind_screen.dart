@@ -4,13 +4,14 @@ import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
 import '../database/app_database.dart';
 import '../models/protocol_entry.dart';
+import '../widgets/effects/breathing_card.dart';
 import '../widgets/protocol/protocol_button.dart';
 
 /// Mind Screen - Mental/cognitive pillar
 /// Meditation, mantras, mindset tracking
 class MindScreen extends StatefulWidget {
   final double panelVisibility;
-  
+
   const MindScreen({super.key, this.panelVisibility = 1.0});
 
   @override
@@ -83,38 +84,56 @@ class _MindScreenState extends State<MindScreen> {
   @override
   Widget build(BuildContext context) {
     // Calculate animation values
-    final contentOffset = (1 - widget.panelVisibility) * 50; // Slide up from bottom
-    final contentOpacity = widget.panelVisibility.clamp(0.0, 1.0);
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          // Account for SafeArea + nav bar overlay
-          SizedBox(height: MediaQuery.of(context).padding.top + 70),
+    final cardOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
+    final cardOpacity = widget.panelVisibility.clamp(0.0, 1.0);
 
-          // Daily mantra - fade with visibility
-          AnimatedOpacity(
-            duration: Duration.zero,
-            opacity: contentOpacity,
-            child: _buildMantraSection(),
-          ),
-
-          const Spacer(),
-
-          // Bottom buttons and stats - slide + opacity
-          Transform.translate(
-            offset: Offset(0, contentOffset),
-            child: AnimatedOpacity(
-              duration: Duration.zero,
-              opacity: contentOpacity,
-              child: _buildMindControls(),
+    // Hero Card design matching VoiceScreen
+    return Stack(
+      children: [
+        // The dark hero card - extends from top edge down to 82%
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: MediaQuery.of(context).size.height * 0.18,
+          child: Transform.translate(
+            offset: Offset(0, cardOffset),
+            child: Opacity(
+              opacity: cardOpacity,
+              child: const BreathingCard(
+                child: SizedBox.expand(),
+              ),
             ),
           ),
-          
-          const SizedBox(height: 120), // Bottom padding for FAB
-        ],
-      ),
+        ),
+
+        // Content positioned on the card
+        Opacity(
+          opacity: cardOpacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                // Account for SafeArea + nav bar overlay
+                SizedBox(height: MediaQuery.of(context).padding.top + 70),
+
+                // Daily mantra
+                _buildMantraSection(),
+
+                const Spacer(),
+
+                // Bottom buttons and stats - slide + opacity
+                Transform.translate(
+                  offset: Offset(0, cardOffset),
+                  child: _buildMindControls(),
+                ),
+
+                const SizedBox(height: 120), // Bottom padding for FAB
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -159,7 +178,7 @@ class _MindScreenState extends State<MindScreen> {
             buttonState: _getProtocolState(ProtocolType.meditation),
             onTap: () => _logProtocol(ProtocolType.meditation),
             size: 100, // Larger for prominence
-            ),
+          ),
         ),
 
         const SizedBox(height: 32),
@@ -168,11 +187,13 @@ class _MindScreenState extends State<MindScreen> {
         Row(
           children: [
             Expanded(
-              child: _buildGlassStat('Sessions Today', _todayProtocols.length.toString()),
+              child: _buildGlassStat(
+                  'Sessions Today', _todayProtocols.length.toString()),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildGlassStat('Mind Level', '${(_todayProtocols.length * 10) + 1}'),
+              child: _buildGlassStat(
+                  'Mind Level', '${(_todayProtocols.length * 10) + 1}'),
             ),
           ],
         ),
@@ -219,7 +240,7 @@ class _MindScreenState extends State<MindScreen> {
       ],
     );
   }
-  
+
   Widget _buildGlassStat(String label, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),

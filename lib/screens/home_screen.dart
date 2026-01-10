@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:mic_stream/mic_stream.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-import '../constants/theme_constants.dart';
 import '../database/app_database.dart';
 import '../models/journal_entry.dart';
 import '../services/azure_speech_service.dart';
@@ -44,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const List<PillarItem> _pillars = [
     PillarItem(
       assetIcon: 'assets/icons/body_powerlifting_icon.png',
+      iconScale: 1.5,
       label: 'Body',
     ),
     PillarItem(
@@ -284,24 +284,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Get interpolated background color based on scroll progress
+  // All screens now use Hero Card design, so background is consistent light silver
   Color _getInterpolatedBackground() {
-    final double progress = _scrollProgress % 3;
-
-    // Key colors
-    const Color darkColor = ThemeConstants.deepNavy;
-    const Color voiceColor =
-        Color(0xFFE2E8F0); // Light silver from voice background
-
-    if (progress <= 1.0) {
-      // Body (0.0) -> Voice (1.0)
-      return Color.lerp(darkColor, voiceColor, progress)!;
-    } else if (progress <= 2.0) {
-      // Voice (1.0) -> Mind (2.0)
-      return Color.lerp(voiceColor, darkColor, progress - 1.0)!;
-    } else {
-      // Mind (2.0) -> Body (3.0/0.0)
-      return Color.lerp(darkColor, darkColor, progress - 2.0)!;
-    }
+    // Light silver background for all screens (visible in bottom 18%)
+    return const Color(0xFFE2E8F0);
   }
 
   @override

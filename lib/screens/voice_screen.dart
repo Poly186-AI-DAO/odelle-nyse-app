@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../constants/theme_constants.dart';
 import '../services/azure_speech_service.dart';
+import '../widgets/effects/breathing_card.dart';
 import '../widgets/voice/voice_waveform_animated.dart';
 
 /// Voice Screen - Display-only view
@@ -76,32 +76,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
             offset: Offset(0, cardOffset),
             child: Opacity(
               opacity: cardOpacity,
-              child: Container(
-                decoration: BoxDecoration(
-                  // Use theme gradient colors
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      ThemeConstants.deepNavy, // Dark at top
-                      ThemeConstants.darkTeal, // Mid teal
-                      ThemeConstants.steelBlue, // Steel blue
-                      ThemeConstants.calmSilver, // Silver at bottom edge
-                    ],
-                    stops: [0.0, 0.4, 0.7, 1.0],
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(48),
-                    bottomRight: Radius.circular(48),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
+              child: const BreathingCard(
+                child: SizedBox.expand(),
               ),
             ),
           ),

@@ -8,6 +8,7 @@ class PillarItem {
   final IconData? activeIcon;
   final String? assetIcon;
   final String? assetActiveIcon;
+  final double iconScale;
   final String label;
 
   const PillarItem({
@@ -15,11 +16,27 @@ class PillarItem {
     this.activeIcon,
     this.assetIcon,
     this.assetActiveIcon,
+    this.iconScale = 1.0,
     required this.label,
   }) : assert(
           (icon != null && activeIcon != null) || assetIcon != null,
           'Provide either icon/activeIcon or assetIcon.',
         );
+}
+
+Widget _wrapScaledIcon({
+  required Widget iconWidget,
+  required double iconScale,
+}) {
+  if (iconScale == 1.0) {
+    return iconWidget;
+  }
+
+  return Transform.scale(
+    scale: iconScale,
+    alignment: Alignment.bottomCenter,
+    child: iconWidget,
+  );
 }
 
 Widget _buildPillarIcon({
@@ -33,30 +50,45 @@ Widget _buildPillarIcon({
       : ThemeConstants.textOnDark.withValues(alpha: inactiveAlpha);
   final assetPath =
       isActive ? (pillar.assetActiveIcon ?? pillar.assetIcon) : pillar.assetIcon;
+  Widget iconWidget;
 
   if (assetPath != null) {
     if (assetPath.toLowerCase().endsWith('.svg')) {
-      return SvgPicture.asset(
+      iconWidget = SvgPicture.asset(
         assetPath,
         width: size,
         height: size,
+        fit: BoxFit.contain,
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+      return _wrapScaledIcon(
+        iconWidget: iconWidget,
+        iconScale: pillar.iconScale,
       );
     }
 
-    return Image.asset(
+    iconWidget = Image.asset(
       assetPath,
       width: size,
       height: size,
+      fit: BoxFit.contain,
       color: color,
       colorBlendMode: BlendMode.srcIn,
     );
+    return _wrapScaledIcon(
+      iconWidget: iconWidget,
+      iconScale: pillar.iconScale,
+    );
   }
 
-  return Icon(
+  iconWidget = Icon(
     isActive ? pillar.activeIcon : pillar.icon,
     size: size,
     color: color,
+  );
+  return _wrapScaledIcon(
+    iconWidget: iconWidget,
+    iconScale: pillar.iconScale,
   );
 }
 

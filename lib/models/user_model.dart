@@ -518,9 +518,7 @@ Map<String, Map<String, dynamic>> _parseNestedMap(dynamic value) {
     return value.map(
       (key, nested) => MapEntry(
         key.toString(),
-        nested is Map
-            ? Map<String, dynamic>.from(nested)
-            : {'value': nested},
+        nested is Map ? Map<String, dynamic>.from(nested) : {'value': nested},
       ),
     );
   }

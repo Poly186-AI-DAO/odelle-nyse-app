@@ -5,6 +5,7 @@ import '../constants/theme_constants.dart';
 import '../database/app_database.dart';
 import '../models/character_stats.dart';
 import '../models/protocol_entry.dart';
+import '../widgets/effects/breathing_card.dart';
 import '../widgets/protocol/protocol_button.dart';
 import '../widgets/dashboard/hero_number.dart';
 
@@ -12,7 +13,7 @@ import '../widgets/dashboard/hero_number.dart';
 /// Gym, Meal, Dose protocols with XP tracking
 class BodyScreen extends StatefulWidget {
   final double panelVisibility;
-  
+
   const BodyScreen({super.key, this.panelVisibility = 1.0});
 
   @override
@@ -76,38 +77,56 @@ class _BodyScreenState extends State<BodyScreen> {
   @override
   Widget build(BuildContext context) {
     // Calculate animation values
-    final contentOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
-    final contentOpacity = widget.panelVisibility.clamp(0.0, 1.0);
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          // Account for SafeArea + nav bar overlay
-          SizedBox(height: MediaQuery.of(context).padding.top + 70),
+    final cardOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
+    final cardOpacity = widget.panelVisibility.clamp(0.0, 1.0);
 
-          // Hero XP display - fade with visibility
-          AnimatedOpacity(
-            duration: Duration.zero,
-            opacity: contentOpacity,
-            child: _buildHeroXP(),
-          ),
-
-          const Spacer(),
-
-          // Bottom buttons and stats - slide + opacity
-          Transform.translate(
-            offset: Offset(0, contentOffset),
-            child: AnimatedOpacity(
-              duration: Duration.zero,
-              opacity: contentOpacity,
-              child: _buildBodyControls(),
+    // Hero Card design matching VoiceScreen
+    return Stack(
+      children: [
+        // The dark hero card - extends from top edge down to 82%
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: MediaQuery.of(context).size.height * 0.18,
+          child: Transform.translate(
+            offset: Offset(0, cardOffset),
+            child: Opacity(
+              opacity: cardOpacity,
+              child: const BreathingCard(
+                child: SizedBox.expand(),
+              ),
             ),
           ),
-          
-          const SizedBox(height: 120), // Bottom padding for FAB
-        ],
-      ),
+        ),
+
+        // Content positioned on the card
+        Opacity(
+          opacity: cardOpacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                // Account for SafeArea + nav bar overlay
+                SizedBox(height: MediaQuery.of(context).padding.top + 70),
+
+                // Hero XP display
+                _buildHeroXP(),
+
+                const Spacer(),
+
+                // Bottom buttons and stats - slide + opacity
+                Transform.translate(
+                  offset: Offset(0, cardOffset),
+                  child: _buildBodyControls(),
+                ),
+
+                const SizedBox(height: 120), // Bottom padding for FAB
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -182,7 +201,8 @@ class _BodyScreenState extends State<BodyScreen> {
         Row(
           children: [
             Expanded(
-              child: _buildGlassStat('Today\'s Logs', _todayProtocols.length.toString()),
+              child: _buildGlassStat(
+                  'Today\'s Logs', _todayProtocols.length.toString()),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -233,7 +253,7 @@ class _BodyScreenState extends State<BodyScreen> {
       ],
     );
   }
-  
+
   Widget _buildGlassStat(String label, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -266,7 +286,7 @@ class _BodyScreenState extends State<BodyScreen> {
       ),
     );
   }
-  
+
   Widget _buildDarkListItem(ProtocolEntry entry) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
