@@ -107,9 +107,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     };
 
-    // Handle connection errors
+    // Handle connection errors - clean up state to prevent getting stuck
     _speechService.onError = (error) {
       Logger.error('Voice service error: $error', tag: _tag);
+      
+      // Clean up state on error to prevent stuck state
+      _stopMicStream();
+      _activeSessionScreen = null;
+      _recordingStartTime = null;
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -177,16 +183,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Track recording start time to avoid buffer-too-small errors
   DateTime? _recordingStartTime;
+  
+  // Track which screen started the active session (for screen-lock behavior)
+  // 0 = Body, 1 = Voice, 2 = Mind, null = no active session
+  int? _activeSessionScreen;
 
   /// Get the appropriate mode for the current screen
   VoiceLiveMode get _targetMode => _currentPage == 1
       ? VoiceLiveMode.conversation
       : VoiceLiveMode.transcription;
 
-  /// FAB tap - screen-aware toggle
-  /// Voice Screen: toggle connect/disconnect (always-on listening)
-  /// Body/Mind: toggle recording (start/stop transcription)
+  /// FAB tap - screen-aware toggle with screen-lock behavior
+  /// If user is connected/recording and on a DIFFERENT screen, navigate back
+  /// Otherwise, toggle the appropriate action for the current screen
   Future<void> _onVoiceButtonTap() async {
+    // Screen-lock: If there's an active session on a different screen, navigate back
+    if (_hasActiveSession && _activeSessionScreen != _currentPage) {
+      Logger.info(
+        'Screen-lock: Navigating back to screen $_activeSessionScreen (currently on $_currentPage)',
+        tag: _tag,
+      );
+      _navigateToScreen(_activeSessionScreen!);
+      return;
+    }
+
+    // Normal behavior: toggle based on current screen
     if (_currentPage == 1) {
       // Voice Screen: Toggle connection (conversation mode, always listening)
       await _toggleVoiceConnection();
@@ -195,30 +216,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await _toggleTranscriptionRecording();
     }
   }
+  
+  /// Check if there's an active voice session (connected or recording)
+  bool get _hasActiveSession => _isConnected || _isRecording;
+  
+  /// Navigate to a specific screen by index
+  void _navigateToScreen(int targetIndex) {
+    if (!_pageController.hasClients) return;
+    
+    final int currentRawPage =
+        _pageController.page?.round() ?? _initialPageOffset + 1;
+    final int targetRawPage = currentRawPage + (targetIndex - (currentRawPage % 3));
+    
+    HapticFeedback.mediumImpact();
+    _pageController.animateToPage(
+      targetRawPage,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   /// Toggle voice connection for Voice screen (conversation mode)
   Future<void> _toggleVoiceConnection() async {
     if (_isConnected) {
+      Logger.info('Voice: Disconnecting', tag: _tag);
       await _disconnect();
     } else {
+      Logger.info('Voice: Connecting in conversation mode', tag: _tag);
+      _activeSessionScreen = 1; // Voice screen
       await _connect();
     }
   }
 
   /// Toggle transcription recording for Body/Mind screens
+  /// Transcription is "tap to record, tap to stop and send" - not always-on
   Future<void> _toggleTranscriptionRecording() async {
     if (_isRecording) {
-      // Stop recording
+      // Stop recording AND disconnect (transcription is one-shot, not persistent)
+      Logger.info('Transcription: Stopping and disconnecting', tag: _tag);
       await _stopRecording();
+      await _disconnect(); // Full stop for transcription mode
     } else if (_isConnected) {
-      // Already connected, start recording
+      // Shouldn't happen in transcription mode, but handle it
+      Logger.info('Transcription: Already connected, starting recording', tag: _tag);
       await _startRecording();
     } else {
       // Not connected, connect and start recording
+      Logger.info('Transcription: Connecting and starting recording', tag: _tag);
+      
       if (!_hasPermission) {
+        Logger.info('Requesting microphone permission', tag: _tag);
         final granted = await _requestMicrophonePermission();
-        if (!granted) return;
+        if (!granted) {
+          Logger.warning('Microphone permission denied', tag: _tag);
+          return;
+        }
+        Logger.info('Microphone permission granted', tag: _tag);
       }
+      
+      _activeSessionScreen = _currentPage; // Body or Mind
 
       final connected = await ref
           .read(voiceViewModelProvider.notifier)
@@ -226,6 +282,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       
       if (connected) {
         await _startRecording();
+      } else {
+        Logger.error('Failed to connect for transcription', tag: _tag);
+        _activeSessionScreen = null; // Clear on failure
       }
     }
   }
@@ -258,6 +317,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       await _stopMicStream();
       await ref.read(voiceViewModelProvider.notifier).disconnect();
+      _activeSessionScreen = null; // Clear screen lock
       Logger.info('Disconnected', tag: _tag);
     } catch (e) {
       Logger.error('Failed to disconnect: $e', tag: _tag);
@@ -269,7 +329,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     try {
       _recordingStartTime = DateTime.now();
+      int chunkCount = 0;
+      int totalBytes = 0;
 
+      Logger.info('Initializing microphone stream (24kHz, mono, PCM16)', tag: _tag);
+      
       _micStream = MicStream.microphone(
         sampleRate: 24000,
         channelConfig: ChannelConfig.CHANNEL_IN_MONO,
@@ -279,11 +343,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final voiceVM = ref.read(voiceViewModelProvider.notifier);
       voiceVM.startRecording();
 
-      _micSubscription = _micStream!.listen((audioBytes) {
-        voiceVM.sendAudioChunk(audioBytes);
-      });
+      _micSubscription = _micStream!.listen(
+        (audioBytes) {
+          chunkCount++;
+          totalBytes += audioBytes.length;
+          
+          // Log every 10 chunks to verify mic is working
+          if (chunkCount % 10 == 0) {
+            Logger.debug('Mic: $chunkCount chunks, $totalBytes bytes total', tag: _tag);
+          }
+          
+          voiceVM.sendAudioChunk(audioBytes);
+        },
+        onError: (error) {
+          Logger.error('Mic stream error: $error', tag: _tag);
+        },
+        onDone: () {
+          Logger.info('Mic stream completed: $chunkCount chunks, $totalBytes bytes', tag: _tag);
+        },
+      );
 
-      Logger.info('Recording started', tag: _tag);
+      Logger.info('Recording started, listening for mic input...', tag: _tag);
     } catch (e) {
       Logger.error('Failed to start recording: $e', tag: _tag);
       _recordingStartTime = null;
@@ -401,12 +481,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: const EdgeInsets.only(bottom: 16),
         child: VoiceButton(
           size: 64,
-          // Dynamic icon: soundwave for Voice, thought bubble for Body/Mind
-          icon: _currentPage == 1
-              ? Icons.graphic_eq
-              : Icons.chat_bubble_outline,
-          isActive: voiceState.isRecording,
+          // Icon logic:
+          // - If locked (session on different screen): lock icon
+          // - Otherwise: soundwave for all states (waveform animates when active)
+          icon: _hasActiveSession && _activeSessionScreen != _currentPage
+              ? Icons.lock_outline // Locked - tap to go back
+              : Icons.graphic_eq,  // Same icon for all screens, waveform animates
+          // isActive: show waveform animation when:
+          // - Voice screen: when connected (always listening mode)
+          // - Body/Mind: when recording
+          isActive: _currentPage == 1 
+              ? voiceState.isConnected  // Voice: animate when connected
+              : voiceState.isRecording, // Body/Mind: animate when recording
           isConnected: voiceState.isConnected,
+          isProcessing: voiceState.isConnecting,
           onTap: _onVoiceButtonTap,
           onLongPress: _onVoiceButtonLongPress,
         ),
