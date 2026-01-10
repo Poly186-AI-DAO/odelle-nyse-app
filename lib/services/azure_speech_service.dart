@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:ui' show VoidCallback;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../config/azure_ai_config.dart';
 import '../utils/logger.dart';
 
 /// Connection timeout duration
@@ -87,25 +88,28 @@ class AzureSpeechService {
   }
 
   void _initialize() {
-    // Get Azure OpenAI Realtime API configuration from .env
-    // Using the new poly-ai-foundry endpoint
-    _apiKey = dotenv.env['AZURE_GPT_REALTIME_KEY'] ?? '';
+    // Get Azure AI Foundry configuration from .env
+    _apiKey = dotenv.env['AZURE_AI_FOUNDRY_KEY'] ?? '';
+    final endpoint = dotenv.env['AZURE_AI_FOUNDRY_ENDPOINT'] ?? '';
 
-    // Parse the target URL to get the base endpoint
-    final targetUrl = dotenv.env['AZURE_GPT_REALTIME_DEPLOYMENT_URL'] ?? '';
-
-    if (_apiKey.isEmpty || targetUrl.isEmpty) {
+    if (_apiKey.isEmpty || endpoint.isEmpty) {
       Logger.error(
-          'Azure Realtime API key or endpoint not found in environment',
+          'Azure AI Foundry key or endpoint not found in environment',
           tag: _tag);
       Logger.error(
-          'Expected env vars: AZURE_GPT_REALTIME_KEY, AZURE_GPT_REALTIME_DEPLOYMENT_URL',
+          'Expected env vars: AZURE_AI_FOUNDRY_KEY, AZURE_AI_FOUNDRY_ENDPOINT',
           tag: _tag);
       return;
     }
 
+    // Build the Realtime API URL using AzureAIConfig
+    final realtimeUri = AzureAIConfig.buildRealtimeUri(
+      endpoint: endpoint,
+      deployment: AzureAIConfig.defaultRealtimeDeployment,
+    );
+
     // Convert https:// to wss:// for WebSocket connection
-    _endpointUrl = targetUrl.replaceFirst('https://', 'wss://');
+    _endpointUrl = realtimeUri.toString().replaceFirst('https://', 'wss://');
 
     Logger.info(
         'Azure Realtime Service initialized with endpoint: ${_endpointUrl.split('?').first}',

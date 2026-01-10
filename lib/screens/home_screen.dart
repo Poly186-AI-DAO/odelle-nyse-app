@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mic_stream/mic_stream.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
-import '../database/app_database.dart';
 import '../models/journal_entry.dart';
+import '../providers/service_providers.dart';
 import '../services/azure_speech_service.dart';
 import '../utils/logger.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
@@ -17,14 +17,14 @@ import 'mind_screen.dart';
 /// Main home screen with horizontal pager navigation
 /// 3 Pillars: Body (left) | Voice (center/default) | Mind (right)
 /// Voice button persists and controls mic stream
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const String _tag = 'HomeScreen';
 
   late PageController _pageController;
@@ -89,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _speechService = context.read<AzureSpeechService>();
+    _speechService = ref.read(voiceServiceProvider);
     _subscribeToState();
     _setupSaveCallback();
   }
@@ -103,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _setupSaveCallback() {
-    final db = context.read<AppDatabase>();
+    final db = ref.read(databaseProvider);
     _speechService.onTranscription = (text) async {
       if (text.isEmpty) return;
       try {
@@ -115,6 +115,25 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (e) {
         Logger.error('Failed to save entry: $e', tag: _tag);
       }
+    };
+
+    // Handle connection errors
+    _speechService.onError = (error) {
+      Logger.error('Voice service error: $error', tag: _tag);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Voice error: $error'),
+            backgroundColor: Colors.red.shade700,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    };
+
+    // Log when connected
+    _speechService.onConnected = () {
+      Logger.info('Voice service connected', tag: _tag);
     };
   }
 
