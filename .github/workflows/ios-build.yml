@@ -21,7 +21,12 @@ jobs:
           cache: true
 
       - name: Create .env file
-        run: echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
+        run: |
+          echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
+          echo "AZURE_AI_FOUNDRY_KEY=${{ secrets.AZURE_AI_FOUNDRY_KEY }}" >> .env
+          echo "AZURE_AI_FOUNDRY_ENDPOINT=${{ secrets.AZURE_AI_FOUNDRY_ENDPOINT }}" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "POLY_PRODUCTION_BACKEND_URL=${{ secrets.POLY_PRODUCTION_BACKEND_URL }}" >> .env
 
       - name: Install dependencies
         run: flutter pub get
@@ -56,7 +61,12 @@ jobs:
           cache: true
 
       - name: Create .env file
-        run: echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
+        run: |
+          echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
+          echo "AZURE_AI_FOUNDRY_KEY=${{ secrets.AZURE_AI_FOUNDRY_KEY }}" >> .env
+          echo "AZURE_AI_FOUNDRY_ENDPOINT=${{ secrets.AZURE_AI_FOUNDRY_ENDPOINT }}" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "POLY_PRODUCTION_BACKEND_URL=${{ secrets.POLY_PRODUCTION_BACKEND_URL }}" >> .env
 
       - name: Install dependencies
         run: flutter pub get
