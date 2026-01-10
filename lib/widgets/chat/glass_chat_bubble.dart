@@ -31,10 +31,10 @@ class GlassChatBubble extends StatelessWidget {
           ),
           borderRadius: DesignConstants.radiusLarge,
           backgroundColor: isUser
-              ? ThemeConstants.polyPurple500.withOpacity(0.2)
+              ? ThemeConstants.polyPurple500.withValues(alpha: 0.2)
               : ThemeConstants.glassBackground,
           borderColor: isUser
-              ? ThemeConstants.polyPurple300.withOpacity(0.3)
+              ? ThemeConstants.polyPurple300.withValues(alpha: 0.3)
               : ThemeConstants.glassBorder,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

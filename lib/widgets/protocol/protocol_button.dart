@@ -67,28 +67,6 @@ class _ProtocolButtonState extends State<ProtocolButton>
     super.dispose();
   }
 
-  Color get _backgroundColor {
-    switch (widget.buttonState) {
-      case ProtocolButtonState.complete:
-        return _getTypeColor().withValues(alpha: 0.2);
-      case ProtocolButtonState.partial:
-        return Colors.white.withValues(alpha: 0.08);
-      case ProtocolButtonState.empty:
-        return Colors.transparent;
-    }
-  }
-
-  Color get _borderColor {
-    switch (widget.buttonState) {
-      case ProtocolButtonState.complete:
-        return _getTypeColor().withValues(alpha: 0.5);
-      case ProtocolButtonState.partial:
-        return Colors.white.withValues(alpha: 0.2);
-      case ProtocolButtonState.empty:
-        return Colors.white.withValues(alpha: 0.15);
-    }
-  }
-
   Color _getTypeColor() {
     switch (widget.type) {
       case ProtocolType.gym:

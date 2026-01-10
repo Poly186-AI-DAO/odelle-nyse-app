@@ -100,7 +100,7 @@ class DynamicBackground extends StatelessWidget {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
               child: Container(
-                color: Colors.black.withOpacity(0.2), // Slight dimming
+                color: Colors.black.withValues(alpha: 0.2), // Slight dimming
               ),
             ),
           ),
@@ -113,8 +113,8 @@ class DynamicBackground extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.1),
-                  Colors.black.withOpacity(0.4),
+                  Colors.black.withValues(alpha: 0.1),
+                  Colors.black.withValues(alpha: 0.4),
                 ],
               ),
             ),
@@ -242,8 +242,8 @@ class _GradientOrbsState extends State<GradientOrbs>
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      colors[index % colors.length][0].withOpacity(0.3),
-                      colors[index % colors.length][1].withOpacity(0.1),
+                      colors[index % colors.length][0].withValues(alpha: 0.3),
+                      colors[index % colors.length][1].withValues(alpha: 0.1),
                       Colors.transparent,
                     ],
                   ),

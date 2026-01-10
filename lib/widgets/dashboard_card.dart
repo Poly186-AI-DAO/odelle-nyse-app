@@ -32,7 +32,7 @@ class DashboardCard extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color:
-                    (iconColor ?? ThemeConstants.primaryColor).withOpacity(0.1),
+                    (iconColor ?? ThemeConstants.primaryColor).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -52,7 +52,7 @@ class DashboardCard extends StatelessWidget {
             Text(
               description,
               style: DesignConstants.bodyS.copyWith(
-                color: ThemeConstants.textColor.withOpacity(0.7),
+                color: ThemeConstants.textColor.withValues(alpha: 0.7),
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,

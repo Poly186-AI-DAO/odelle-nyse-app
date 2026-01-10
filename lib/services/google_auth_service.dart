@@ -24,13 +24,6 @@ class GoogleAuthClient extends http.BaseClient {
 }
 
 class GoogleAuthService {
-  static const String _calendarScope =
-      'https://www.googleapis.com/auth/calendar';
-  static const String _driveScope =
-      'https://www.googleapis.com/auth/drive.file';
-  static const String _gmailScope =
-      'https://www.googleapis.com/auth/gmail.modify';
-
   // Store scopes for persistence
   static const List<String> _requiredScopes = [
     'email',

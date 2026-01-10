@@ -37,12 +37,12 @@ class GlassTextField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: DesignConstants.bodyM.copyWith(
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withValues(alpha: 0.5),
           ),
           prefixIcon: prefixIcon != null
               ? Icon(
                   prefixIcon,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                 )
               : null,
           border: InputBorder.none,

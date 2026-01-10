@@ -11,7 +11,7 @@ import '../widgets/voice/voice_waveform_animated.dart';
 /// Top 75% is a large gradient card containing the text
 class VoiceScreen extends StatefulWidget {
   final double panelVisibility;
-  
+
   const VoiceScreen({super.key, this.panelVisibility = 1.0});
 
   @override
@@ -28,7 +28,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _service = context.watch<AzureSpeechService>();
-    
+
     _stateSubscription?.cancel();
     _stateSubscription = _service.stateStream.listen((state) {
       if (mounted) setState(() => _voiceState = state);
@@ -56,14 +56,13 @@ class _VoiceScreenState extends State<VoiceScreen> {
       _voiceState == VoiceLiveState.recording ||
       _voiceState == VoiceLiveState.processing;
   bool get _isRecording => _voiceState == VoiceLiveState.recording;
-  bool get _isProcessing => _voiceState == VoiceLiveState.processing;
 
   @override
   Widget build(BuildContext context) {
     // Calculate animation values - card slides up as visibility increases
     final cardOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
     final cardOpacity = widget.panelVisibility.clamp(0.0, 1.0);
-    
+
     // "Hero Card" extending from TOP EDGE of screen
     return Stack(
       children: [
@@ -84,10 +83,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                       ThemeConstants.deepNavy,     // Dark at top
-                       ThemeConstants.darkTeal,     // Mid teal
-                       ThemeConstants.steelBlue,    // Steel blue
-                       ThemeConstants.calmSilver,   // Silver at bottom edge
+                      ThemeConstants.deepNavy, // Dark at top
+                      ThemeConstants.darkTeal, // Mid teal
+                      ThemeConstants.steelBlue, // Steel blue
+                      ThemeConstants.calmSilver, // Silver at bottom edge
                     ],
                     stops: [0.0, 0.4, 0.7, 1.0],
                   ),
@@ -107,7 +106,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
             ),
           ),
         ),
-        
+
         // Content positioned on the card - also animated
         Opacity(
           opacity: cardOpacity,
@@ -117,9 +116,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
               children: [
                 // Space for nav bar overlay
                 const SizedBox(height: 70),
-                
+
                 const Spacer(flex: 2),
-                
+
                 // The main content area - CENTERED
                 Center(
                   child: Padding(
@@ -127,7 +126,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
                     child: _buildContent(),
                   ),
                 ),
-                
+
                 const Spacer(flex: 3),
               ],
             ),
@@ -177,7 +176,6 @@ class _VoiceScreenState extends State<VoiceScreen> {
               color: Colors.white.withValues(alpha: 0.9),
               isActive: true,
             ),
-          
           if (_transcription.isNotEmpty)
             Text(
               _transcription,
@@ -190,11 +188,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
                 letterSpacing: -0.3,
               ),
             ),
-            
-           if (_isRecording && _transcription.isEmpty)
-             const SizedBox(height: 24),
-             
-           if (_isRecording && _transcription.isEmpty)
+          if (_isRecording && _transcription.isEmpty)
+            const SizedBox(height: 24),
+          if (_isRecording && _transcription.isEmpty)
             Text(
               'Listening...',
               style: GoogleFonts.inter(

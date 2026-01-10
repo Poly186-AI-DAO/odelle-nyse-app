@@ -61,7 +61,7 @@ class _StatusIndicatorState extends State<StatusIndicator>
         height: widget.size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: widget.color.withOpacity(0.3),
+          color: widget.color.withValues(alpha: 0.3),
         ),
       );
     }
@@ -74,10 +74,10 @@ class _StatusIndicatorState extends State<StatusIndicator>
           height: widget.size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: widget.color.withOpacity(0.9),
+            color: widget.color.withValues(alpha: 0.9),
             boxShadow: [
               BoxShadow(
-                color: widget.color.withOpacity(0.3),
+                color: widget.color.withValues(alpha: 0.3),
                 blurRadius: _glowAnimation.value,
                 spreadRadius: _pulseAnimation.value,
               ),

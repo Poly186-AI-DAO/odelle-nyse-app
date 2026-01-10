@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mic_stream/mic_stream.dart';
@@ -44,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Pillar definitions
   static const List<PillarItem> _pillars = [
     PillarItem(
-      assetIcon: 'assets/icons/body_gym_icon.png',
+      assetIcon: 'assets/icons/body_powerlifting_icon.png',
       label: 'Body',
     ),
     PillarItem(
@@ -66,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _isRecording => _voiceState == VoiceLiveState.recording;
 
   // Scroll progress for animations
-  double _scrollProgress = 1.0; 
+  double _scrollProgress = 1.0;
 
   @override
   void initState() {
@@ -155,11 +154,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onPillarTapped(int index) {
     if (!_pageController.hasClients) return;
-    
+
     // Find nearest page to animate to
-    final int currentRawPage = _pageController.page?.round() ?? _initialPageOffset + 1;
+    final int currentRawPage =
+        _pageController.page?.round() ?? _initialPageOffset + 1;
     final int targetRawPage = currentRawPage + (index - (currentRawPage % 3));
-    
+
     _pageController.animateToPage(
       targetRawPage,
       duration: const Duration(milliseconds: 400),
@@ -176,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_currentPage != 1) {
       _onPillarTapped(1);
     }
-    
+
     // Toggle connection/recording
     if (_isLocked) {
       // If locked, tap stops
@@ -198,18 +198,18 @@ class _HomeScreenState extends State<HomeScreen> {
   /// FAB long press start - begin recording (Transcription Mode)
   Future<void> _onVoiceButtonLongPressStart() async {
     HapticFeedback.mediumImpact();
-    
+
     // Ensure on Voice Screen
     if (_currentPage != 1) {
       _onPillarTapped(1);
     }
-    
+
     if (!_isConnected) {
       await _connect();
       // Wait for connection
       await Future.delayed(const Duration(milliseconds: 500));
     }
-    
+
     if (_isConnected && !_isRecording) {
       // Default to transcription mode for hold-to-talk
       if (_speechService.mode != VoiceLiveMode.transcription) {
@@ -218,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _startRecording();
     }
   }
-  
+
   /// FAB locked - switch to Live Mode
   void _onVoiceButtonLock() {
     setState(() => _isLocked = true);
@@ -242,12 +242,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     await _speechService.connect();
-  }
-
-  Future<void> _disconnect() async {
-    await _stopMicStream();
-    await _speechService.disconnect();
-    setState(() => _isLocked = false);
   }
 
   Future<void> _startRecording() async {
@@ -292,10 +286,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // Get interpolated background color based on scroll progress
   Color _getInterpolatedBackground() {
     final double progress = _scrollProgress % 3;
-    
+
     // Key colors
     const Color darkColor = ThemeConstants.deepNavy;
-    const Color voiceColor = Color(0xFFE2E8F0); // Light silver from voice background
+    const Color voiceColor =
+        Color(0xFFE2E8F0); // Light silver from voice background
 
     if (progress <= 1.0) {
       // Body (0.0) -> Voice (1.0)
@@ -329,11 +324,11 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 // Modulo to cycle through 3 screens
                 final pageIndex = index % 3;
-                
+
                 // Calculate visibility based on distance from current scroll position
                 final distance = (index - _scrollProgress).abs();
                 final visibility = (1.0 - distance).clamp(0.0, 1.0);
-                
+
                 switch (pageIndex) {
                   case 0:
                     return BodyScreen(panelVisibility: visibility);
@@ -346,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               },
             ),
-            
+
             // Nav bar - positioned at TOP of screen
             Positioned(
               top: 0,

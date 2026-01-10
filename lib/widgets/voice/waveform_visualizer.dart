@@ -53,7 +53,7 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
                 height: 10 + (value * 40),
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
-                  color: widget.color.withOpacity(0.8),
+                  color: widget.color.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(2),
                 ),
               );

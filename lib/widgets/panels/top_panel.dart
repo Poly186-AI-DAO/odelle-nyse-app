@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../constants/theme_constants.dart';
 
 /// Animated top panel that slides down from the top of the screen
 /// Used for transcription display, notifications, or contextual content

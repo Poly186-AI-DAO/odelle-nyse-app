@@ -38,7 +38,7 @@ class _VoiceButtonState extends State<VoiceButton>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-  
+
   // Drag logic
   double _dragOffset = 0.0;
   static const double _lockThreshold = -60.0; // Distance to swipe up
@@ -134,7 +134,7 @@ class _VoiceButtonState extends State<VoiceButton>
             ),
           ),
         ),
-        
+
         const SizedBox(height: 8),
 
         // Main Button
@@ -152,9 +152,9 @@ class _VoiceButtonState extends State<VoiceButton>
           onVerticalDragUpdate: _handleDragUpdate,
           onVerticalDragEnd: _handleDragEnd,
           onLongPressEnd: (_) {
-             if (!_hasLocked && !widget.isLocked) {
-               widget.onLongPressEnd?.call();
-             }
+            if (!_hasLocked && !widget.isLocked) {
+              widget.onLongPressEnd?.call();
+            }
           },
           child: AnimatedBuilder(
             animation: _pulseAnimation,
@@ -295,8 +295,8 @@ class _VoiceWaveformState extends State<_VoiceWaveform>
 
 extension on double {
   double sin() => 0.5 + 0.5 * (this - 1.5708).abs() < 1.5708
-      ? (this).abs() < 0.01
+      ? abs() < 0.01
           ? this
-          : (1 - ((this.abs() - 1.5708).abs() / 1.5708))
+          : (1 - ((abs() - 1.5708).abs() / 1.5708))
       : 0;
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
 class ThemeConstants {
   // =========================================================
@@ -271,8 +270,8 @@ class ThemeConstants {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          polyWhite.withOpacity(0.15),
-          polyWhite.withOpacity(0.05),
+          polyWhite.withValues(alpha: 0.15),
+          polyWhite.withValues(alpha: 0.05),
         ],
       );
 
@@ -362,7 +361,7 @@ class ThemeConstants {
   // Soft glows for glassmorphic design
   static List<BoxShadow> get softGlow => [
         BoxShadow(
-          color: polyPurple500.withOpacity(0.2),
+          color: polyPurple500.withValues(alpha: 0.2),
           blurRadius: 20,
           spreadRadius: 0,
           offset: const Offset(0, 4),
@@ -371,7 +370,7 @@ class ThemeConstants {
 
   static List<BoxShadow> get glowShadow => [
         BoxShadow(
-          color: polyPurple600.withOpacity(0.3),
+          color: polyPurple600.withValues(alpha: 0.3),
           blurRadius: 25,
           spreadRadius: 0,
           offset: const Offset(0, 8),
@@ -380,7 +379,7 @@ class ThemeConstants {
 
   static List<BoxShadow> get purpleGlow => [
         BoxShadow(
-          color: polyPurple600.withOpacity(0.4),
+          color: polyPurple600.withValues(alpha: 0.4),
           blurRadius: 30,
           spreadRadius: 0,
           offset: const Offset(0, 8),
@@ -389,7 +388,7 @@ class ThemeConstants {
 
   static List<BoxShadow> get mintGlow => [
         BoxShadow(
-          color: polyMint400.withOpacity(0.3),
+          color: polyMint400.withValues(alpha: 0.3),
           blurRadius: 25,
           spreadRadius: 0,
           offset: const Offset(0, 8),
@@ -398,7 +397,7 @@ class ThemeConstants {
 
   static List<BoxShadow> get pinkGlow => [
         BoxShadow(
-          color: polyPink400.withOpacity(0.3),
+          color: polyPink400.withValues(alpha: 0.3),
           blurRadius: 25,
           spreadRadius: 0,
           offset: const Offset(0, 8),
@@ -407,7 +406,7 @@ class ThemeConstants {
 
   static List<BoxShadow> get goldGlow => [
         BoxShadow(
-          color: polyGold500.withOpacity(0.3),
+          color: polyGold500.withValues(alpha: 0.3),
           blurRadius: 25,
           spreadRadius: 0,
           offset: const Offset(0, 8),
@@ -416,7 +415,7 @@ class ThemeConstants {
 
   static List<BoxShadow> get errorGlowShadow => [
         BoxShadow(
-          color: uiError.withOpacity(0.4),
+          color: uiError.withValues(alpha: 0.4),
           blurRadius: 25,
           spreadRadius: 0,
           offset: const Offset(0, 8),
@@ -425,7 +424,7 @@ class ThemeConstants {
 
   static List<BoxShadow> get cardShadow => [
         BoxShadow(
-          color: polyBlack.withOpacity(0.3),
+          color: polyBlack.withValues(alpha: 0.3),
           blurRadius: 20,
           spreadRadius: 0,
           offset: const Offset(0, 10),
@@ -434,7 +433,7 @@ class ThemeConstants {
 
   static List<Shadow> get textGlow => [
         Shadow(
-          color: polyPurple600.withOpacity(0.6),
+          color: polyPurple600.withValues(alpha: 0.6),
           blurRadius: 12,
           offset: const Offset(0, 0),
         ),
@@ -442,7 +441,7 @@ class ThemeConstants {
 
   static List<Shadow> get textMintGlow => [
         Shadow(
-          color: polyMint400.withOpacity(0.6),
+          color: polyMint400.withValues(alpha: 0.6),
           blurRadius: 12,
           offset: const Offset(0, 0),
         ),
@@ -494,7 +493,7 @@ class ThemeConstants {
         elevation: 0,
         shadowColor: Colors.transparent,
       ).copyWith(
-        overlayColor: WidgetStateProperty.all(polyWhite.withOpacity(0.1)),
+        overlayColor: WidgetStateProperty.all(polyWhite.withValues(alpha: 0.1)),
       );
 
   static ButtonStyle get secondaryButtonStyle => ElevatedButton.styleFrom(
@@ -508,7 +507,8 @@ class ThemeConstants {
         elevation: 0,
         shadowColor: Colors.transparent,
       ).copyWith(
-        overlayColor: WidgetStateProperty.all(polyWhite.withOpacity(0.05)),
+        overlayColor:
+            WidgetStateProperty.all(polyWhite.withValues(alpha: 0.05)),
       );
 
   // ---- Input Decoration -----------------------------------------------

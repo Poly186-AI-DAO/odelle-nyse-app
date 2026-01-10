@@ -66,7 +66,7 @@ class CyberpunkSlider extends StatelessWidget {
             Text(
               description!,
               style: GoogleFonts.pressStart2p(
-                color: ThemeConstants.secondaryTextColor.withOpacity(0.7),
+                color: ThemeConstants.secondaryTextColor.withValues(alpha: 0.7),
                 fontSize: 8,
               ),
             ),
@@ -77,7 +77,7 @@ class CyberpunkSlider extends StatelessWidget {
               activeTrackColor: ThemeConstants.primaryColor,
               inactiveTrackColor: ThemeConstants.borderColor,
               thumbColor: ThemeConstants.primaryColor,
-              overlayColor: ThemeConstants.primaryColor.withOpacity(0.2),
+              overlayColor: ThemeConstants.primaryColor.withValues(alpha: 0.2),
               trackHeight: 2,
               thumbShape: const RoundSliderThumbShape(
                 enabledThumbRadius: 6,

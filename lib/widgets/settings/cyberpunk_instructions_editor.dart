@@ -84,7 +84,7 @@ class _CyberpunkInstructionsEditorState
             padding: const EdgeInsets.all(ThemeConstants.spacingMedium),
             decoration: BoxDecoration(
               border: Border.all(
-                color: ThemeConstants.primaryColor.withOpacity(0.5),
+                color: ThemeConstants.primaryColor.withValues(alpha: 0.5),
                 width: 1,
               ),
             ),
@@ -100,7 +100,8 @@ class _CyberpunkInstructionsEditorState
                       border: InputBorder.none,
                       hintText: 'Enter instructions...',
                       hintStyle: GoogleFonts.sourceCodePro(
-                        color: ThemeConstants.primaryColor.withOpacity(0.5),
+                        color:
+                            ThemeConstants.primaryColor.withValues(alpha: 0.5),
                       ),
                     ),
                   )
@@ -117,7 +118,7 @@ class _CyberpunkInstructionsEditorState
             Text(
               'Click save icon when done',
               style: GoogleFonts.pressStart2p(
-                color: ThemeConstants.secondaryTextColor.withOpacity(0.7),
+                color: ThemeConstants.secondaryTextColor.withValues(alpha: 0.7),
                 fontSize: 8,
               ),
             ),

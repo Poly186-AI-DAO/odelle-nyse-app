@@ -31,7 +31,7 @@ class ActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             side: isPrimary
                 ? BorderSide.none
-                : BorderSide(color: ThemeConstants.polyWhite.withOpacity(0.3)),
+                : BorderSide(color: ThemeConstants.polyWhite.withValues(alpha: 0.3)),
           ),
         ),
         child: Text(

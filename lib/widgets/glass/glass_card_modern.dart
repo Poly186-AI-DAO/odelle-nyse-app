@@ -47,8 +47,8 @@ class GlassCardModern extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.15),
-                Colors.white.withOpacity(0.05),
+                Colors.white.withValues(alpha: 0.15),
+                Colors.white.withValues(alpha: 0.05),
               ],
             ),
         border: Border.all(
@@ -61,14 +61,14 @@ class GlassCardModern extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius),
           border: Border.all(
-            color: borderColor ?? Colors.white.withOpacity(0.2),
+            color: borderColor ?? Colors.white.withValues(alpha: 0.2),
             width: 1.0,
           ),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white.withOpacity(0.2),
+              Colors.white.withValues(alpha: 0.2),
               Colors.transparent,
             ],
             stops: const [0.0, 0.4],
