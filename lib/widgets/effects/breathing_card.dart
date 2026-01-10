@@ -16,6 +16,9 @@ class FloatingHeroCard extends StatelessWidget {
   final double? bottomPanelMaxHeight;
   final EdgeInsetsGeometry? bottomPanelPadding;
   final bool bottomPanelShowHandle;
+  final bool bottomPanelPulseEnabled;
+  final Duration bottomPanelPulseDuration;
+  final double bottomPanelPulseAmplitude;
 
   const FloatingHeroCard({
     super.key,
@@ -30,6 +33,9 @@ class FloatingHeroCard extends StatelessWidget {
     this.bottomPanelMaxHeight,
     this.bottomPanelPadding,
     this.bottomPanelShowHandle = true,
+    this.bottomPanelPulseEnabled = false,
+    this.bottomPanelPulseDuration = const Duration(milliseconds: 2800),
+    this.bottomPanelPulseAmplitude = 6,
   });
 
   @override
@@ -87,6 +93,9 @@ class FloatingHeroCard extends StatelessWidget {
                       padding: bottomPanelPadding ??
                           const EdgeInsets.fromLTRB(20, 24, 20, 100),
                       showHandle: bottomPanelShowHandle,
+                      pulseEnabled: bottomPanelPulseEnabled,
+                      pulseDuration: bottomPanelPulseDuration,
+                      pulseAmplitude: bottomPanelPulseAmplitude,
                       child: bottomPanel!,
                     )
                   : Container(

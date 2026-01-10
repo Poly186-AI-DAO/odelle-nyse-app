@@ -76,6 +76,9 @@ class DraggableBottomPanel extends StatefulWidget {
   final bool showHandle;
   final bool useSafeArea;
   final ScrollPhysics scrollPhysics;
+  final bool pulseEnabled;
+  final Duration pulseDuration;
+  final double pulseAmplitude;
 
   const DraggableBottomPanel({
     super.key,
@@ -89,20 +92,70 @@ class DraggableBottomPanel extends StatefulWidget {
     this.showHandle = true,
     this.useSafeArea = true,
     this.scrollPhysics = const BouncingScrollPhysics(),
+    this.pulseEnabled = false,
+    this.pulseDuration = const Duration(milliseconds: 2800),
+    this.pulseAmplitude = 6,
   });
 
   @override
   State<DraggableBottomPanel> createState() => _DraggableBottomPanelState();
 }
 
-class _DraggableBottomPanelState extends State<DraggableBottomPanel> {
+class _DraggableBottomPanelState extends State<DraggableBottomPanel>
+    with SingleTickerProviderStateMixin {
   late double _currentHeight;
   bool _isExpanded = false;
+  bool _isDragging = false;
+  AnimationController? _pulseController;
+  Animation<double>? _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
     _currentHeight = widget.minHeight;
+    _configurePulse();
+  }
+
+  @override
+  void didUpdateWidget(DraggableBottomPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pulseEnabled != widget.pulseEnabled ||
+        oldWidget.pulseDuration != widget.pulseDuration ||
+        oldWidget.pulseAmplitude != widget.pulseAmplitude) {
+      _configurePulse();
+    }
+  }
+
+  void _configurePulse() {
+    if (!widget.pulseEnabled) {
+      _pulseController?.dispose();
+      _pulseController = null;
+      _pulseAnimation = null;
+      return;
+    }
+
+    _pulseController ??= AnimationController(
+      vsync: this,
+      duration: widget.pulseDuration,
+    );
+    _pulseController!.duration = widget.pulseDuration;
+    _pulseAnimation = Tween<double>(
+      begin: -widget.pulseAmplitude,
+      end: widget.pulseAmplitude,
+    ).animate(CurvedAnimation(
+      parent: _pulseController!,
+      curve: Curves.easeInOut,
+    ));
+
+    if (!_pulseController!.isAnimating && !_isDragging) {
+      _pulseController!.repeat(reverse: true);
+    }
+  }
+
+  void _onDragStart(DragStartDetails details) {
+    if (_isDragging) return;
+    setState(() => _isDragging = true);
+    _pulseController?.stop();
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
@@ -117,6 +170,7 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel> {
     final midPoint = (widget.minHeight + widget.maxHeight) / 2;
 
     setState(() {
+      _isDragging = false;
       if (velocity < -500) {
         // Fast swipe up
         _currentHeight = widget.maxHeight;
@@ -136,6 +190,10 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel> {
         }
       }
     });
+
+    if (widget.pulseEnabled) {
+      _pulseController?.repeat(reverse: true);
+    }
   }
 
   @override
@@ -151,7 +209,7 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel> {
       content = SafeArea(top: false, left: false, right: false, child: content);
     }
 
-    return AnimatedContainer(
+    Widget panel = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
       height: _currentHeight,
@@ -175,6 +233,7 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel> {
           if (widget.showHandle)
             GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onVerticalDragStart: _onDragStart,
               onVerticalDragUpdate: _onDragUpdate,
               onVerticalDragEnd: _onDragEnd,
               child: Padding(
@@ -199,5 +258,27 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel> {
         ],
       ),
     );
+
+    if (widget.pulseEnabled && _pulseController != null) {
+      panel = AnimatedBuilder(
+        animation: _pulseController!,
+        child: panel,
+        builder: (context, child) {
+          final offset = _isDragging ? 0.0 : (_pulseAnimation?.value ?? 0.0);
+          return Transform.translate(
+            offset: Offset(0, offset),
+            child: child,
+          );
+        },
+      );
+    }
+
+    return panel;
+  }
+
+  @override
+  void dispose() {
+    _pulseController?.dispose();
+    super.dispose();
   }
 }

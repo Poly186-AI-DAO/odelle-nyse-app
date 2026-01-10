@@ -80,6 +80,7 @@ class _BodyScreenState extends State<BodyScreen> {
     return FloatingHeroCard(
       panelVisibility: widget.panelVisibility,
       draggableBottomPanel: true,
+      bottomPanelPulseEnabled: true,
       // Dark card content - Hero XP display at top
       child: SafeArea(
         bottom: false,

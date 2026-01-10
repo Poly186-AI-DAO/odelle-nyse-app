@@ -87,6 +87,7 @@ class _MindScreenState extends State<MindScreen> {
     return FloatingHeroCard(
       panelVisibility: widget.panelVisibility,
       draggableBottomPanel: true,
+      bottomPanelPulseEnabled: true,
       child: SafeArea(
         bottom: false,
         child: Padding(
