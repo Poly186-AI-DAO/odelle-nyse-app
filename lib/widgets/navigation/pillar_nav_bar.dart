@@ -34,7 +34,7 @@ Widget _wrapScaledIcon({
 
   return Transform.scale(
     scale: iconScale,
-    alignment: Alignment.bottomCenter,
+    alignment: Alignment.center,
     child: iconWidget,
   );
 }
@@ -72,6 +72,7 @@ Widget _buildPillarIcon({
       width: size,
       height: size,
       fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
       color: color,
       colorBlendMode: BlendMode.srcIn,
     );
@@ -197,7 +198,7 @@ class PillarNavBarThin extends StatelessWidget {
                         pillar: pillars[index],
                         isActive: index == currentIndex,
                         size: 24,
-                        inactiveAlpha: 0.35,
+                        inactiveAlpha: 1.0,
                       ),
                     ),
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/theme_constants.dart';
+import '../panels/bottom_panel.dart';
 
 /// A floating hero card that covers most of the screen
 /// Matching the fintech reference design with optional bottom panel
@@ -10,6 +11,11 @@ class FloatingHeroCard extends StatelessWidget {
   final double horizontalMargin;
   final double topMarginExtra;
   final double bottomPercentage;
+  final bool draggableBottomPanel;
+  final double? bottomPanelMinHeight;
+  final double? bottomPanelMaxHeight;
+  final EdgeInsetsGeometry? bottomPanelPadding;
+  final bool bottomPanelShowHandle;
 
   const FloatingHeroCard({
     super.key,
@@ -19,13 +25,23 @@ class FloatingHeroCard extends StatelessWidget {
     this.horizontalMargin = 12.0,
     this.topMarginExtra = 12.0,
     this.bottomPercentage = 0.18,
+    this.draggableBottomPanel = false,
+    this.bottomPanelMinHeight,
+    this.bottomPanelMaxHeight,
+    this.bottomPanelPadding,
+    this.bottomPanelShowHandle = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final cardOffset = (1 - panelVisibility) * 50;
     final cardOpacity = panelVisibility.clamp(0.0, 1.0);
-    final bottomPanelHeight = MediaQuery.of(context).size.height * 0.38;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final bottomPanelHeight = screenHeight * 0.38;
+    final minPanelHeight = bottomPanelMinHeight ?? bottomPanelHeight;
+    final maxPanelHeight = bottomPanelMaxHeight ?? screenHeight * 0.78;
+    final resolvedMaxHeight =
+        maxPanelHeight < minPanelHeight ? minPanelHeight : maxPanelHeight;
 
     return Stack(
       children: [
@@ -40,7 +56,7 @@ class FloatingHeroCard extends StatelessWidget {
             child: Opacity(
               opacity: cardOpacity,
               child: const BreathingCard(
-                borderRadius: 43,
+                borderRadius: 52,
                 child: SizedBox.expand(),
               ),
             ),
@@ -59,32 +75,43 @@ class FloatingHeroCard extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            height: bottomPanelHeight,
+            height: draggableBottomPanel ? null : bottomPanelHeight,
             child: Opacity(
               opacity: cardOpacity,
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x15000000),
-                      blurRadius: 20,
-                      offset: Offset(0, -4),
+              child: draggableBottomPanel
+                  ? DraggableBottomPanel(
+                      minHeight: minPanelHeight,
+                      maxHeight: resolvedMaxHeight,
+                      borderRadius: 32,
+                      backgroundColor: Colors.white,
+                      padding: bottomPanelPadding ??
+                          const EdgeInsets.fromLTRB(20, 24, 20, 100),
+                      showHandle: bottomPanelShowHandle,
+                      child: bottomPanel!,
+                    )
+                  : Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x15000000),
+                            blurRadius: 20,
+                            offset: Offset(0, -4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
+                        ),
+                        child: bottomPanel,
+                      ),
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
-                  child: bottomPanel,
-                ),
-              ),
             ),
           ),
       ],

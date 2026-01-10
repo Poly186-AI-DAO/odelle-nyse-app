@@ -83,33 +83,28 @@ class _MindScreenState extends State<MindScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cardOffset = (1 - widget.panelVisibility) * 50;
-
     // Use FloatingHeroCard for the floating design
     return FloatingHeroCard(
       panelVisibility: widget.panelVisibility,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          children: [
-            // Account for SafeArea + nav bar overlay
-            SizedBox(height: MediaQuery.of(context).padding.top + 70),
+      draggableBottomPanel: true,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              const SizedBox(height: 70), // Space for nav bar
+              const SizedBox(height: 20),
 
-            // Daily mantra
-            _buildMantraSection(),
+              // Daily mantra
+              _buildMantraSection(),
 
-            const Spacer(),
-
-            // Bottom buttons and stats - slide + opacity
-            Transform.translate(
-              offset: Offset(0, cardOffset),
-              child: _buildMindControls(),
-            ),
-
-            const SizedBox(height: 120), // Bottom padding for FAB
-          ],
+              const Spacer(),
+            ],
+          ),
         ),
       ),
+      bottomPanel: _buildBottomPanel(),
     );
   }
 
@@ -143,106 +138,164 @@ class _MindScreenState extends State<MindScreen> {
     );
   }
 
-  Widget _buildMindControls() {
+  Widget _buildBottomPanel() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Meditation button (centered)
-        Center(
-          child: ProtocolButton(
-            type: ProtocolType.meditation,
-            buttonState: _getProtocolState(ProtocolType.meditation),
-            onTap: () => _logProtocol(ProtocolType.meditation),
-            size: 100, // Larger for prominence
-          ),
-        ),
-
-        const SizedBox(height: 32),
-
-        // Stats row
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: _buildGlassStat(
-                  'Sessions Today', _todayProtocols.length.toString()),
+            Text(
+              'MEDITATION',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+                letterSpacing: 1.5,
+              ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildGlassStat(
-                  'Mind Level', '${(_todayProtocols.length * 10) + 1}'),
+            Text(
+              'Today',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
-
+        const SizedBox(height: 16),
+        Center(
+          child: SizedBox(
+            width: 120,
+            child: _buildWhiteProtocolButton(ProtocolType.meditation),
+          ),
+        ),
         const SizedBox(height: 20),
-
-        // Section header
+        Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildWhiteStat(
+                    'SESSIONS TODAY',
+                    _todayProtocols.length.toString(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildWhiteStat(
+                    'MIND LEVEL',
+                    '${(_todayProtocols.length * 10) + 1}',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
         Text(
           'SESSIONS',
           style: GoogleFonts.inter(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: ThemeConstants.textOnDark.withValues(alpha: 0.7),
+            color: Colors.grey[600],
             letterSpacing: 1.5,
           ),
         ),
-
         const SizedBox(height: 12),
-
-        // Sessions list
-        SizedBox(
-          height: 120,
-          child: _todayProtocols.isEmpty
-              ? Center(
-                  child: Text(
-                    'No meditation sessions yet.\nTap to log one!',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              : ListView.separated(
-                  padding: EdgeInsets.zero,
-                  itemCount: _todayProtocols.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final entry = _todayProtocols[index];
-                    return _buildDarkListItem(entry);
-                  },
-                ),
-        ),
+        if (_todayProtocols.isEmpty)
+          Center(
+            child: Text(
+              'No meditation sessions yet.\nTap to log one!',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+            ),
+          )
+        else
+          ListView.separated(
+            padding: EdgeInsets.zero,
+            itemCount: _todayProtocols.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final entry = _todayProtocols[index];
+              return _buildWhiteListItem(entry);
+            },
+          ),
       ],
     );
   }
 
-  Widget _buildGlassStat(String label, String value) {
+  Widget _buildWhiteProtocolButton(ProtocolType type) {
+    final state = _getProtocolState(type);
+    final isComplete = state == ProtocolButtonState.complete;
+
+    return GestureDetector(
+      onTap: () => _logProtocol(type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isComplete ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color:
+                isComplete ? const Color(0xFF81C784) : const Color(0xFFE0E0E0),
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(type.emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 4),
+            Text(
+              type.displayName.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isComplete ? const Color(0xFF388E3C) : Colors.grey[600],
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWhiteStat(String label, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            label.toUpperCase(),
+            label,
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
+              color: Colors.grey[500],
               letterSpacing: 1,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 24,
               fontWeight: FontWeight.w600,
-              color: ThemeConstants.textOnDark,
+              color: Colors.grey[800],
             ),
           ),
         ],
@@ -250,11 +303,11 @@ class _MindScreenState extends State<MindScreen> {
     );
   }
 
-  Widget _buildDarkListItem(ProtocolEntry entry) {
+  Widget _buildWhiteListItem(ProtocolEntry entry) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -273,14 +326,14 @@ class _MindScreenState extends State<MindScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: ThemeConstants.textOnDark,
+                    color: Colors.grey[800],
                   ),
                 ),
                 Text(
                   _formatTime(entry.timestamp),
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
+                    color: Colors.grey[500],
                   ),
                 ),
               ],

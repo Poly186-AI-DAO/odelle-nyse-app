@@ -79,6 +79,7 @@ class _BodyScreenState extends State<BodyScreen> {
     // Use FloatingHeroCard with white bottom panel
     return FloatingHeroCard(
       panelVisibility: widget.panelVisibility,
+      draggableBottomPanel: true,
       // Dark card content - Hero XP display at top
       child: SafeArea(
         bottom: false,
@@ -86,7 +87,7 @@ class _BodyScreenState extends State<BodyScreen> {
           children: [
             const SizedBox(height: 70), // Space for nav bar
             const SizedBox(height: 40),
-            _buildHeroXP(),
+            Center(child: _buildHeroXP()),
           ],
         ),
       ),
@@ -96,55 +97,54 @@ class _BodyScreenState extends State<BodyScreen> {
   }
 
   Widget _buildBottomPanel() {
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Section header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'PROTOCOLS',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[600],
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                Text(
-                  'Today',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
+            Text(
+              'PROTOCOLS',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+                letterSpacing: 1.5,
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // Protocol buttons row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: _protocolTypes.map((type) {
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _buildWhiteProtocolButton(type),
-                  ),
-                );
-              }).toList(),
+            Text(
+              'Today',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.grey[500],
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
 
-            const SizedBox(height: 20),
+        // Protocol buttons row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: _protocolTypes.map((type) {
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildWhiteProtocolButton(type),
+              ),
+            );
+          }).toList(),
+        ),
 
-            // Stats row
-            Row(
+        const SizedBox(height: 20),
+
+        // Stats row
+        Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Row(
               children: [
                 Expanded(
                     child: _buildWhiteStat(
@@ -154,35 +154,35 @@ class _BodyScreenState extends State<BodyScreen> {
                     child: _buildWhiteStat('LEVEL', '${_stats?.level ?? 1}')),
               ],
             ),
-
-            // Recent activity
-            if (_todayProtocols.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text(
-                'RECENT',
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[600],
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ListView.separated(
-                padding: EdgeInsets.zero,
-                itemCount: _todayProtocols.take(3).length,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final entry = _todayProtocols[index];
-                  return _buildWhiteListItem(entry);
-                },
-              ),
-            ],
-          ],
+          ),
         ),
-      ),
+
+        // Recent activity
+        if (_todayProtocols.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text(
+            'RECENT',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ListView.separated(
+            padding: EdgeInsets.zero,
+            itemCount: _todayProtocols.take(3).length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final entry = _todayProtocols[index];
+              return _buildWhiteListItem(entry);
+            },
+          ),
+        ],
+      ],
     );
   }
 
@@ -230,9 +230,11 @@ class _BodyScreenState extends State<BodyScreen> {
         border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 10,
               fontWeight: FontWeight.w600,
@@ -243,6 +245,7 @@ class _BodyScreenState extends State<BodyScreen> {
           const SizedBox(height: 4),
           Text(
             value,
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 24,
               fontWeight: FontWeight.w600,

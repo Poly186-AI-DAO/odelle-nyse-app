@@ -72,6 +72,10 @@ class DraggableBottomPanel extends StatefulWidget {
   final double maxHeight;
   final double borderRadius;
   final Color backgroundColor;
+  final EdgeInsetsGeometry padding;
+  final bool showHandle;
+  final bool useSafeArea;
+  final ScrollPhysics scrollPhysics;
 
   const DraggableBottomPanel({
     super.key,
@@ -81,6 +85,10 @@ class DraggableBottomPanel extends StatefulWidget {
     this.maxHeight = 600,
     this.borderRadius = 32,
     this.backgroundColor = Colors.white,
+    this.padding = const EdgeInsets.symmetric(horizontal: 24),
+    this.showHandle = true,
+    this.useSafeArea = true,
+    this.scrollPhysics = const BouncingScrollPhysics(),
   });
 
   @override
@@ -132,55 +140,63 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onVerticalDragUpdate: _onDragUpdate,
-      onVerticalDragEnd: _onDragEnd,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        height: _currentHeight,
-        decoration: BoxDecoration(
-          color: widget.backgroundColor,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(widget.borderRadius),
-            topRight: Radius.circular(widget.borderRadius),
+    Widget content = Padding(
+      padding: widget.padding,
+      child: _isExpanded && widget.expandedChild != null
+          ? widget.expandedChild!
+          : widget.child,
+    );
+
+    if (widget.useSafeArea) {
+      content = SafeArea(top: false, left: false, right: false, child: content);
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      height: _currentHeight,
+      decoration: BoxDecoration(
+        color: widget.backgroundColor,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(widget.borderRadius),
+          topRight: Radius.circular(widget.borderRadius),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 30,
+            offset: const Offset(0, -4),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 30,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Drag handle
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(2),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          if (widget.showHandle)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: _onDragUpdate,
+              onVerticalDragEnd: _onDragEnd,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
             ),
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _isExpanded && widget.expandedChild != null
-                      ? widget.expandedChild!
-                      : widget.child,
-                ),
-              ),
+          // Content
+          Expanded(
+            child: SingleChildScrollView(
+              physics: widget.scrollPhysics,
+              child: content,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
