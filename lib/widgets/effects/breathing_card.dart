@@ -1,3 +1,4 @@
+import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import '../../constants/theme_constants.dart';
 import '../panels/bottom_panel.dart';
@@ -149,9 +150,7 @@ class BreathingCard extends StatefulWidget {
 class _BreathingCardState extends State<BreathingCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _shadowAnimation;
-  late Animation<double> _borderAnimation;
+  late Animation<double> _breathAnimation;
 
   // Zen breathing: 4s inhale + 6s exhale = 10s cycle
   static const Duration _breathCycle = Duration(seconds: 10);
@@ -164,35 +163,22 @@ class _BreathingCardState extends State<BreathingCard>
       duration: _breathCycle,
     );
 
-    // Subtle scale: 1.0 -> 1.008 (barely perceptible, calming)
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.008,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: _BreathingCurve(),
-    ));
-
-    // Shadow intensity pulses with breath
-    _shadowAnimation = Tween<double>(
-      begin: 0.12,
-      end: 0.22,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: _BreathingCurve(),
-    ));
-
-    // Border opacity pulses subtly
-    _borderAnimation = Tween<double>(
-      begin: 0.05,
-      end: 0.15,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: _BreathingCurve(),
-    ));
+    // 4s inhale, 6s exhale: slow and meditative.
+    _breathAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0, end: 1)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1, end: 0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 60,
+      ),
+    ]).animate(_controller);
 
     if (widget.animate) {
-      _controller.repeat(reverse: true);
+      _controller.repeat();
     }
   }
 
@@ -217,8 +203,12 @@ class _BreathingCardState extends State<BreathingCard>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
+        final breath = _breathAnimation.value;
+        final scale = lerpDouble(1.0, 1.008, breath) ?? 1.0;
+        final shadowAlpha = lerpDouble(0.12, 0.22, breath) ?? 0.12;
+        final borderAlpha = lerpDouble(0.05, 0.15, breath) ?? 0.05;
         return Transform.scale(
-          scale: _scaleAnimation.value,
+          scale: scale,
           alignment: Alignment.center,
           child: Container(
             decoration: BoxDecoration(
@@ -256,22 +246,22 @@ class _BreathingCardState extends State<BreathingCard>
               ),
               // Breathing border glow
               border: Border.all(
-                color: Colors.white.withValues(alpha: _borderAnimation.value),
+                color: Colors.white.withValues(alpha: borderAlpha),
                 width: 0.5,
               ),
               // Breathing shadow
               boxShadow: [
                 // Main shadow - breathes
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: _shadowAnimation.value),
-                  blurRadius: 24 + (_shadowAnimation.value * 20),
-                  spreadRadius: _shadowAnimation.value * 2,
+                  color: Colors.black.withValues(alpha: shadowAlpha),
+                  blurRadius: 24 + (shadowAlpha * 20),
+                  spreadRadius: shadowAlpha * 2,
                   offset: const Offset(0, 8),
                 ),
                 // Subtle inner glow
                 BoxShadow(
                   color: ThemeConstants.calmSilver
-                      .withValues(alpha: _borderAnimation.value * 0.3),
+                      .withValues(alpha: borderAlpha * 0.3),
                   blurRadius: 40,
                   spreadRadius: -10,
                   offset: const Offset(0, 20),
@@ -284,24 +274,5 @@ class _BreathingCardState extends State<BreathingCard>
       },
       child: widget.child,
     );
-  }
-}
-
-/// Custom curve that mimics natural breathing
-/// Inhale is faster (40% of cycle), exhale is slower (60% of cycle)
-class _BreathingCurve extends Curve {
-  @override
-  double transformInternal(double t) {
-    // Use sine wave for smooth breathing feel
-    // Shifted so inhale is slightly faster than exhale
-    if (t < 0.4) {
-      // Inhale phase (0 -> 0.4) maps to (0 -> 1)
-      final inhaleT = t / 0.4;
-      return Curves.easeInOutSine.transform(inhaleT);
-    } else {
-      // Exhale phase (0.4 -> 1.0) maps to (1 -> 0)
-      // But since we use reverse: true, this becomes the "hold at peak" feel
-      return 1.0;
-    }
   }
 }
