@@ -219,7 +219,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (!_isConnected) {
       // Use connect() return value instead of fixed delay
-      final connected = await ref.read(voiceViewModelProvider.notifier).connect();
+      final connected =
+          await ref.read(voiceViewModelProvider.notifier).connect();
       if (!connected) {
         Logger.error('Failed to connect for recording', tag: _tag);
         return;
@@ -231,7 +232,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (voiceState.isConnected && !voiceState.isRecording) {
       // Default to transcription mode for hold-to-talk
       if (voiceState.activeMode != VoiceLiveMode.transcription) {
-        ref.read(voiceViewModelProvider.notifier).switchMode(VoiceLiveMode.transcription);
+        ref
+            .read(voiceViewModelProvider.notifier)
+            .switchMode(VoiceLiveMode.transcription);
       }
       await _startRecording();
     }
@@ -349,7 +352,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     // Watch voice state for reactive UI updates
     final voiceState = ref.watch(voiceViewModelProvider);
-    
+
     return Scaffold(
       backgroundColor: _getInterpolatedBackground(),
       extendBody: true,
