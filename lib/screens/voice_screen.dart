@@ -1,178 +1,63 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/service_providers.dart';
-import '../services/azure_speech_service.dart';
+import '../providers/viewmodels/voice_viewmodel.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/voice/voice_waveform_animated.dart';
 
 /// Voice Screen - Display-only view
 /// Implements the "Hero Card" two-tone design
 /// Top 75% is a large gradient card containing the text
-class VoiceScreen extends ConsumerStatefulWidget {
+/// Now uses VoiceViewModel for centralized state management
+class VoiceScreen extends ConsumerWidget {
   final double panelVisibility;
 
   const VoiceScreen({super.key, this.panelVisibility = 1.0});
 
   @override
-  ConsumerState<VoiceScreen> createState() => _VoiceScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final voiceState = ref.watch(voiceViewModelProvider);
 
-class _VoiceScreenState extends ConsumerState<VoiceScreen> {
-  late AzureSpeechService _service;
-  StreamSubscription<VoiceLiveState>? _stateSubscription;
-  StreamSubscription<String>? _partialSubscription;
-  StreamSubscription<String>? _transcriptionSubscription;
-  VoiceLiveState _voiceState = VoiceLiveState.disconnected;
-  String _transcription = '';
-
-  // Debug mode - set to false for production
-  static const bool _showDebug = true;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _service = ref.read(voiceServiceProvider);
-
-    _stateSubscription?.cancel();
-    _stateSubscription = _service.stateStream.listen((state) {
-      if (mounted) setState(() => _voiceState = state);
-    });
-    _voiceState = _service.state;
-
-    // Use streams instead of callbacks to avoid clobbering HomeScreen's callbacks
-    _partialSubscription?.cancel();
-    _partialSubscription = _service.partialStream.listen((text) {
-      if (mounted) setState(() => _transcription += text);
-    });
-
-    _transcriptionSubscription?.cancel();
-    _transcriptionSubscription = _service.transcriptionStream.listen((text) {
-      if (mounted) setState(() => _transcription = text);
-    });
-  }
-
-  @override
-  void dispose() {
-    _stateSubscription?.cancel();
-    _partialSubscription?.cancel();
-    _transcriptionSubscription?.cancel();
-    super.dispose();
-  }
-
-  bool get _isDisconnected => _voiceState == VoiceLiveState.disconnected;
-  bool get _isConnecting => _voiceState == VoiceLiveState.connecting;
-  bool get _isConnected =>
-      _voiceState == VoiceLiveState.connected ||
-      _voiceState == VoiceLiveState.recording ||
-      _voiceState == VoiceLiveState.processing;
-  bool get _isRecording => _voiceState == VoiceLiveState.recording;
-
-  @override
-  Widget build(BuildContext context) {
-    // Use FloatingHeroCard for the floating design
     return FloatingHeroCard(
-      panelVisibility: widget.panelVisibility,
+      panelVisibility: panelVisibility,
       child: SafeArea(
         bottom: false,
-        child: Stack(
+        child: Column(
           children: [
-            // Main content
-            Column(
-              children: [
-                // Space for nav bar overlay
-                const SizedBox(height: 70),
+            // Space for nav bar overlay
+            const SizedBox(height: 70),
 
-                const Spacer(flex: 2),
+            const Spacer(flex: 2),
 
-                // The main content area - CENTERED
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: _buildContent(),
-                  ),
-                ),
-
-                const Spacer(flex: 3),
-              ],
+            // The main content area - CENTERED
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: _buildContent(voiceState),
+              ),
             ),
 
-            // Debug overlay (top-right corner)
-            if (_showDebug)
-              Positioned(
-                top: 80,
-                right: 16,
-                child: _buildDebugOverlay(),
-              ),
+            const Spacer(flex: 3),
           ],
         ),
       ),
     );
   }
 
-  /// Debug overlay showing current state
-  Widget _buildDebugOverlay() {
-    final stateColor = switch (_voiceState) {
-      VoiceLiveState.disconnected => Colors.grey,
-      VoiceLiveState.connecting => Colors.orange,
-      VoiceLiveState.connected => Colors.green,
-      VoiceLiveState.recording => Colors.red,
-      VoiceLiveState.processing => Colors.blue,
-    };
-
-    final modeText = _service.mode == VoiceLiveMode.transcription
-        ? 'Transcription'
-        : 'Conversation';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: stateColor,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _voiceState.name,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            modeText,
-            style: GoogleFonts.inter(
-              fontSize: 9,
-              color: Colors.white.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Unified content that changes based on state
-  Widget _buildContent() {
+  Widget _buildContent(VoiceState voiceState) {
+    final isConnecting = voiceState.isConnecting;
+    final isRecording = voiceState.isRecording;
+    final isConnected = voiceState.isConnected;
+    final isDisconnected = voiceState.isDisconnected;
+
+    // Combine partial and final transcription for display
+    final displayText = voiceState.partialTranscription.isNotEmpty
+        ? voiceState.partialTranscription
+        : voiceState.currentTranscription;
+
     // Connecting
-    if (_isConnecting) {
+    if (isConnecting) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -198,20 +83,20 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
     }
 
     // Recording / Transcription
-    if (_isRecording || _transcription.isNotEmpty) {
+    if (isRecording || displayText.isNotEmpty) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_isRecording && _transcription.isEmpty)
+          if (isRecording && displayText.isEmpty)
             VoiceWaveformAnimated(
               barCount: 5,
               size: 48,
               color: Colors.white.withValues(alpha: 0.9),
               isActive: true,
             ),
-          if (_transcription.isNotEmpty)
+          if (displayText.isNotEmpty)
             Text(
-              _transcription,
+              displayText,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 24,
@@ -221,9 +106,8 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
                 letterSpacing: -0.3,
               ),
             ),
-          if (_isRecording && _transcription.isEmpty)
-            const SizedBox(height: 24),
-          if (_isRecording && _transcription.isEmpty)
+          if (isRecording && displayText.isEmpty) const SizedBox(height: 24),
+          if (isRecording && displayText.isEmpty)
             Text(
               'Listening...',
               style: GoogleFonts.inter(
@@ -253,7 +137,7 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          _getSubtitle(),
+          _getSubtitle(isDisconnected, isRecording, isConnected),
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 15,
@@ -272,10 +156,10 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
     return 'Good Evening';
   }
 
-  String _getSubtitle() {
-    if (_isDisconnected) return 'Tap to connect';
-    if (_isRecording) return 'Tap to stop';
-    if (_isConnected) return 'Hold to talk • Tap to disconnect';
+  String _getSubtitle(bool isDisconnected, bool isRecording, bool isConnected) {
+    if (isDisconnected) return 'Tap to connect';
+    if (isRecording) return 'Tap to stop';
+    if (isConnected) return 'Hold to talk • Tap to disconnect';
     return '';
   }
 }

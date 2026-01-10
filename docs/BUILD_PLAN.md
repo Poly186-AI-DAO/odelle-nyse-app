@@ -277,12 +277,77 @@ static const LinearGradient onGradient = LinearGradient(
 ## Success Criteria
 
 By end of stream, the app should:
-- [ ] Launch as "Odelle Nyse" with ON branding
-- [ ] Accept voice input and transcribe
-- [ ] Log protocol entries (gym, meal, etc.)
-- [ ] Display Character Radar with calculated stats
-- [ ] Show daily mantra
-- [ ] Persist data between sessions
+- [x] Launch as "Odelle Nyse" with ON branding
+- [x] Accept voice input and transcribe
+- [x] Log protocol entries (gym, meal, etc.)
+- [x] Display Character Radar with calculated stats
+- [x] Show daily mantra
+- [x] Persist data between sessions
+
+---
+
+## Current Status (v1.2.0 - January 2026)
+
+### ✅ Completed
+- **Voice Infrastructure**: Azure OpenAI Realtime API integration working
+- **Transcription Mode**: Hold-to-talk captures voice, Whisper-1 transcribes
+- **Data Models**: Comprehensive models defined in DATA_MODELS.md
+- **Database**: SQLite with all core tables (journals, protocols, stats, etc.)
+- **3-Pillar UI**: Body | Voice | Mind screens with swipe navigation
+- **Riverpod State**: VoiceViewModel centralizes voice state management
+- **Protocol Logging**: Manual tap logging for gym/meal/dose/meditation
+
+### 🔧 v1.2.0 Changes
+- Created `VoiceViewModel` for centralized voice state management
+- VoiceScreen now uses VoiceViewModel (no local state duplication)
+- HomeScreen uses VoiceViewModel for reactive voice button states
+- Fixed debug overlay (disabled for production)
+- Cleaner state flow: single source of truth for voice state
+
+### 🚧 Next Priority (Voice Reliability)
+1. **Audio Playback** - AI speaks back in conversation mode (just_audio integration)
+2. **Mode Separation** - Center screen = Live Mode, Side screens = Transcription
+3. **Conversation History** - Display AI responses in VoiceScreen
+4. **Mode Confirmation** - Guard rails when switching modes
+
+### 📋 Future Features
+- **AI Parsing** - Extract structured data from voice transcriptions
+- **Tools/Function Calling** - Agent can log protocols via voice
+- **Health Integrations** - Apple Health, Google Fit sync
+- **Push Notifications** - Protocol reminders
+
+---
+
+## Architecture (Current)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     VOICE STATE FLOW (v1.2.0)                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────┐     │
+│  │              VoiceViewModel (Riverpod Notifier)             │     │
+│  │  ┌──────────────────────────────────────────────────────┐  │     │
+│  │  │  VoiceState:                                         │  │     │
+│  │  │  - connectionState: disconnected|connecting|...       │  │     │
+│  │  │  - activeMode: transcription|conversation             │  │     │
+│  │  │  - currentTranscription: String                       │  │     │
+│  │  │  - partialTranscription: String                       │  │     │
+│  │  │  - isModeLocked: bool                                 │  │     │
+│  │  └──────────────────────────────────────────────────────┘  │     │
+│  └───────────────────────────┬────────────────────────────────┘     │
+│                              │ watches                               │
+│         ┌────────────────────┼────────────────────┐                 │
+│         ▼                    ▼                    ▼                 │
+│  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐         │
+│  │ BodyScreen  │      │ VoiceScreen │      │ MindScreen  │         │
+│  │  (display)  │      │  (display)  │      │  (display)  │         │
+│  └─────────────┘      └─────────────┘      └─────────────┘         │
+│                                                                      │
+│  HomeScreen: Controls mic stream, calls VoiceViewModel methods      │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 

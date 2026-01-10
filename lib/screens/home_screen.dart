@@ -6,6 +6,7 @@ import 'package:mic_stream/mic_stream.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/journal_entry.dart';
 import '../providers/service_providers.dart';
+import '../providers/viewmodels/voice_viewmodel.dart';
 import '../services/azure_speech_service.dart';
 import '../utils/logger.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
@@ -31,12 +32,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentPage = 1; // Current pillar index (0, 1, 2)
   static const int _initialPageOffset = 3000; // Large multiple of 3
 
-  // Voice control
+  // Voice control - mic stream managed locally, state via VoiceViewModel
   late AzureSpeechService _speechService;
-  StreamSubscription<VoiceLiveState>? _stateSubscription;
   StreamSubscription<Uint8List>? _micSubscription;
   Stream<Uint8List>? _micStream;
-  VoiceLiveState _voiceState = VoiceLiveState.disconnected;
   bool _hasPermission = false;
 
   // Pillar definitions
@@ -57,12 +56,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ),
   ];
 
-  bool get _isConnecting => _voiceState == VoiceLiveState.connecting;
-  bool get _isConnected =>
-      _voiceState == VoiceLiveState.connected ||
-      _voiceState == VoiceLiveState.recording ||
-      _voiceState == VoiceLiveState.processing;
-  bool get _isRecording => _voiceState == VoiceLiveState.recording;
+  // Voice state from VoiceViewModel
+  VoiceState get _voiceState => ref.read(voiceViewModelProvider);
+  bool get _isConnecting => _voiceState.isConnecting;
+  bool get _isConnected => _voiceState.isConnected;
+  bool get _isRecording => _voiceState.isRecording;
 
   // Scroll progress for animations
   double _scrollProgress = 1.0;
@@ -90,16 +88,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _speechService = ref.read(voiceServiceProvider);
-    _subscribeToState();
     _setupSaveCallback();
-  }
-
-  void _subscribeToState() {
-    _stateSubscription?.cancel();
-    _stateSubscription = _speechService.stateStream.listen((state) {
-      setState(() => _voiceState = state);
-    });
-    _voiceState = _speechService.state;
   }
 
   void _setupSaveCallback() {
@@ -161,7 +150,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void dispose() {
     _pageController.removeListener(_onScroll);
     _pageController.dispose();
-    _stateSubscription?.cancel();
     _stopMicStream();
     super.dispose();
   }
@@ -231,17 +219,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (!_isConnected) {
       // Use connect() return value instead of fixed delay
-      final connected = await _speechService.connect();
+      final connected = await ref.read(voiceViewModelProvider.notifier).connect();
       if (!connected) {
         Logger.error('Failed to connect for recording', tag: _tag);
         return;
       }
     }
 
-    if (_isConnected && !_isRecording) {
+    // Read fresh state after potential connection
+    final voiceState = ref.read(voiceViewModelProvider);
+    if (voiceState.isConnected && !voiceState.isRecording) {
       // Default to transcription mode for hold-to-talk
-      if (_speechService.mode != VoiceLiveMode.transcription) {
-        _speechService.switchMode(VoiceLiveMode.transcription);
+      if (voiceState.activeMode != VoiceLiveMode.transcription) {
+        ref.read(voiceViewModelProvider.notifier).switchMode(VoiceLiveMode.transcription);
       }
       await _startRecording();
     }
@@ -251,7 +241,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _onVoiceButtonLock() {
     setState(() => _isLocked = true);
     // Switch to conversation mode
-    _speechService.switchMode(VoiceLiveMode.conversation);
+    ref.read(voiceViewModelProvider.notifier).lockMode();
   }
 
   /// FAB long press end - stop recording (if not locked)
@@ -269,7 +259,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (!granted) return;
     }
 
-    await _speechService.connect();
+    await ref.read(voiceViewModelProvider.notifier).connect();
   }
 
   Future<void> _disconnect() async {
@@ -277,7 +267,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     try {
       await _stopMicStream();
-      await _speechService.disconnect();
+      await ref.read(voiceViewModelProvider.notifier).disconnect();
       setState(() => _isLocked = false);
       Logger.info('Disconnected', tag: _tag);
     } catch (e) {
@@ -297,10 +287,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         audioFormat: AudioFormat.ENCODING_PCM_16BIT,
       );
 
-      _speechService.startRecording();
+      final voiceVM = ref.read(voiceViewModelProvider.notifier);
+      voiceVM.startRecording();
 
       _micSubscription = _micStream!.listen((audioBytes) {
-        _speechService.sendAudioChunk(audioBytes);
+        voiceVM.sendAudioChunk(audioBytes);
       });
 
       Logger.info('Recording started', tag: _tag);
@@ -320,14 +311,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           : Duration.zero;
       _recordingStartTime = null;
 
+      final voiceVM = ref.read(voiceViewModelProvider.notifier);
       if (recordedDuration.inMilliseconds < 150) {
         // Too short - cancel instead of committing
         Logger.info(
             'Recording too short (${recordedDuration.inMilliseconds}ms), cancelling',
             tag: _tag);
-        _speechService.cancelRecording();
+        voiceVM.cancelRecording();
       } else {
-        await _speechService.stopRecording();
+        await voiceVM.stopRecording();
         Logger.info(
             'Recording stopped after ${recordedDuration.inMilliseconds}ms',
             tag: _tag);
@@ -355,6 +347,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch voice state for reactive UI updates
+    final voiceState = ref.watch(voiceViewModelProvider);
+    
     return Scaffold(
       backgroundColor: _getInterpolatedBackground(),
       extendBody: true,
@@ -417,8 +412,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: const EdgeInsets.only(bottom: 16),
         child: VoiceButton(
           size: 64,
-          isActive: _isRecording,
-          isConnected: _isConnected,
+          isActive: voiceState.isRecording,
+          isConnected: voiceState.isConnected,
           isLocked: _isLocked,
           onTap: _onVoiceButtonTap,
           onLongPressStart: _onVoiceButtonLongPressStart,
