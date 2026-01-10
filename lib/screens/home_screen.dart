@@ -9,6 +9,7 @@ import '../providers/service_providers.dart';
 import '../providers/viewmodels/voice_viewmodel.dart';
 import '../services/azure_speech_service.dart';
 import '../utils/logger.dart';
+import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
 import '../widgets/voice/voice_button.dart';
 import 'body_screen.dart';
@@ -390,6 +391,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
 
             // Nav bar - positioned INSIDE the floating card area
+            // Long-press any icon to open debug logs
             Positioned(
               top: 0,
               left: 0,
@@ -402,6 +404,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     pillars: _pillars,
                     currentIndex: _currentPage,
                     onPillarTapped: _onPillarTapped,
+                    onLongPress: () => DebugLogDialog.show(context),
                   ),
                 ),
               ),

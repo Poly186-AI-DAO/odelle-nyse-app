@@ -1,5 +1,32 @@
 # Local Development Guide
 
+## Quick Start (iPhone 14 Simulator)
+
+**Tested: January 10, 2026** - These exact commands work:
+
+```bash
+# 1. Open Simulator app and boot iPhone 14
+open -a Simulator && xcrun simctl boot 84BD4C47-F305-4829-91EB-5789D8EE0848
+
+# 2. Verify device is detected
+flutter devices
+
+# 3. Run the app
+cd /Users/princeps/Projects/Poly186/odelle-nyse-app
+flutter run -d 84BD4C47-F305-4829-91EB-5789D8EE0848 --debug
+```
+
+**Expected output:**
+```
+Launching lib/main.dart on iPhone 14 in debug mode...
+Running Xcode build...
+Xcode build done.                                           19.3s
+Syncing files to device iPhone 14...
+flutter: [AzureSpeechService]: Azure Realtime Service initialized with endpoint: wss://poly-ai-foundry.cognitiveservices.azure.com/openai/realtime
+```
+
+---
+
 ## Quick Reference
 
 ### Run App Commands
@@ -255,17 +282,41 @@ odelle-nyse-app/
 ## Quick Copy-Paste Commands
 
 ```bash
-# === MOST COMMON ===
+# === VERIFIED WORKING (Jan 10, 2026) ===
 
-# Run on iPhone 14 (iOS 18.2)
-xcrun simctl boot 84BD4C47-F305-4829-91EB-5789D8EE0848 && flutter run -d "iPhone 14"
+# Boot simulator + run app (one-liner)
+open -a Simulator && xcrun simctl boot 84BD4C47-F305-4829-91EB-5789D8EE0848 || true && flutter run -d 84BD4C47-F305-4829-91EB-5789D8EE0848 --debug
+
+# === STEP BY STEP ===
+
+# 1. Open Simulator app
+open -a Simulator
+
+# 2. Boot iPhone 14 (ignore error if already booted)
+xcrun simctl boot 84BD4C47-F305-4829-91EB-5789D8EE0848 || true
+
+# 3. Verify device shows up
+flutter devices
+
+# 4. Run the app
+flutter run -d 84BD4C47-F305-4829-91EB-5789D8EE0848 --debug
+
+# === OTHER DEVICES ===
+
+# Run on iPhone 16 Pro (iOS 18.2)
+xcrun simctl boot 33D50B96-D85C-4156-B2F7-2BB20E2C340F && flutter run -d 33D50B96-D85C-4156-B2F7-2BB20E2C340F
 
 # Run on iPhone 16 Pro Max (iOS 18.6)
-xcrun simctl boot 800D80B9-3AFD-4B9A-9F08-0708A6EED552 && flutter run -d "iPhone 16 Pro Max"
+xcrun simctl boot 800D80B9-3AFD-4B9A-9F08-0708A6EED552 && flutter run -d 800D80B9-3AFD-4B9A-9F08-0708A6EED552
+
+# === MAINTENANCE ===
 
 # Clean and rebuild
-flutter clean && flutter pub get && flutter run -d "iPhone 14"
+flutter clean && flutter pub get && flutter run -d 84BD4C47-F305-4829-91EB-5789D8EE0848
 
 # Check for issues
-flutter analyze && flutter test
+flutter analyze
+
+# Shutdown all simulators
+killall Simulator
 ```

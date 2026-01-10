@@ -164,12 +164,14 @@ class PillarNavBarThin extends StatelessWidget {
   final List<PillarItem> pillars;
   final int currentIndex;
   final ValueChanged<int> onPillarTapped;
+  final VoidCallback? onLongPress;
 
   const PillarNavBarThin({
     super.key,
     required this.pillars,
     required this.currentIndex,
     required this.onPillarTapped,
+    this.onLongPress,
   });
 
   @override
@@ -186,6 +188,7 @@ class PillarNavBarThin extends StatelessWidget {
               if (index > 0) const SizedBox(width: itemSpacing),
               GestureDetector(
                 onTap: () => onPillarTapped(index),
+                onLongPress: onLongPress,
                 behavior: HitTestBehavior.opaque,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

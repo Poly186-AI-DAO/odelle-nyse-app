@@ -1,6 +1,7 @@
 import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import '../../constants/theme_constants.dart';
+import '../../utils/device_corner_radius.dart';
 import '../panels/bottom_panel.dart';
 
 /// A floating hero card that covers most of the screen
@@ -26,8 +27,8 @@ class FloatingHeroCard extends StatelessWidget {
     required this.child,
     this.bottomPanel,
     this.panelVisibility = 1.0,
-    this.horizontalMargin = 12.0,
-    this.topMarginExtra = 12.0,
+    this.horizontalMargin = 8.0,
+    this.topMarginExtra = 6.0,
     this.bottomPercentage = 0.18,
     this.draggableBottomPanel = false,
     this.bottomPanelMinHeight,
@@ -62,9 +63,12 @@ class FloatingHeroCard extends StatelessWidget {
             offset: Offset(0, cardOffset),
             child: Opacity(
               opacity: cardOpacity,
-              child: const BreathingCard(
-                borderRadius: 52,
-                child: SizedBox.expand(),
+              child: BreathingCard(
+                borderRadius: DeviceCornerRadius.getCardCornerRadius(
+                  context,
+                  horizontalMargin,
+                ),
+                child: const SizedBox.expand(),
               ),
             ),
           ),

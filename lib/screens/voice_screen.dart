@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/viewmodels/voice_viewmodel.dart';
+import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/voice/voice_waveform_animated.dart';
 
@@ -33,7 +34,7 @@ class VoiceScreen extends ConsumerWidget {
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: _buildContent(voiceState),
+                child: _buildContent(context, voiceState),
               ),
             ),
 
@@ -45,7 +46,7 @@ class VoiceScreen extends ConsumerWidget {
   }
 
   /// Unified content that changes based on state
-  Widget _buildContent(VoiceState voiceState) {
+  Widget _buildContent(BuildContext context, VoiceState voiceState) {
     final isConnecting = voiceState.isConnecting;
     final isRecording = voiceState.isRecording;
     final isConnected = voiceState.isConnected;
@@ -125,14 +126,18 @@ class VoiceScreen extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          _getGreeting(),
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: 32,
-            fontWeight: FontWeight.w300,
-            color: Colors.white,
-            letterSpacing: -0.5,
+        // Double-tap greeting to open debug logs
+        GestureDetector(
+          onDoubleTap: () => DebugLogDialog.show(context),
+          child: Text(
+            _getGreeting(),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 32,
+              fontWeight: FontWeight.w300,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -158,8 +163,8 @@ class VoiceScreen extends ConsumerWidget {
 
   String _getSubtitle(bool isDisconnected, bool isRecording, bool isConnected) {
     if (isDisconnected) return 'Tap to connect';
-    if (isRecording) return 'Tap to stop';
-    if (isConnected) return 'Hold to talk • Tap to disconnect';
+    if (isRecording) return 'Listening...';
+    if (isConnected) return 'Tap to disconnect';
     return '';
   }
 }
