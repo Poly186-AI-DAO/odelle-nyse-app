@@ -2,17 +2,17 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'logger.dart';
 
 class FileAudioQueue {
   final AudioPlayer _player;
-  final ConcatenatingAudioSource _playlist;
+  final List<AudioSource> _sources = [];
   int _chunkIndex = 0;
 
-  FileAudioQueue(this._player)
-      : _playlist = ConcatenatingAudioSource(children: []);
+  FileAudioQueue(this._player);
 
   Future<void> init() async {
-    await _player.setAudioSource(_playlist);
+    // No-op, we'll set sources when adding chunks
   }
 
   Future<void> addChunk(Uint8List pcmData) async {
@@ -27,24 +27,30 @@ class FileAudioQueue {
       await file.writeAsBytes(wavBytes);
 
       final source = AudioSource.file(file.path);
-      await _playlist.add(source);
+      _sources.add(source);
+
+      // Set audio sources and play using the new playlist API
+      await _player.setAudioSources(
+        _sources,
+        initialIndex: _sources.length - 1,
+      );
 
       // Ensure playback starts/resumes
       if (_player.processingState == ProcessingState.completed) {
         // If finished, seek to the new item and play
-        await _player.seek(Duration.zero, index: _playlist.length - 1);
+        await _player.seek(Duration.zero, index: _sources.length - 1);
         _player.play();
       } else if (!_player.playing) {
         _player.play();
       }
     } catch (e) {
-      print('Error adding audio chunk: $e');
+      Logger.error('Error adding audio chunk', tag: 'FileAudioQueue', error: e);
     }
   }
 
   Future<void> clear() async {
     await _player.stop();
-    await _playlist.clear();
+    _sources.clear();
     _chunkIndex = 0;
     // Ideally clean up files too, but OS handles temp files eventually
   }

@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import '../providers/service_providers.dart';
 import '../services/azure_speech_service.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/voice/voice_waveform_animated.dart';
@@ -9,25 +10,30 @@ import '../widgets/voice/voice_waveform_animated.dart';
 /// Voice Screen - Display-only view
 /// Implements the "Hero Card" two-tone design
 /// Top 75% is a large gradient card containing the text
-class VoiceScreen extends StatefulWidget {
+class VoiceScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
 
   const VoiceScreen({super.key, this.panelVisibility = 1.0});
 
   @override
-  State<VoiceScreen> createState() => _VoiceScreenState();
+  ConsumerState<VoiceScreen> createState() => _VoiceScreenState();
 }
 
-class _VoiceScreenState extends State<VoiceScreen> {
+class _VoiceScreenState extends ConsumerState<VoiceScreen> {
   late AzureSpeechService _service;
   StreamSubscription<VoiceLiveState>? _stateSubscription;
+  StreamSubscription<String>? _partialSubscription;
+  StreamSubscription<String>? _transcriptionSubscription;
   VoiceLiveState _voiceState = VoiceLiveState.disconnected;
   String _transcription = '';
+
+  // Debug mode - set to false for production
+  static const bool _showDebug = true;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _service = context.watch<AzureSpeechService>();
+    _service = ref.read(voiceServiceProvider);
 
     _stateSubscription?.cancel();
     _stateSubscription = _service.stateStream.listen((state) {
@@ -35,17 +41,23 @@ class _VoiceScreenState extends State<VoiceScreen> {
     });
     _voiceState = _service.state;
 
-    _service.onPartialResult = (text) {
+    // Use streams instead of callbacks to avoid clobbering HomeScreen's callbacks
+    _partialSubscription?.cancel();
+    _partialSubscription = _service.partialStream.listen((text) {
       if (mounted) setState(() => _transcription += text);
-    };
-    _service.onTranscription = (text) {
+    });
+
+    _transcriptionSubscription?.cancel();
+    _transcriptionSubscription = _service.transcriptionStream.listen((text) {
       if (mounted) setState(() => _transcription = text);
-    };
+    });
   }
 
   @override
   void dispose() {
     _stateSubscription?.cancel();
+    _partialSubscription?.cancel();
+    _transcriptionSubscription?.cancel();
     super.dispose();
   }
 
@@ -64,24 +76,95 @@ class _VoiceScreenState extends State<VoiceScreen> {
       panelVisibility: widget.panelVisibility,
       child: SafeArea(
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            // Space for nav bar overlay
-            const SizedBox(height: 70),
+            // Main content
+            Column(
+              children: [
+                // Space for nav bar overlay
+                const SizedBox(height: 70),
 
-            const Spacer(flex: 2),
+                const Spacer(flex: 2),
 
-            // The main content area - CENTERED
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: _buildContent(),
-              ),
+                // The main content area - CENTERED
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: _buildContent(),
+                  ),
+                ),
+
+                const Spacer(flex: 3),
+              ],
             ),
 
-            const Spacer(flex: 3),
+            // Debug overlay (top-right corner)
+            if (_showDebug)
+              Positioned(
+                top: 80,
+                right: 16,
+                child: _buildDebugOverlay(),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Debug overlay showing current state
+  Widget _buildDebugOverlay() {
+    final stateColor = switch (_voiceState) {
+      VoiceLiveState.disconnected => Colors.grey,
+      VoiceLiveState.connecting => Colors.orange,
+      VoiceLiveState.connected => Colors.green,
+      VoiceLiveState.recording => Colors.red,
+      VoiceLiveState.processing => Colors.blue,
+    };
+
+    final modeText = _service.mode == VoiceLiveMode.transcription
+        ? 'Transcription'
+        : 'Conversation';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: stateColor,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _voiceState.name,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            modeText,
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              color: Colors.white.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -191,8 +274,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   String _getSubtitle() {
     if (_isDisconnected) return 'Tap to connect';
-    if (_isRecording) return 'Listening...';
-    if (_isConnected) return 'You are live';
+    if (_isRecording) return 'Tap to stop';
+    if (_isConnected) return 'Hold to talk • Tap to disconnect';
     return '';
   }
 }

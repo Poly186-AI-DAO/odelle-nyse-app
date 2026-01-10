@@ -189,25 +189,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Lock logic
   bool _isLocked = false;
 
-  /// FAB tap - toggle connection
+  // Track recording start time to avoid buffer-too-small errors
+  DateTime? _recordingStartTime;
+
+  /// FAB tap - toggle connection/recording
   Future<void> _onVoiceButtonTap() async {
     // Navigate to voice page if not there
     if (_currentPage != 1) {
       _onPillarTapped(1);
     }
 
-    // Toggle connection/recording
+    // State machine for tap behavior:
+    // 1. Locked + recording → stop and unlock
+    // 2. Recording (not locked) → stop
+    // 3. Connected but idle → disconnect
+    // 4. Disconnected → connect
     if (_isLocked) {
-      // If locked, tap stops
+      // If locked, tap stops recording and unlocks
       await _stopRecording();
       setState(() => _isLocked = false);
     } else if (_isRecording) {
       // Tapped while recording (not locked) -> Stop
       await _stopRecording();
     } else if (_isConnected) {
-      // Connected but not recording -> Disconnect? Or Start?
-      // Standard behavior: tap to start recording if connected
-      await _startRecording();
+      // Connected but not recording -> Disconnect
+      await _disconnect();
     } else {
       // Disconnected -> Connect
       await _connect();
@@ -224,9 +230,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     if (!_isConnected) {
-      await _connect();
-      // Wait for connection
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Use connect() return value instead of fixed delay
+      final connected = await _speechService.connect();
+      if (!connected) {
+        Logger.error('Failed to connect for recording', tag: _tag);
+        return;
+      }
     }
 
     if (_isConnected && !_isRecording) {
@@ -263,10 +272,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await _speechService.connect();
   }
 
+  Future<void> _disconnect() async {
+    if (!_isConnected) return;
+
+    try {
+      await _stopMicStream();
+      await _speechService.disconnect();
+      setState(() => _isLocked = false);
+      Logger.info('Disconnected', tag: _tag);
+    } catch (e) {
+      Logger.error('Failed to disconnect: $e', tag: _tag);
+    }
+  }
+
   Future<void> _startRecording() async {
     if (!_isConnected || _isRecording) return;
 
     try {
+      _recordingStartTime = DateTime.now();
+
       _micStream = MicStream.microphone(
         sampleRate: 24000,
         channelConfig: ChannelConfig.CHANNEL_IN_MONO,
@@ -282,17 +306,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       Logger.info('Recording started', tag: _tag);
     } catch (e) {
       Logger.error('Failed to start recording: $e', tag: _tag);
+      _recordingStartTime = null;
     }
   }
 
   Future<void> _stopRecording() async {
     try {
       await _stopMicStream();
-      await _speechService.stopRecording();
-      Logger.info('Recording stopped', tag: _tag);
+
+      // Check if we recorded enough audio (at least 150ms to avoid buffer errors)
+      final recordedDuration = _recordingStartTime != null
+          ? DateTime.now().difference(_recordingStartTime!)
+          : Duration.zero;
+      _recordingStartTime = null;
+
+      if (recordedDuration.inMilliseconds < 150) {
+        // Too short - cancel instead of committing
+        Logger.info(
+            'Recording too short (${recordedDuration.inMilliseconds}ms), cancelling',
+            tag: _tag);
+        _speechService.cancelRecording();
+      } else {
+        await _speechService.stopRecording();
+        Logger.info(
+            'Recording stopped after ${recordedDuration.inMilliseconds}ms',
+            tag: _tag);
+      }
+
       setState(() => _isLocked = false);
     } catch (e) {
       Logger.error('Failed to stop recording: $e', tag: _tag);
+      _recordingStartTime = null;
     }
   }
 

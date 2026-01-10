@@ -74,7 +74,7 @@ class _ScanlinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(opacity)
+      ..color = color.withValues(alpha: opacity)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 
@@ -92,7 +92,7 @@ class _ScanlinePainter extends CustomPainter {
 
     // Add subtle vertical noise
     final noisePaint = Paint()
-      ..color = color.withOpacity(opacity * 0.5)
+      ..color = color.withValues(alpha: opacity * 0.5)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 

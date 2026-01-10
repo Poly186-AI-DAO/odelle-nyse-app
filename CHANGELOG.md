@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-01-10
+
+### Added
+- **Phase 1 Data Models**: UserProfile, Supplement, DoseLog, Habit, HabitLog, MoodEntry, Streak
+- **Phase 2 Content Models**: ContentCategory, Instructor, Session, Program, PlayHistory, Favorite
+- **Phase 3 Tracking Models**: WorkoutLog, ExerciseType, ExerciseSet, PersonalRecord, MealLog, MeditationLog, SleepLog
+- **Phase 4 Gamification Models**: Achievement, UserAchievement, DailyLog, ProgressSnapshot
+- **Phase 5 Scheduling Models**: DoseSchedule, ScheduledEvent, ProgramEnrollment, LessonProgress
+- **Repositories**: UserProfileRepository, DoseRepository, HabitRepository, MoodRepository, StreakRepository
+- **ViewModels**: Riverpod Notifiers for all repositories with proper state management
+- **Database Schema**: SQLite tables for Phase 1 and Phase 2 with indexes and CRUD operations
+- **Analytics Models**: WeeklyProgress, MoodTrend, CalendarDay computed models
+
+### Fixed
+- Type casting errors in MoodTrend computation (num to double)
+- Deprecated API usage (withOpacity, scale, ConcatenatingAudioSource)
+- Print statements replaced with Logger calls
+- Widget child argument ordering
+
 ## [1.0.0] - 2026-01-10
 
 ### Added

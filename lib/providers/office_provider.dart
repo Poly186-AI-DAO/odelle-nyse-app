@@ -1,33 +1,64 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class OfficeProvider extends ChangeNotifier {
-  // Game State
-  final List<String> _products = ['Core Platform'];
-  final List<String> _services = ['Consulting'];
-  final List<String> _departments = ['Engineering', 'Sales'];
+/// State for the office/business simulation
+class OfficeState {
+  final List<String> products;
+  final List<String> services;
+  final List<String> departments;
 
-  // Getters
-  List<String> get products => _products;
-  List<String> get services => _services;
-  List<String> get departments => _departments;
+  const OfficeState({
+    this.products = const ['Core Platform'],
+    this.services = const ['Consulting'],
+    this.departments = const ['Engineering', 'Sales'],
+  });
 
-  // Derived state
-  int get workerCount =>
-      _products.length + _services.length + _departments.length;
+  /// Derived state - total worker count
+  int get workerCount => products.length + services.length + departments.length;
 
-  // Actions
-  void addProduct(String product) {
-    _products.add(product);
-    notifyListeners();
-  }
-
-  void addService(String service) {
-    _services.add(service);
-    notifyListeners();
-  }
-
-  void addDepartment(String department) {
-    _departments.add(department);
-    notifyListeners();
+  OfficeState copyWith({
+    List<String>? products,
+    List<String>? services,
+    List<String>? departments,
+  }) {
+    return OfficeState(
+      products: products ?? this.products,
+      services: services ?? this.services,
+      departments: departments ?? this.departments,
+    );
   }
 }
+
+/// Office notifier - manages business simulation state
+class OfficeNotifier extends Notifier<OfficeState> {
+  @override
+  OfficeState build() {
+    // Initial state with defaults
+    return const OfficeState();
+  }
+
+  /// Add a new product
+  void addProduct(String product) {
+    state = state.copyWith(
+      products: [...state.products, product],
+    );
+  }
+
+  /// Add a new service
+  void addService(String service) {
+    state = state.copyWith(
+      services: [...state.services, service],
+    );
+  }
+
+  /// Add a new department
+  void addDepartment(String department) {
+    state = state.copyWith(
+      departments: [...state.departments, department],
+    );
+  }
+}
+
+/// Provider for office state
+final officeProvider = NotifierProvider<OfficeNotifier, OfficeState>(
+  OfficeNotifier.new,
+);

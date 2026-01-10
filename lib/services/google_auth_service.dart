@@ -3,6 +3,7 @@ import 'package:googleapis/calendar/v3.dart' as calendar;
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/gmail/v1.dart' as gmail;
 import 'package:http/http.dart' as http;
+import '../utils/logger.dart';
 
 /// Custom AuthClient for Google APIs
 class GoogleAuthClient extends http.BaseClient {
@@ -46,7 +47,8 @@ class GoogleAuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       return googleUser != null;
     } catch (e) {
-      print('Error signing in with Google: $e');
+      Logger.error('Error signing in with Google',
+          tag: 'GoogleAuthService', error: e);
       rethrow;
     }
   }
@@ -79,7 +81,8 @@ class GoogleAuthService {
           await calendarApi.calendarList.list(maxResults: 1);
           permissions['calendar'] = true;
         } catch (e) {
-          print('Calendar API test failed: $e');
+          Logger.warning('Calendar API test failed: $e',
+              tag: 'GoogleAuthService');
         }
 
         // Test Drive API
@@ -89,7 +92,7 @@ class GoogleAuthService {
           await driveApi.files.list(pageSize: 1);
           permissions['drive'] = true;
         } catch (e) {
-          print('Drive API test failed: $e');
+          Logger.warning('Drive API test failed: $e', tag: 'GoogleAuthService');
         }
 
         // Test Gmail API
@@ -100,13 +103,14 @@ class GoogleAuthService {
           client.close();
           permissions['gmail'] = true;
         } catch (e) {
-          print('Gmail API test failed: $e');
+          Logger.warning('Gmail API test failed: $e', tag: 'GoogleAuthService');
         }
       } catch (e) {
-        print('Error verifying token: $e');
+        Logger.warning('Error verifying token: $e', tag: 'GoogleAuthService');
       }
     } catch (e) {
-      print('Error checking permissions: $e');
+      Logger.warning('Error checking permissions: $e',
+          tag: 'GoogleAuthService');
     }
 
     return permissions;
@@ -128,7 +132,8 @@ class GoogleAuthService {
         'Accept': 'application/json',
       };
     } catch (e) {
-      print('Error getting auth headers: $e');
+      Logger.warning('Error getting auth headers: $e',
+          tag: 'GoogleAuthService');
       return null;
     }
   }
@@ -142,7 +147,8 @@ class GoogleAuthService {
       }
       return false;
     } catch (e) {
-      print('Error requesting calendar permissions: $e');
+      Logger.error('Error requesting calendar permissions',
+          tag: 'GoogleAuthService', error: e);
       return false;
     }
   }

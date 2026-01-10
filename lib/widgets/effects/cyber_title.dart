@@ -75,7 +75,7 @@ class _CyberTitleState extends State<CyberTitle>
               ? BoxDecoration(
                   border: Border.all(
                     color: ThemeConstants.borderColor
-                        .withOpacity(_borderAnimation.value),
+                        .withValues(alpha: _borderAnimation.value),
                     width: ThemeConstants.borderWidth,
                   ),
                 )

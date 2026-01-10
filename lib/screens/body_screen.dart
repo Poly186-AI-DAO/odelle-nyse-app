@@ -5,9 +5,10 @@ import '../constants/theme_constants.dart';
 import '../database/app_database.dart';
 import '../models/character_stats.dart';
 import '../models/protocol_entry.dart';
+import '../utils/logger.dart';
+import '../widgets/dashboard/hero_number.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/protocol/protocol_button.dart';
-import '../widgets/dashboard/hero_number.dart';
 
 /// Body Screen - Physical tracking pillar
 /// Gym, Meal, Dose protocols with XP tracking
@@ -21,8 +22,34 @@ class BodyScreen extends StatefulWidget {
 }
 
 class _BodyScreenState extends State<BodyScreen> {
+  static const String _tag = 'BodyScreen';
+  static const List<String> _weekdayLabels = [
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
+  static const List<String> _monthLabels = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
   CharacterStats? _stats;
   List<ProtocolEntry> _todayProtocols = [];
+  late DateTime _selectedDate;
 
   // Protocol definitions
   static const List<ProtocolType> _protocolTypes = [
@@ -34,17 +61,78 @@ class _BodyScreenState extends State<BodyScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedDate = _normalizeDate(DateTime.now());
     _loadData();
+  }
+
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    final normalized = _normalizeDate(date);
+    return normalized.subtract(Duration(days: normalized.weekday - 1));
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _formatSelectedDateLabel() {
+    final today = _normalizeDate(DateTime.now());
+    if (_isSameDay(_selectedDate, today)) {
+      return 'Today';
+    }
+
+    final weekday = _weekdayLabels[_selectedDate.weekday - 1];
+    final month = _monthLabels[_selectedDate.month - 1];
+    return '$weekday, $month ${_selectedDate.day}';
+  }
+
+  Future<void> _setSelectedDate(DateTime date) async {
+    final normalized = _normalizeDate(date);
+    if (_isSameDay(normalized, _selectedDate)) {
+      return;
+    }
+
+    setState(() {
+      _selectedDate = normalized;
+    });
+
+    Logger.info('Selected body date changed',
+        tag: _tag, data: {'date': normalized.toIso8601String()});
+    await _loadData();
+  }
+
+  DateTime _timestampForSelectedDate() {
+    final now = DateTime.now();
+    return DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      now.hour,
+      now.minute,
+      now.second,
+      now.millisecond,
+      now.microsecond,
+    );
   }
 
   Future<void> _loadData() async {
     final db = context.read<AppDatabase>();
-    final stats = await db.getTodayStats();
-    final protocols = await db.getTodayProtocolEntries();
+    final startOfDay = _selectedDate;
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    Logger.info('Loading body data',
+        tag: _tag, data: {'date': startOfDay.toIso8601String()});
+
+    final stats = await db.getCharacterStats(startOfDay);
+    final protocols =
+        await db.getProtocolEntries(startDate: startOfDay, endDate: endOfDay);
 
     if (mounted) {
       setState(() {
-        _stats = stats;
+        _stats = stats ?? CharacterStats(date: startOfDay);
         _todayProtocols = protocols
             .where((p) =>
                 p.type == ProtocolType.gym ||
@@ -59,7 +147,7 @@ class _BodyScreenState extends State<BodyScreen> {
     final db = context.read<AppDatabase>();
     await db.insertProtocolEntry(
       ProtocolEntry(
-        timestamp: DateTime.now(),
+        timestamp: _timestampForSelectedDate(),
         type: type,
         notes: null,
       ),
@@ -81,6 +169,8 @@ class _BodyScreenState extends State<BodyScreen> {
       panelVisibility: widget.panelVisibility,
       draggableBottomPanel: true,
       bottomPanelPulseEnabled: true,
+      // White bottom panel with stats and controls
+      bottomPanel: _buildBottomPanel(),
       // Dark card content - Hero XP display at top
       child: SafeArea(
         bottom: false,
@@ -92,8 +182,6 @@ class _BodyScreenState extends State<BodyScreen> {
           ],
         ),
       ),
-      // White bottom panel with stats and controls
-      bottomPanel: _buildBottomPanel(),
     );
   }
 
@@ -101,6 +189,8 @@ class _BodyScreenState extends State<BodyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildWeekStrip(),
+        const SizedBox(height: 16),
         // Section header
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -115,7 +205,7 @@ class _BodyScreenState extends State<BodyScreen> {
               ),
             ),
             Text(
-              'Today',
+              _formatSelectedDateLabel(),
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: Colors.grey[500],
@@ -184,6 +274,80 @@ class _BodyScreenState extends State<BodyScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildWeekStrip() {
+    final startOfWeek = _startOfWeek(_selectedDate);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F3F5),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: List.generate(7, (index) {
+          final date = startOfWeek.add(Duration(days: index));
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _buildDayChip(date),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildDayChip(DateTime date) {
+    final isSelected = _isSameDay(date, _selectedDate);
+    final label = _weekdayLabels[date.weekday - 1];
+
+    return GestureDetector(
+      onTap: () => _setSelectedDate(date),
+      child: AnimatedContainer(
+        key: ValueKey(date.toIso8601String()),
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.grey[700] : Colors.grey[500],
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${date.day}',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.grey[900] : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

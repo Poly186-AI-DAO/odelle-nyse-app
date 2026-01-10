@@ -1,7 +1,7 @@
 name: odelle_nyse
 description: Odelle Nyse (ON) - Self-Actualization Operating System
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.1.0+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_secure_storage: ^9.2.4
-  provider: ^6.1.5+1
+  flutter_riverpod: ^2.5.1
   google_fonts: ^6.3.2
   shared_preferences: ^2.5.3
   flutter_dotenv: ^6.0.0
@@ -23,6 +23,7 @@ dependencies:
   flutter_webrtc: ^1.2.0
   equatable: ^2.0.7
   flutter_bloc: ^9.1.1
+  provider: ^6.1.2
   package_info_plus: ^9.0.0
   http: ^1.6.0
   flutter_facebook_auth: ^6.2.0

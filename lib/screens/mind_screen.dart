@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
 import '../database/app_database.dart';
 import '../models/protocol_entry.dart';
+import '../utils/logger.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/protocol/protocol_button.dart';
 
@@ -19,8 +20,34 @@ class MindScreen extends StatefulWidget {
 }
 
 class _MindScreenState extends State<MindScreen> {
+  static const String _tag = 'MindScreen';
+  static const List<String> _weekdayLabels = [
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
+  static const List<String> _monthLabels = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
   List<ProtocolEntry> _todayProtocols = [];
   String _dailyMantra = '';
+  late DateTime _selectedDate;
 
   // Sample mantras - will be user-customizable later
   static const List<String> _mantras = [
@@ -36,28 +63,88 @@ class _MindScreenState extends State<MindScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedDate = _normalizeDate(DateTime.now());
+    _dailyMantra = _mantraForDate(_selectedDate);
     _loadData();
-    _selectDailyMantra();
   }
 
-  void _selectDailyMantra() {
-    // Select a mantra based on day of year for consistency
-    final dayOfYear =
-        DateTime.now().difference(DateTime(DateTime.now().year)).inDays;
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    final normalized = _normalizeDate(date);
+    return normalized.subtract(Duration(days: normalized.weekday - 1));
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _mantraForDate(DateTime date) {
+    final dayOfYear = date.difference(DateTime(date.year)).inDays;
     final index = dayOfYear % _mantras.length;
+    return _mantras[index];
+  }
+
+  String _formatSelectedDateLabel() {
+    final today = _normalizeDate(DateTime.now());
+    if (_isSameDay(_selectedDate, today)) {
+      return 'Today';
+    }
+
+    final weekday = _weekdayLabels[_selectedDate.weekday - 1];
+    final month = _monthLabels[_selectedDate.month - 1];
+    return '$weekday, $month ${_selectedDate.day}';
+  }
+
+  Future<void> _setSelectedDate(DateTime date) async {
+    final normalized = _normalizeDate(date);
+    if (_isSameDay(normalized, _selectedDate)) {
+      return;
+    }
+
     setState(() {
-      _dailyMantra = _mantras[index];
+      _selectedDate = normalized;
+      _dailyMantra = _mantraForDate(normalized);
     });
+
+    Logger.info('Selected mind date changed',
+        tag: _tag, data: {'date': normalized.toIso8601String()});
+    await _loadData();
+  }
+
+  DateTime _timestampForSelectedDate() {
+    final now = DateTime.now();
+    return DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      now.hour,
+      now.minute,
+      now.second,
+      now.millisecond,
+      now.microsecond,
+    );
   }
 
   Future<void> _loadData() async {
     final db = context.read<AppDatabase>();
-    final protocols = await db.getTodayProtocolEntries();
+    final startOfDay = _selectedDate;
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    Logger.info('Loading mind data',
+        tag: _tag, data: {'date': startOfDay.toIso8601String()});
+
+    final protocols = await db.getProtocolEntries(
+      type: ProtocolType.meditation,
+      startDate: startOfDay,
+      endDate: endOfDay,
+    );
 
     if (mounted) {
       setState(() {
-        _todayProtocols =
-            protocols.where((p) => p.type == ProtocolType.meditation).toList();
+        _todayProtocols = protocols;
       });
     }
   }
@@ -66,7 +153,7 @@ class _MindScreenState extends State<MindScreen> {
     final db = context.read<AppDatabase>();
     await db.insertProtocolEntry(
       ProtocolEntry(
-        timestamp: DateTime.now(),
+        timestamp: _timestampForSelectedDate(),
         type: type,
         notes: null,
       ),
@@ -88,6 +175,7 @@ class _MindScreenState extends State<MindScreen> {
       panelVisibility: widget.panelVisibility,
       draggableBottomPanel: true,
       bottomPanelPulseEnabled: true,
+      bottomPanel: _buildBottomPanel(),
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -105,7 +193,6 @@ class _MindScreenState extends State<MindScreen> {
           ),
         ),
       ),
-      bottomPanel: _buildBottomPanel(),
     );
   }
 
@@ -143,6 +230,8 @@ class _MindScreenState extends State<MindScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildWeekStrip(),
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -156,7 +245,7 @@ class _MindScreenState extends State<MindScreen> {
               ),
             ),
             Text(
-              'Today',
+              _formatSelectedDateLabel(),
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: Colors.grey[500],
@@ -230,6 +319,80 @@ class _MindScreenState extends State<MindScreen> {
             },
           ),
       ],
+    );
+  }
+
+  Widget _buildWeekStrip() {
+    final startOfWeek = _startOfWeek(_selectedDate);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F3F5),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: List.generate(7, (index) {
+          final date = startOfWeek.add(Duration(days: index));
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _buildDayChip(date),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildDayChip(DateTime date) {
+    final isSelected = _isSameDay(date, _selectedDate);
+    final label = _weekdayLabels[date.weekday - 1];
+
+    return GestureDetector(
+      onTap: () => _setSelectedDate(date),
+      child: AnimatedContainer(
+        key: ValueKey(date.toIso8601String()),
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.grey[700] : Colors.grey[500],
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${date.day}',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.grey[900] : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

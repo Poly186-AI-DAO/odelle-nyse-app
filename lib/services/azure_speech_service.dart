@@ -51,7 +51,13 @@ class AzureSpeechService {
   VoiceLiveMode _mode = VoiceLiveMode.transcription;
   final _stateController = StreamController<VoiceLiveState>.broadcast();
 
-  // Callbacks
+  // Transcription stream for multi-listener support (fixes callback clobbering)
+  final _transcriptionController = StreamController<String>.broadcast();
+  final _partialController = StreamController<String>.broadcast();
+  Stream<String> get transcriptionStream => _transcriptionController.stream;
+  Stream<String> get partialStream => _partialController.stream;
+
+  // Callbacks (legacy - prefer streams for multi-listener)
   Function(String transcription)? onTranscription;
   Function(String partialResult)? onPartialResult;
   Function(String error)? onError;
@@ -83,7 +89,9 @@ class AzureSpeechService {
     if (_state != newState) {
       Logger.info('State: $_state → $newState', tag: _tag);
       _state = newState;
-      _stateController.add(newState);
+      if (!_stateController.isClosed) {
+        _stateController.add(newState);
+      }
     }
   }
 
@@ -93,8 +101,7 @@ class AzureSpeechService {
     final endpoint = dotenv.env['AZURE_AI_FOUNDRY_ENDPOINT'] ?? '';
 
     if (_apiKey.isEmpty || endpoint.isEmpty) {
-      Logger.error(
-          'Azure AI Foundry key or endpoint not found in environment',
+      Logger.error('Azure AI Foundry key or endpoint not found in environment',
           tag: _tag);
       Logger.error(
           'Expected env vars: AZURE_AI_FOUNDRY_KEY, AZURE_AI_FOUNDRY_ENDPOINT',
@@ -195,10 +202,10 @@ class AzureSpeechService {
   /// Switch mode (Transcription <-> Conversation)
   void switchMode(VoiceLiveMode newMode) {
     if (_mode == newMode) return;
-    
+
     _mode = newMode;
     Logger.info('Switching to $_mode mode', tag: _tag);
-    
+
     // Reconfigure session if connected
     if (_isConnected) {
       _configureSession();
@@ -216,6 +223,15 @@ class AzureSpeechService {
         ? ['text', 'audio']
         : ['text']; // Transcription-only mode
 
+    final turnDetection = _mode == VoiceLiveMode.conversation
+        ? {
+            'type': 'server_vad',
+            'threshold': 0.5,
+            'prefix_padding_ms': 300,
+            'silence_duration_ms': 600,
+          }
+        : null; // transcription mode: client controls commit
+
     final sessionConfig = {
       'type': 'session.update',
       'session': {
@@ -229,12 +245,7 @@ class AzureSpeechService {
         'input_audio_transcription': {
           'model': 'whisper-1',
         },
-        'turn_detection': {
-          'type': 'server_vad',
-          'threshold': 0.5,
-          'prefix_padding_ms': 300,
-          'silence_duration_ms': 600,
-        },
+        'turn_detection': turnDetection,
         'temperature': 0.8,
       },
     };
@@ -274,6 +285,9 @@ class AzureSpeechService {
           final delta = data['delta'] as String?;
           if (delta != null && delta.isNotEmpty) {
             onPartialResult?.call(delta);
+            if (!_partialController.isClosed) {
+              _partialController.add(delta);
+            }
           }
           break;
 
@@ -282,6 +296,9 @@ class AzureSpeechService {
           if (transcript != null && transcript.isNotEmpty) {
             Logger.info('Transcription complete: $transcript', tag: _tag);
             onTranscription?.call(transcript);
+            if (!_transcriptionController.isClosed) {
+              _transcriptionController.add(transcript);
+            }
           }
           // Return to connected state after transcription
           _setState(VoiceLiveState.connected);
@@ -378,10 +395,16 @@ class AzureSpeechService {
     _setState(VoiceLiveState.processing);
     Logger.info('Recording stopped, total bytes: $_totalAudioBytes', tag: _tag);
 
-    // Commit the audio buffer to trigger transcription
-    _sendJson({
-      'type': 'input_audio_buffer.commit',
-    });
+    // Only commit in transcription mode - server_vad auto-commits in conversation mode
+    if (_mode == VoiceLiveMode.transcription) {
+      _sendJson({
+        'type': 'input_audio_buffer.commit',
+      });
+    } else {
+      // In conversation mode, just go back to connected state
+      // Server VAD handles the commit
+      _setState(VoiceLiveState.connected);
+    }
 
     // Clear local buffer
     _audioBuffer.clear();
@@ -444,8 +467,12 @@ class AzureSpeechService {
 
   /// Dispose resources
   void dispose() {
-    _stateController.close();
+    // Disconnect first (while streams are still open)
     disconnect();
+    // Then close streams
+    _stateController.close();
+    _transcriptionController.close();
+    _partialController.close();
     _isInitialized = false;
   }
 }

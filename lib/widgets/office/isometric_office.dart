@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/office_provider.dart';
 
-class IsometricOffice extends StatefulWidget {
+class IsometricOffice extends ConsumerStatefulWidget {
   final VoidCallback? onWorkerTapped;
 
   const IsometricOffice({
@@ -13,10 +13,10 @@ class IsometricOffice extends StatefulWidget {
   });
 
   @override
-  State<IsometricOffice> createState() => IsometricOfficeState();
+  ConsumerState<IsometricOffice> createState() => IsometricOfficeState();
 }
 
-class IsometricOfficeState extends State<IsometricOffice> {
+class IsometricOfficeState extends ConsumerState<IsometricOffice> {
   Artboard? _riveArtboard;
   StateMachineController? _controller;
   SMIInput<double>? _workerCountInput;
@@ -107,9 +107,8 @@ class IsometricOfficeState extends State<IsometricOffice> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to OfficeProvider for state changes
-    final workerCount =
-        context.select<OfficeProvider, int>((p) => p.workerCount);
+    // Listen to officeProvider for state changes
+    final workerCount = ref.watch(officeProvider.select((s) => s.workerCount));
 
     // Update Rive input if it exists
     if (_workerCountInput != null) {
