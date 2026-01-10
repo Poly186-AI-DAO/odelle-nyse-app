@@ -188,7 +188,20 @@ class AzureSpeechService {
     }
   }
 
-  /// Configure the session for transcription
+  /// Switch mode (Transcription <-> Conversation)
+  void switchMode(VoiceLiveMode newMode) {
+    if (_mode == newMode) return;
+    
+    _mode = newMode;
+    Logger.info('Switching to $_mode mode', tag: _tag);
+    
+    // Reconfigure session if connected
+    if (_isConnected) {
+      _configureSession();
+    }
+  }
+
+  /// Configure the session for transcription or conversation
   void _configureSession() {
     if (_channel == null) return;
 

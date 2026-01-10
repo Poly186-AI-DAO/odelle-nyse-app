@@ -6,10 +6,7 @@ import '../database/app_database.dart';
 import '../models/character_stats.dart';
 import '../models/protocol_entry.dart';
 import '../widgets/protocol/protocol_button.dart';
-import '../widgets/dashboard/stat_card.dart';
 import '../widgets/dashboard/hero_number.dart';
-import '../widgets/panels/bottom_panel.dart';
-import '../widgets/list/expandable_list_item.dart';
 
 /// Body Screen - Physical tracking pillar
 /// Gym, Meal, Dose protocols with XP tracking
@@ -79,32 +76,36 @@ class _BodyScreenState extends State<BodyScreen> {
   @override
   Widget build(BuildContext context) {
     // Calculate animation values
-    final panelOffset = (1 - widget.panelVisibility) * 100; // Slide up from bottom
-    final panelOpacity = widget.panelVisibility.clamp(0.0, 1.0);
+    final contentOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
+    final contentOpacity = widget.panelVisibility.clamp(0.0, 1.0);
     
-    return Column(
-      children: [
-        // Account for SafeArea + nav bar overlay
-        SizedBox(height: MediaQuery.of(context).padding.top + 70),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          // Account for SafeArea + nav bar overlay
+          SizedBox(height: MediaQuery.of(context).padding.top + 70),
 
           // Hero XP display - fade with visibility
           AnimatedOpacity(
             duration: Duration.zero,
-            opacity: panelOpacity,
+            opacity: contentOpacity,
             child: _buildHeroXP(),
           ),
 
           const Spacer(),
 
-          // Bottom panel with protocols - animated slide + opacity
+          // Bottom buttons and stats - slide + opacity
           Transform.translate(
-            offset: Offset(0, panelOffset),
+            offset: Offset(0, contentOffset),
             child: AnimatedOpacity(
               duration: Duration.zero,
-              opacity: panelOpacity,
-              child: _buildBottomPanel(),
+              opacity: contentOpacity,
+              child: _buildBodyControls(),
             ),
           ),
+          
+          const SizedBox(height: 120), // Bottom padding for FAB
         ],
       ),
     );
@@ -150,95 +151,157 @@ class _BodyScreenState extends State<BodyScreen> {
             ),
           ),
         ),
+      ],
     );
   }
 
-  Widget _buildBottomPanel() {
-    return BottomPanel(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Protocol buttons row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: _protocolTypes.map((type) {
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: ProtocolButton(
-                    type: type,
-                    buttonState: _getProtocolState(type),
-                    onTap: () => _logProtocol(type),
+  Widget _buildBodyControls() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Protocol buttons row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: _protocolTypes.map((type) {
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: ProtocolButton(
+                  type: type,
+                  buttonState: _getProtocolState(type),
+                  onTap: () => _logProtocol(type),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Stats row (using simplified glass look)
+        Row(
+          children: [
+            Expanded(
+              child: _buildGlassStat('Today\'s Logs', _todayProtocols.length.toString()),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildGlassStat('Level', '${_stats?.level ?? 1}'),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 20),
+
+        // Today's activity header
+        Text(
+          'TODAY',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: ThemeConstants.textOnDark.withValues(alpha: 0.7),
+            letterSpacing: 1.5,
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Protocol entries list - transparent
+        SizedBox(
+          height: 160,
+          child: _todayProtocols.isEmpty
+              ? Center(
+                  child: Text(
+                    'No logs yet today.\nTap a protocol to start!',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
+                      fontSize: 14,
+                    ),
                   ),
+                )
+              : ListView.separated(
+                  padding: EdgeInsets.zero,
+                  itemCount: _todayProtocols.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final entry = _todayProtocols[index];
+                    return _buildDarkListItem(entry);
+                  },
                 ),
-              );
-            }).toList(),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Stats row
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  label: 'Today\'s Logs',
-                  value: _todayProtocols.length.toString(),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  label: 'Level',
-                  value: '${_stats?.level ?? 1}',
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Today's activity header
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildGlassStat(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        children: [
           Text(
-            'TODAY',
+            label.toUpperCase(),
             style: GoogleFonts.inter(
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: ThemeConstants.textSecondary,
-              letterSpacing: 1.5,
+              color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
+              letterSpacing: 1,
             ),
           ),
-
-          const SizedBox(height: 12),
-
-          // Protocol entries list
-          SizedBox(
-            height: 160,
-            child: _todayProtocols.isEmpty
-                ? Center(
-                    child: Text(
-                      'No logs yet today.\nTap a protocol to start!',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        color: ThemeConstants.textMuted,
-                        fontSize: 14,
-                      ),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: EdgeInsets.zero,
-                    itemCount: _todayProtocols.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final entry = _todayProtocols[index];
-                      return ExpandableListItem(
-                        leading: EmojiListIcon(emoji: entry.type.emoji),
-                        title: entry.type.displayName,
-                        subtitle: _formatTime(entry.timestamp),
-                      );
-                    },
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textOnDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDarkListItem(ProtocolEntry entry) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Text(
+            entry.type.emoji,
+            style: const TextStyle(fontSize: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.type.displayName,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConstants.textOnDark,
                   ),
+                ),
+                Text(
+                  _formatTime(entry.timestamp),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

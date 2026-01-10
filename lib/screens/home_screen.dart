@@ -167,24 +167,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Lock logic
+  bool _isLocked = false;
+
   /// FAB tap - toggle connection
   Future<void> _onVoiceButtonTap() async {
     // Navigate to voice page if not there
     if (_currentPage != 1) {
       _onPillarTapped(1);
     }
-
-    // Toggle connection
-    if (_isConnected) {
-      await _disconnect();
-    } else if (!_isConnecting) {
+    
+    // Toggle connection/recording
+    if (_isLocked) {
+      // If locked, tap stops
+      await _stopRecording();
+      setState(() => _isLocked = false);
+    } else if (_isRecording) {
+      // Tapped while recording (not locked) -> Stop
+      await _stopRecording();
+    } else if (_isConnected) {
+      // Connected but not recording -> Disconnect? Or Start?
+      // Standard behavior: tap to start recording if connected
+      await _startRecording();
+    } else {
+      // Disconnected -> Connect
       await _connect();
     }
   }
 
-  /// FAB long press start - begin recording
+  /// FAB long press start - begin recording (Transcription Mode)
   Future<void> _onVoiceButtonLongPressStart() async {
     HapticFeedback.mediumImpact();
+    
+    // Ensure on Voice Screen
+    if (_currentPage != 1) {
+      _onPillarTapped(1);
+    }
     
     if (!_isConnected) {
       await _connect();
@@ -193,13 +211,24 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     
     if (_isConnected && !_isRecording) {
+      // Default to transcription mode for hold-to-talk
+      if (_speechService.mode != VoiceLiveMode.transcription) {
+        _speechService.switchMode(VoiceLiveMode.transcription);
+      }
       await _startRecording();
     }
   }
+  
+  /// FAB locked - switch to Live Mode
+  void _onVoiceButtonLock() {
+    setState(() => _isLocked = true);
+    // Switch to conversation mode
+    _speechService.switchMode(VoiceLiveMode.conversation);
+  }
 
-  /// FAB long press end - stop recording
+  /// FAB long press end - stop recording (if not locked)
   Future<void> _onVoiceButtonLongPressEnd() async {
-    if (_isRecording) {
+    if (!_isLocked && _isRecording) {
       await _stopRecording();
     }
   }
@@ -218,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _disconnect() async {
     await _stopMicStream();
     await _speechService.disconnect();
+    setState(() => _isLocked = false);
   }
 
   Future<void> _startRecording() async {
@@ -247,6 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _stopMicStream();
       await _speechService.stopRecording();
       Logger.info('Recording stopped', tag: _tag);
+      setState(() => _isLocked = false);
     } catch (e) {
       Logger.error('Failed to stop recording: $e', tag: _tag);
     }
@@ -341,9 +372,11 @@ class _HomeScreenState extends State<HomeScreen> {
           size: 64,
           isActive: _isRecording,
           isConnected: _isConnected,
+          isLocked: _isLocked,
           onTap: _onVoiceButtonTap,
           onLongPressStart: _onVoiceButtonLongPressStart,
           onLongPressEnd: _onVoiceButtonLongPressEnd,
+          onLock: _onVoiceButtonLock,
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,

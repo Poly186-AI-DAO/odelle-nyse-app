@@ -125,7 +125,7 @@ jobs:
             <true/>
             <key>provisioningProfiles</key>
             <dict>
-              <key>com.poly.wingman</key>
+              <key>com.poly186.odelle</key>
               <string>$PROFILE_UUID</string>
             </dict>
           </dict>
