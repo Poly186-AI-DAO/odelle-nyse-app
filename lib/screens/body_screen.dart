@@ -14,7 +14,9 @@ import '../widgets/list/expandable_list_item.dart';
 /// Body Screen - Physical tracking pillar
 /// Gym, Meal, Dose protocols with XP tracking
 class BodyScreen extends StatefulWidget {
-  const BodyScreen({super.key});
+  final double panelVisibility;
+  
+  const BodyScreen({super.key, this.panelVisibility = 1.0});
 
   @override
   State<BodyScreen> createState() => _BodyScreenState();
@@ -76,18 +78,33 @@ class _BodyScreenState extends State<BodyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate animation values
+    final panelOffset = (1 - widget.panelVisibility) * 100; // Slide up from bottom
+    final panelOpacity = widget.panelVisibility.clamp(0.0, 1.0);
+    
     return Column(
       children: [
         // Account for SafeArea + nav bar overlay
         SizedBox(height: MediaQuery.of(context).padding.top + 70),
 
-        // Hero XP display
-        _buildHeroXP(),
+        // Hero XP display - fade with visibility
+        AnimatedOpacity(
+          duration: Duration.zero,
+          opacity: panelOpacity,
+          child: _buildHeroXP(),
+        ),
 
         const Spacer(),
 
-        // Bottom panel with protocols
-        _buildBottomPanel(),
+        // Bottom panel with protocols - animated slide + opacity
+        Transform.translate(
+          offset: Offset(0, panelOffset),
+          child: AnimatedOpacity(
+            duration: Duration.zero,
+            opacity: panelOpacity,
+            child: _buildBottomPanel(),
+          ),
+        ),
       ],
     );
   }

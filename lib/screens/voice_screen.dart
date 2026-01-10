@@ -10,7 +10,9 @@ import '../widgets/voice/voice_waveform_animated.dart';
 /// Implements the "Hero Card" two-tone design
 /// Top 75% is a large gradient card containing the text
 class VoiceScreen extends StatefulWidget {
-  const VoiceScreen({super.key});
+  final double panelVisibility;
+  
+  const VoiceScreen({super.key, this.panelVisibility = 1.0});
 
   @override
   State<VoiceScreen> createState() => _VoiceScreenState();
@@ -58,65 +60,77 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate animation values - card slides up as visibility increases
+    final cardOffset = (1 - widget.panelVisibility) * 50; // Subtle slide
+    final cardOpacity = widget.panelVisibility.clamp(0.0, 1.0);
+    
     // "Hero Card" extending from TOP EDGE of screen
-    // Uses Stack to position card at y=0, extending down 80%
     return Stack(
       children: [
-        // The dark hero card - extends from top edge
+        // The dark hero card - extends from top edge down to 82%
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          bottom: MediaQuery.of(context).size.height * 0.18, // Leave 18% at bottom
-          child: Container(
-            decoration: BoxDecoration(
-              // Use theme gradient colors
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                   ThemeConstants.deepNavy,     // Dark at top
-                   ThemeConstants.darkTeal,     // Mid teal
-                   ThemeConstants.steelBlue,    // Steel blue
-                   ThemeConstants.calmSilver,   // Silver at bottom edge
-                ],
-                stops: [0.0, 0.4, 0.7, 1.0],
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(48),
-                bottomRight: Radius.circular(48),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+          bottom: MediaQuery.of(context).size.height * 0.18,
+          child: Transform.translate(
+            offset: Offset(0, cardOffset),
+            child: Opacity(
+              opacity: cardOpacity,
+              child: Container(
+                decoration: BoxDecoration(
+                  // Use theme gradient colors
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                       ThemeConstants.deepNavy,     // Dark at top
+                       ThemeConstants.darkTeal,     // Mid teal
+                       ThemeConstants.steelBlue,    // Steel blue
+                       ThemeConstants.calmSilver,   // Silver at bottom edge
+                    ],
+                    stops: [0.0, 0.4, 0.7, 1.0],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(48),
+                    bottomRight: Radius.circular(48),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
         
-        // Content positioned on the card
-        SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // Space for nav bar overlay
-              const SizedBox(height: 70),
-              
-              const Spacer(flex: 2),
-              
-              // The main content area - CENTERED
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: _buildContent(),
+        // Content positioned on the card - also animated
+        Opacity(
+          opacity: cardOpacity,
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Space for nav bar overlay
+                const SizedBox(height: 70),
+                
+                const Spacer(flex: 2),
+                
+                // The main content area - CENTERED
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: _buildContent(),
+                  ),
                 ),
-              ),
-              
-              const Spacer(flex: 3),
-            ],
+                
+                const Spacer(flex: 3),
+              ],
+            ),
           ),
         ),
       ],

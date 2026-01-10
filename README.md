@@ -155,8 +155,8 @@ onDarkPurple: #1A0524  // Depth
 
 ## 🧾 Attribution
 
-- Body icon - source pending for `assets/icons/body_icon.png`
-- Yin Yang icon - source pending for `assets/icons/yin_yang_icon.png`
+- Body icon - source pending for `assets/icons/body_gym_icon.png`
+- Mind icon - source pending for `assets/icons/mind_meditate_icon.png`
 
 ---
 

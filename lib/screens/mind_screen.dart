@@ -12,7 +12,9 @@ import '../widgets/list/expandable_list_item.dart';
 /// Mind Screen - Mental/cognitive pillar
 /// Meditation, mantras, mindset tracking
 class MindScreen extends StatefulWidget {
-  const MindScreen({super.key});
+  final double panelVisibility;
+  
+  const MindScreen({super.key, this.panelVisibility = 1.0});
 
   @override
   State<MindScreen> createState() => _MindScreenState();
@@ -88,18 +90,33 @@ class _MindScreenState extends State<MindScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate animation values
+    final panelOffset = (1 - widget.panelVisibility) * 100; // Slide up from bottom
+    final panelOpacity = widget.panelVisibility.clamp(0.0, 1.0);
+    
     return Column(
       children: [
         // Account for SafeArea + nav bar overlay
         SizedBox(height: MediaQuery.of(context).padding.top + 70),
 
-        // Daily mantra
-        _buildMantraSection(),
+        // Daily mantra - fade with visibility
+        AnimatedOpacity(
+          duration: Duration.zero,
+          opacity: panelOpacity,
+          child: _buildMantraSection(),
+        ),
 
         const Spacer(),
 
-        // Bottom panel with protocols
-        _buildBottomPanel(),
+        // Bottom panel with protocols - animated slide + opacity
+        Transform.translate(
+          offset: Offset(0, panelOffset),
+          child: AnimatedOpacity(
+            duration: Duration.zero,
+            opacity: panelOpacity,
+            child: _buildBottomPanel(),
+          ),
+        ),
       ],
     );
   }

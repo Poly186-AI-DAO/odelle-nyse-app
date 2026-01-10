@@ -157,19 +157,23 @@ class PillarNavBarThin extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Thin icon with subtle styling
-                    _buildPillarIcon(
-                      pillar: pillars[index],
-                      isActive: index == currentIndex,
-                      size: 24,
-                      inactiveAlpha: 0.35,
+                    // Thin icon with animated opacity
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 200),
+                      opacity: index == currentIndex ? 1.0 : 0.5,
+                      child: _buildPillarIcon(
+                        pillar: pillars[index],
+                        isActive: index == currentIndex,
+                        size: 24,
+                        inactiveAlpha: 0.35,
+                      ),
                     ),
 
                     const SizedBox(height: 8),
 
                     // Thin line indicator
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
+                      duration: const Duration(milliseconds: 300),
                       curve: Curves.easeOutCubic,
                       width: index == currentIndex ? 16 : 0,
                       height: 2,

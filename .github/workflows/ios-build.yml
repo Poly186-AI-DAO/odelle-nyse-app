@@ -1,0 +1,227 @@
+name: iOS Build & Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.3"
+          channel: "stable"
+          cache: true
+
+      - name: Create .env file
+        run: echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --no-codesign --release
+
+      - name: Upload iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: build/ios/iphoneos/Runner.app
+          retention-days: 5
+
+  deploy-testflight:
+    name: Deploy to TestFlight
+    needs: build-ios
+    runs-on: macos-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.3"
+          channel: "stable"
+          cache: true
+
+      - name: Create .env file
+        run: echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Setup iOS build environment
+        run: |
+          flutter config --enable-ios
+          flutter precache --ios
+
+      - name: Install Apple Certificate
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+
+      - name: Setup provisioning profile
+        run: |
+          echo "${{ secrets.IOS_PROVISIONING_PROFILE }}" | base64 --decode > ios/Runner.mobileprovision
+
+          # Extract UUID from provisioning profile
+          PROFILE_UUID=$(security cms -D -i ios/Runner.mobileprovision | plutil -extract UUID raw - 2>/dev/null || \
+            security cms -D -i ios/Runner.mobileprovision | grep -A1 "<key>UUID</key>" | grep "<string>" | \
+            sed 's/.*<string>\(.*\)<\/string>.*/\1/' | tr -d '\n\t ')
+
+          if [ -z "$PROFILE_UUID" ] || [ "$PROFILE_UUID" = "null" ]; then
+            echo "Error: Could not extract UUID from provisioning profile"
+            exit 1
+          fi
+          echo "Provisioning profile UUID: $PROFILE_UUID"
+
+          # Copy to correct location with UUID as filename
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp ios/Runner.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
+
+          # Verify the profile was copied
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Update ExportOptions.plist
+        run: |
+          PROFILE_UUID=$(security cms -D -i ios/Runner.mobileprovision | plutil -extract UUID raw - 2>/dev/null || \
+            security cms -D -i ios/Runner.mobileprovision | grep -A1 "<key>UUID</key>" | grep "<string>" | \
+            sed 's/.*<string>\(.*\)<\/string>.*/\1/' | tr -d '\n\t ')
+
+          # Create ExportOptions with manual signing
+          cat > ios/ExportOptions_CI.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>destination</key>
+            <string>export</string>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>teamID</key>
+            <string>R9FF38AP48</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.poly.wingman</key>
+              <string>$PROFILE_UUID</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Build iOS App
+        run: |
+          # Get profile UUID for ExportOptions
+          PROFILE_UUID=$(security cms -D -i ios/Runner.mobileprovision | plutil -extract UUID raw - 2>/dev/null || \
+            security cms -D -i ios/Runner.mobileprovision | grep -A1 "<key>UUID</key>" | grep "<string>" | \
+            sed 's/.*<string>\(.*\)<\/string>.*/\1/' | tr -d '\n\t ')
+          echo "Using profile UUID: $PROFILE_UUID"
+
+          if [ -z "$PROFILE_UUID" ]; then
+            echo "Error: Could not extract UUID"
+            exit 1
+          fi
+
+          # Clean and prepare
+          flutter clean
+          flutter pub get
+
+          # Build iOS without codesign first
+          flutter build ios --release --no-codesign
+
+          # Archive and export with signing
+          cd ios
+          pod install --repo-update
+
+          # Archive WITHOUT signing - let export handle it
+          xcodebuild -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath ../build/ios/archive/Runner.xcarchive \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+          # Export with signing (ExportOptions.plist handles the signing)
+          xcodebuild -exportArchive \
+            -archivePath ../build/ios/archive/Runner.xcarchive \
+            -exportPath ../build/ios/ipa \
+            -exportOptionsPlist ExportOptions_CI.plist
+
+          cd ..
+
+      - name: Setup App Store Connect API Key
+        run: |
+          mkdir -p ~/private_keys
+          KEY_ID="${{ secrets.APPSTORE_API_KEY_ID }}"
+
+          # Handle both raw PEM and base64 encoded keys
+          if echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" | grep -q "BEGIN PRIVATE KEY"; then
+            echo "Key is in raw PEM format"
+            echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${KEY_ID}.p8
+          else
+            echo "Key appears to be base64 encoded, decoding..."
+            echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" | base64 --decode > ~/private_keys/AuthKey_${KEY_ID}.p8
+          fi
+
+          chmod 600 ~/private_keys/AuthKey_${KEY_ID}.p8
+
+          # Verify key format
+          echo "Key file created:"
+          ls -la ~/private_keys/
+          head -1 ~/private_keys/AuthKey_${KEY_ID}.p8
+
+      - name: Upload to TestFlight
+        run: |
+          KEY_ID="${{ secrets.APPSTORE_API_KEY_ID }}"
+          ISSUER_ID="${{ secrets.APPSTORE_ISSUER_ID }}"
+
+          echo "Testing authentication..."
+          if xcrun altool --list-apps \
+            --apiKey $KEY_ID \
+            --apiIssuer $ISSUER_ID \
+            --verbose; then
+            echo "Authentication successful!"
+            
+            # Find the IPA file
+            IPA_FILE=$(find build/ios/ipa -name "*.ipa" | head -1)
+            if [ -z "$IPA_FILE" ]; then
+              echo "Error: IPA file not found!"
+              ls -la build/ios/ipa/
+              exit 1
+            fi
+            
+            echo "Uploading $IPA_FILE to TestFlight..."
+            xcrun altool --upload-app \
+              --file "$IPA_FILE" \
+              --type ios \
+              --apiKey $KEY_ID \
+              --apiIssuer $ISSUER_ID \
+              --verbose
+          else
+            echo "Authentication failed!"
+            exit 1
+          fi

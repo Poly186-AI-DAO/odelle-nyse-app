@@ -30,7 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
   static const String _tag = 'HomeScreen';
 
   late PageController _pageController;
-  int _currentPage = 1; // Start on Voice (center)
+  int _currentPage = 1; // Current pillar index (0, 1, 2)
+  static const int _initialPageOffset = 3000; // Large multiple of 3
 
   // Voice control
   late AzureSpeechService _speechService;
@@ -43,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Pillar definitions
   static const List<PillarItem> _pillars = [
     PillarItem(
-      assetIcon: 'assets/icons/body_icon.png',
+      assetIcon: 'assets/icons/body_gym_icon.png',
       label: 'Body',
     ),
     PillarItem(
@@ -52,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
       label: 'Voice',
     ),
     PillarItem(
-      assetIcon: 'assets/icons/yin_yang_icon.png',
+      assetIcon: 'assets/icons/mind_meditate_icon.png',
       label: 'Mind',
     ),
   ];
@@ -64,11 +65,26 @@ class _HomeScreenState extends State<HomeScreen> {
       _voiceState == VoiceLiveState.processing;
   bool get _isRecording => _voiceState == VoiceLiveState.recording;
 
+  // Scroll progress for animations
+  double _scrollProgress = 1.0; 
+
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _currentPage);
+    // Start at a large page index that is "Voice" (index 1 % 3)
+    final initialPage = _initialPageOffset + 1;
+    _pageController = PageController(initialPage: initialPage);
+    _scrollProgress = initialPage.toDouble();
+    _pageController.addListener(_onScroll);
     _checkPermissionStatus();
+  }
+
+  void _onScroll() {
+    if (_pageController.hasClients && _pageController.page != null) {
+      setState(() {
+        _scrollProgress = _pageController.page!;
+      });
+    }
   }
 
   @override
@@ -125,6 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _pageController.removeListener(_onScroll);
     _pageController.dispose();
     _stateSubscription?.cancel();
     _stopMicStream();
@@ -132,15 +149,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onPageChanged(int page) {
-    setState(() => _currentPage = page);
+    setState(() => _currentPage = page % 3);
     HapticFeedback.selectionClick();
   }
 
   void _onPillarTapped(int index) {
+    if (!_pageController.hasClients) return;
+    
+    // Find nearest page to animate to
+    final int currentRawPage = _pageController.page?.round() ?? _initialPageOffset + 1;
+    final int targetRawPage = currentRawPage + (index - (currentRawPage % 3));
+    
     _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      targetRawPage,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -236,17 +259,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Get gradient based on current page
+  // ALL pages use dark gradient to avoid visible edge during transitions
+  // Each screen's panels/cards create their own contrast
   LinearGradient _getGradientForPage(int page) {
-    switch (page) {
-      case 0: // Body
-        return ThemeConstants.fintechDarkGradient;
-      case 1: // Voice - Light Silver for contrast with Dark Card
-        return ThemeConstants.voiceBackgroundGradient;
-      case 2: // Mind
-        return ThemeConstants.fintechDarkGradient;
-      default:
-        return ThemeConstants.voiceBackgroundGradient;
-    }
+    return ThemeConstants.fintechDarkGradient;
   }
 
   @override
@@ -256,23 +272,39 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true,
       extendBodyBehindAppBar: true,
       body: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           gradient: _getGradientForPage(_currentPage),
         ),
         // Use Stack so VoiceScreen can extend behind nav bar
         child: Stack(
           children: [
-            // Page content - goes BEHIND nav bar
-            PageView(
+            // Page content - infinite looping carousel
+            PageView.builder(
               controller: _pageController,
               onPageChanged: _onPageChanged,
-              children: const [
-                BodyScreen(),
-                VoiceScreen(),
-                MindScreen(),
-              ],
+              physics: const BouncingScrollPhysics(),
+              itemCount: null, // Infinite
+              itemBuilder: (context, index) {
+                // Modulo to cycle through 3 screens
+                final pageIndex = index % 3;
+                
+                // Calculate visibility based on distance from current scroll position
+                final distance = (index - _scrollProgress).abs();
+                final visibility = (1.0 - distance).clamp(0.0, 1.0);
+                
+                switch (pageIndex) {
+                  case 0:
+                    return BodyScreen(panelVisibility: visibility);
+                  case 1:
+                    return VoiceScreen(panelVisibility: visibility);
+                  case 2:
+                    return MindScreen(panelVisibility: visibility);
+                  default:
+                    return const SizedBox();
+                }
+              },
             ),
             
             // Nav bar - positioned at TOP of screen
