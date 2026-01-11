@@ -25,10 +25,11 @@ class AudioOutputService {
   }
 
   /// Configure the iOS audio session for voice chat with speaker output
-  /// This MUST be called before microphone activation to ensure audio
-  /// routes to speaker instead of earpiece
-  Future<void> _configureAudioSession() async {
-    if (_isAudioSessionConfigured) return;
+  /// This MUST be called before microphone activation (and potentially after)
+  /// to ensure audio routes to speaker instead of earpiece.
+  /// Set [force] to true to re-apply even if already configured.
+  Future<void> configureAudioSession({bool force = false}) async {
+    if (_isAudioSessionConfigured && !force) return;
 
     try {
       final session = await AudioSession.instance;
@@ -76,7 +77,7 @@ class AudioOutputService {
       // Configure audio session FIRST (iOS requires this before mic activation)
       // This ensures audio routes to speaker instead of earpiece
       if (Platform.isIOS || Platform.isMacOS) {
-        await _configureAudioSession();
+        await configureAudioSession();
       }
 
       // Set log level (0 = none, 1 = error, 2 = standard, 3 = verbose)

@@ -389,6 +389,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         audioFormat: AudioFormat.ENCODING_PCM_16BIT,
       );
 
+      // FIX: MicStream resets AVAudioSession to default (earpiece) on iOS.
+      // We must force re-configure it to use the Speaker explicitly.
+      if (Platform.isIOS) {
+        Logger.info('Forcing audio session to Speaker (iOS fix)', tag: _tag);
+        await AudioOutputService.instance.configureAudioSession(force: true);
+      }
+
       final voiceVM = ref.read(voiceViewModelProvider.notifier);
       voiceVM.startRecording();
 
