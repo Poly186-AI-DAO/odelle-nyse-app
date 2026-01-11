@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -127,18 +128,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     };
 
-    // Log when connected
+    // Log when connected and start recording automatically
     _speechService.onConnected = () {
       Logger.info('Voice service connected', tag: _tag);
+      // Start recording now that we're actually connected
+      // Use forceStart to bypass _isConnected check since state hasn't propagated yet
+      _startRecording(forceStart: true);
     };
   }
 
   Future<void> _checkPermissionStatus() async {
+    // permission_handler not available on desktop - assume granted
+    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+      setState(() => _hasPermission = true);
+      return;
+    }
     final status = await Permission.microphone.status;
     setState(() => _hasPermission = status.isGranted);
   }
 
   Future<bool> _requestMicrophonePermission() async {
+    // permission_handler not available on desktop - assume granted
+    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+      setState(() => _hasPermission = true);
+      return true;
+    }
     final status = await Permission.microphone.status;
     if (status.isGranted) {
       setState(() => _hasPermission = true);
@@ -324,8 +338,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Future<void> _startRecording() async {
-    if (!_isConnected || _isRecording) return;
+  Future<void> _startRecording({bool forceStart = false}) async {
+    // forceStart bypasses _isConnected check when called from onConnected callback
+    if (!forceStart && (!_isConnected || _isRecording)) return;
+    if (_isRecording) return; // Always prevent double-recording
 
     try {
       _recordingStartTime = DateTime.now();
@@ -334,7 +350,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       Logger.info('Initializing microphone stream (24kHz, mono, PCM16)', tag: _tag);
       
-      _micStream = MicStream.microphone(
+      _micStream = await MicStream.microphone(
         sampleRate: 24000,
         channelConfig: ChannelConfig.CHANNEL_IN_MONO,
         audioFormat: AudioFormat.ENCODING_PCM_16BIT,
