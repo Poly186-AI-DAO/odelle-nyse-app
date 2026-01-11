@@ -589,14 +589,14 @@ class AzureSpeechService {
   bool get isRecording => _isRecording;
 
   /// Dispose resources
-  void dispose() {
+  Future<void> dispose() async {
     // Disconnect first (while streams are still open)
-    disconnect();
+    await disconnect();
     // Then close streams
-    _stateController.close();
-    _transcriptionController.close();
-    _partialController.close();
-    _aiResponseController.close();
+    await _stateController.close();
+    await _transcriptionController.close();
+    await _partialController.close();
+    await _aiResponseController.close();
     _isInitialized = false;
   }
 }

@@ -4,6 +4,7 @@
 /// Combined with "Nyse" → "Harmonious Song of Wisdom"
 ///
 /// The AI companion for the Odelle Nyse self-actualization protocol.
+library;
 
 class OdelleSystemPrompt {
   /// Conversation mode prompt - full CBT-informed companion

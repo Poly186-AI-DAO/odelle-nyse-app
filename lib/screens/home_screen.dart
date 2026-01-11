@@ -383,7 +383,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         tag: _tag,
       );
 
-      _micStream = await MicStream.microphone(
+      _micStream = MicStream.microphone(
         sampleRate: targetSampleRate,
         channelConfig: ChannelConfig.CHANNEL_IN_MONO,
         audioFormat: AudioFormat.ENCODING_PCM_16BIT,

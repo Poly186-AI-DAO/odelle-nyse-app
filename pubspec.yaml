@@ -1,7 +1,7 @@
 name: odelle_nyse
 description: Odelle Nyse (ON) - Self-Actualization Operating System
 publish_to: 'none'
-version: 1.5.0+9
+version: 1.5.1+10
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -33,6 +33,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   rive: ^0.13.4
   mic_stream: ^0.7.2
+  audio_session: ^0.2.2
   permission_handler: ^11.3.1
   path_provider: ^2.1.2
   sqflite: ^2.3.0
