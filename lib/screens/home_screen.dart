@@ -10,6 +10,7 @@ import '../providers/service_providers.dart';
 import '../providers/viewmodels/voice_viewmodel.dart';
 import '../services/azure_speech_service.dart';
 import '../services/audio_output_service.dart';
+import '../utils/audio_resampler.dart';
 import '../utils/logger.dart';
 import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
@@ -143,6 +144,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Play Azure's audio responses through the speaker
     _speechService.onAudioResponse = (audioBytes) {
       AudioOutputService.instance.feedAudio(audioBytes);
+    };
+    
+    // Handle voice interruptions: when user starts speaking during AI response
+    // Per Azure Realtime API docs: use speech_started to interrupt playback
+    _speechService.onSpeechStarted = () {
+      Logger.info('User interrupted - stopping audio playback', tag: _tag);
+      // Stop any playing audio immediately
+      AudioOutputService.instance.stop();
+      // Clear AI response text in the ViewModel
+      ref.read(voiceViewModelProvider.notifier).clearAiResponse();
     };
   }
 
@@ -358,10 +369,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       int chunkCount = 0;
       int totalBytes = 0;
 
-      Logger.info('Initializing microphone stream (24kHz, mono, PCM16)', tag: _tag);
+      // Platform-specific mic configuration:
+      // iOS: Supports 24kHz mono natively - send directly to Azure
+      // macOS: Only supports 48kHz stereo - must convert to 24kHz mono
+      final bool isMacOS = Platform.isMacOS;
+      final int targetSampleRate = isMacOS ? 48000 : 24000;
+      
+      Logger.info(
+        'Initializing microphone stream (${targetSampleRate}Hz, ${isMacOS ? "macOS stereo→mono" : "iOS native mono"})',
+        tag: _tag,
+      );
       
       _micStream = await MicStream.microphone(
-        sampleRate: 24000,
+        sampleRate: targetSampleRate,
         channelConfig: ChannelConfig.CHANNEL_IN_MONO,
         audioFormat: AudioFormat.ENCODING_PCM_16BIT,
       );
@@ -379,7 +399,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Logger.debug('Mic: $chunkCount chunks, $totalBytes bytes total', tag: _tag);
           }
           
-          voiceVM.sendAudioChunk(audioBytes);
+          // Platform-specific audio conversion
+          Uint8List audioToSend;
+          if (isMacOS) {
+            // macOS: Convert 48kHz stereo to 24kHz mono
+            audioToSend = AudioResampler.convertMacOSToAzure(audioBytes);
+          } else {
+            // iOS: Already 24kHz mono, send directly
+            audioToSend = audioBytes;
+          }
+          
+          voiceVM.sendAudioChunk(audioToSend);
         },
         onError: (error) {
           Logger.error('Mic stream error: $error', tag: _tag);

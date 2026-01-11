@@ -77,6 +77,30 @@ class AudioOutputService {
     // audio as it arrives from Azure
   }
   
+  /// Stop playback immediately (for interruption handling)
+  /// Called when user starts speaking during AI audio playback
+  /// flutter_pcm_sound v3+ has no clear() method - use release/setup pattern
+  Future<void> stop() async {
+    if (!_isInitialized || !_isPlaying) return;
+    
+    try {
+      // Release and re-setup to immediately stop and clear buffer
+      await FlutterPcmSound.release();
+      _isPlaying = false;
+      
+      // Re-initialize for next audio
+      await FlutterPcmSound.setup(
+        sampleRate: sampleRate,
+        channelCount: numChannels,
+      );
+      FlutterPcmSound.setFeedCallback(_onFeedCallback);
+      
+      Logger.info('Audio playback stopped (interruption)', tag: _tag);
+    } catch (e) {
+      Logger.error('Failed to stop audio: $e', tag: _tag);
+    }
+  }
+  
   /// Stop and release the audio player
   Future<void> dispose() async {
     try {

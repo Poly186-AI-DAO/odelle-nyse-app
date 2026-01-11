@@ -5,6 +5,7 @@ import 'dart:ui' show VoidCallback;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/azure_ai_config.dart';
+import '../config/odelle_system_prompt.dart';
 import '../utils/logger.dart';
 
 /// Connection timeout duration
@@ -56,6 +57,10 @@ class AzureSpeechService {
   final _partialController = StreamController<String>.broadcast();
   Stream<String> get transcriptionStream => _transcriptionController.stream;
   Stream<String> get partialStream => _partialController.stream;
+
+  // AI response text stream (for subtitles/display)
+  final _aiResponseController = StreamController<String>.broadcast();
+  Stream<String> get aiResponseStream => _aiResponseController.stream;
 
   // Callbacks (legacy - prefer streams for multi-listener)
   Function(String transcription)? onTranscription;
@@ -237,9 +242,8 @@ class AzureSpeechService {
       'session': {
         'modalities': modalities,
         'voice': 'alloy',
-        'instructions': _mode == VoiceLiveMode.conversation
-            ? 'You are a helpful voice assistant. Respond naturally and concisely.'
-            : 'You are a transcription assistant. Listen carefully and transcribe accurately.',
+        'instructions': OdelleSystemPrompt.getPrompt(
+            _mode == VoiceLiveMode.conversation),
         'input_audio_format': 'pcm16',
         'output_audio_format': 'pcm16',
         'input_audio_transcription': {
@@ -316,6 +320,9 @@ class AzureSpeechService {
           final textDelta = data['delta'] as String?;
           if (textDelta != null) {
             onTextResponse?.call(textDelta);
+            if (!_aiResponseController.isClosed) {
+              _aiResponseController.add(textDelta);
+            }
           }
           break;
 
@@ -473,6 +480,7 @@ class AzureSpeechService {
     _stateController.close();
     _transcriptionController.close();
     _partialController.close();
+    _aiResponseController.close();
     _isInitialized = false;
   }
 }

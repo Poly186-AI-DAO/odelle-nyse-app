@@ -13,6 +13,7 @@ class VoiceState {
   final bool isModeLocked;
   final String currentTranscription;
   final String partialTranscription;
+  final String aiResponseText;
   final bool isAISpeaking;
   final String? error;
 
@@ -22,6 +23,7 @@ class VoiceState {
     this.isModeLocked = false,
     this.currentTranscription = '',
     this.partialTranscription = '',
+    this.aiResponseText = '',
     this.isAISpeaking = false,
     this.error,
   });
@@ -41,6 +43,7 @@ class VoiceState {
     bool? isModeLocked,
     String? currentTranscription,
     String? partialTranscription,
+    String? aiResponseText,
     bool? isAISpeaking,
     String? error,
   }) {
@@ -50,6 +53,7 @@ class VoiceState {
       isModeLocked: isModeLocked ?? this.isModeLocked,
       currentTranscription: currentTranscription ?? this.currentTranscription,
       partialTranscription: partialTranscription ?? this.partialTranscription,
+      aiResponseText: aiResponseText ?? this.aiResponseText,
       isAISpeaking: isAISpeaking ?? this.isAISpeaking,
       error: error,
     );
@@ -64,6 +68,7 @@ class VoiceViewModel extends Notifier<VoiceState> {
   StreamSubscription<VoiceLiveState>? _stateSubscription;
   StreamSubscription<String>? _transcriptionSubscription;
   StreamSubscription<String>? _partialSubscription;
+  StreamSubscription<String>? _aiResponseSubscription;
 
   AzureSpeechService get _service => ref.read(voiceServiceProvider);
 
@@ -77,6 +82,7 @@ class VoiceViewModel extends Notifier<VoiceState> {
       _stateSubscription?.cancel();
       _transcriptionSubscription?.cancel();
       _partialSubscription?.cancel();
+      _aiResponseSubscription?.cancel();
     });
 
     return const VoiceState();
@@ -90,9 +96,12 @@ class VoiceViewModel extends Notifier<VoiceState> {
 
     _transcriptionSubscription?.cancel();
     _transcriptionSubscription = _service.transcriptionStream.listen((text) {
+      // Clear AI response when user's turn finishes (new AI response incoming)
       state = state.copyWith(
         currentTranscription: text,
         partialTranscription: '',
+        aiResponseText: '', // Clear for new AI response
+        isAISpeaking: false,
       );
     });
 
@@ -100,6 +109,15 @@ class VoiceViewModel extends Notifier<VoiceState> {
     _partialSubscription = _service.partialStream.listen((text) {
       state = state.copyWith(
         partialTranscription: state.partialTranscription + text,
+      );
+    });
+
+    // Subscribe to AI response text stream (for real-time subtitles)
+    _aiResponseSubscription?.cancel();
+    _aiResponseSubscription = _service.aiResponseStream.listen((textDelta) {
+      state = state.copyWith(
+        aiResponseText: state.aiResponseText + textDelta,
+        isAISpeaking: true,
       );
     });
   }
@@ -114,6 +132,8 @@ class VoiceViewModel extends Notifier<VoiceState> {
       error: null,
       currentTranscription: '',
       partialTranscription: '',
+      aiResponseText: '',
+      isAISpeaking: false,
     );
 
     final connected = await _service.connect(mode: targetMode);
@@ -131,6 +151,8 @@ class VoiceViewModel extends Notifier<VoiceState> {
       isModeLocked: false,
       currentTranscription: '',
       partialTranscription: '',
+      aiResponseText: '',
+      isAISpeaking: false,
     );
   }
 
@@ -196,6 +218,14 @@ class VoiceViewModel extends Notifier<VoiceState> {
     state = state.copyWith(
       currentTranscription: '',
       partialTranscription: '',
+    );
+  }
+
+  /// Clear AI response (for interruption handling)
+  void clearAiResponse() {
+    state = state.copyWith(
+      aiResponseText: '',
+      isAISpeaking: false,
     );
   }
 
