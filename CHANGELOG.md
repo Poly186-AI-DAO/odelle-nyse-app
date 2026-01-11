@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-01-11
+
+### Added
+- **Bi-directional Voice Conversation**: Full voice conversation with Azure OpenAI Realtime API
+- **AudioOutputService**: Singleton service for playing PCM16 audio responses from AI
+- **macOS Microphone Support**: Added entitlements and platform checks for desktop microphone access
+- **Auto-recording on Connect**: Voice recording starts automatically when connection is established
+
+### Fixed
+- macOS permission_handler MissingPluginException - bypassed with Platform checks
+- Race condition in _startRecording - added forceStart parameter for callback timing
+- flutter_pcm_sound API compatibility for macOS native audio playback
+
 ## [1.1.0] - 2026-01-10
 
 ### Added

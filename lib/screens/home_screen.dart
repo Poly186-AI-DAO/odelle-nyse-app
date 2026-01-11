@@ -9,6 +9,7 @@ import '../models/journal_entry.dart';
 import '../providers/service_providers.dart';
 import '../providers/viewmodels/voice_viewmodel.dart';
 import '../services/azure_speech_service.dart';
+import '../services/audio_output_service.dart';
 import '../utils/logger.dart';
 import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
@@ -76,6 +77,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _scrollProgress = initialPage.toDouble();
     _pageController.addListener(_onScroll);
     _checkPermissionStatus();
+    
+    // Initialize audio output for playing Azure responses
+    AudioOutputService.instance.initialize();
   }
 
   void _onScroll() {
@@ -135,6 +139,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Use forceStart to bypass _isConnected check since state hasn't propagated yet
       _startRecording(forceStart: true);
     };
+    
+    // Play Azure's audio responses through the speaker
+    _speechService.onAudioResponse = (audioBytes) {
+      AudioOutputService.instance.feedAudio(audioBytes);
+    };
   }
 
   Future<void> _checkPermissionStatus() async {
@@ -172,6 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _pageController.removeListener(_onScroll);
     _pageController.dispose();
     _stopMicStream();
+    AudioOutputService.instance.dispose();
     super.dispose();
   }
 
