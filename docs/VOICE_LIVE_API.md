@@ -167,9 +167,13 @@ Client                                   Server
 |-------|-------------|
 | `session.created` | Connection established, session ID provided |
 | `session.updated` | Session configuration acknowledged |
-| `input_audio_buffer.speech_started` | VAD detected user speech |
-| `input_audio_buffer.speech_stopped` | VAD detected end of speech |
-| `conversation.item.audio_transcription.completed` | User speech transcribed |
+| `input_audio_buffer.speech_started` | VAD detected user speech (includes `audio_start_ms`) |
+| `input_audio_buffer.speech_stopped` | VAD detected end of speech (includes `audio_end_ms`) |
+| `input_audio_buffer.committed` | Audio buffer committed (by client or server VAD) |
+| `input_audio_buffer.cleared` | Audio buffer cleared (confirmation) |
+| `conversation.item.created` | New conversation item created (user message or AI response) |
+| `conversation.item.input_audio_transcription.completed` | User speech transcribed |
+| `response.created` | AI response generation started |
 | `response.audio.delta` | Streaming audio response chunk |
 | `response.audio_transcript.delta` | Streaming text of audio response |
 | `response.function_call_arguments.delta` | Streaming function call args |
@@ -183,7 +187,7 @@ Client                                   Server
 | `session.update` | Configure session (first thing after connect) |
 | `input_audio_buffer.append` | Send audio chunk (base64 encoded) |
 | `input_audio_buffer.commit` | Manually commit audio (for `turn_detection: none`) |
-| `input_audio_buffer.clear` | Clear audio buffer |
+| `input_audio_buffer.clear` | Clear audio buffer (reset for next turn) |
 | `response.create` | Manually trigger response generation |
 | `response.cancel` | Cancel in-progress response |
 | `conversation.item.create` | Add item to conversation (text, tool response) |
@@ -313,10 +317,80 @@ AZURE_GPT_REALTIME_DEPLOYMENT_URL=https://<resource>.cognitiveservices.azure.com
 
 ---
 
+## Current Implementation Status
+
+### ✅ Completed
+- **WebSocket Connection** - Connects to Azure OpenAI Realtime API
+- **Session Configuration** - Configures session for conversation or transcription mode
+- **Audio Streaming** - Streams PCM16 audio to Azure (24kHz mono)
+- **Server VAD** - Voice Activity Detection for natural turn-taking
+- **Audio Playback** - Plays AI audio responses through device speaker
+- **Interruption Handling** - Stops AI audio when user starts speaking
+- **Multi-Turn State Management** - Maintains recording state between turns
+- **Diagnostic Logging** - Tracks audio chunks, VAD events, state transitions
+
+### 🔧 Recently Fixed (Jan 2026)
+- Added `input_audio_buffer.cleared` event handler
+- Added `input_audio_buffer.committed` event handler  
+- Added `conversation.item.created` event handler
+- State drift detection after `response.done`
+- Auto-restore recording state for next turn
+- Audio chunk tracking for debugging
+
+### ⚠️ Known Issues
+- Multi-turn conversation may require testing after VAD fixes
+- Buffer clear timing might need adjustment based on testing
+
+---
+
+## Multi-Turn Conversation Flow
+
+```
+TURN 1:
+  ┌──────────┐                           ┌──────────┐
+  │  Client  │                           │  Azure   │
+  └────┬─────┘                           └────┬─────┘
+       │                                      │
+       │─── input_audio_buffer.append ───────→│
+       │─── input_audio_buffer.append ───────→│
+       │                                      │
+       │←── input_audio_buffer.speech_started │
+       │                                      │
+       │←── input_audio_buffer.speech_stopped │
+       │←── input_audio_buffer.committed ─────│
+       │←── conversation.item.created ────────│
+       │                                      │
+       │←── response.created ─────────────────│
+       │←── response.audio.delta ─────────────│
+       │←── response.audio_transcript.delta ──│
+       │←── response.done ────────────────────│
+       │                                      │
+       │─── input_audio_buffer.clear ────────→│ (reset for next turn)
+       │←── input_audio_buffer.cleared ───────│
+       │                                      │
+
+TURN 2+:
+       │─── input_audio_buffer.append ───────→│ (new audio)
+       │←── input_audio_buffer.speech_started │ (VAD detects new speech)
+       │    ... (same flow as Turn 1) ...     │
+```
+
+---
+
 ## Future Enhancements
 
-1. **Mode Switching** - Allow user to toggle between Live, Transcription-Only, and Agent modes
-2. **Tool Registration** - Dynamic tool registration for different screens
-3. **Audio Playback** - Play AI audio responses through device speaker
-4. **Interruption Handling** - Handle user interrupts during AI speech
-5. **Offline Queue** - Queue recordings when offline, sync when connected
+### Phase 1: Conversation Polish
+1. ~~**Multi-Turn Conversation**~~ ✅ - Fixed VAD state management
+2. **Waveform Standardization** - Unify `VoiceWaveformAnimated` and `WaveformVisualizer` components
+3. **Typing Animation** - Use `ConversationText` widget for AI response display
+
+### Phase 2: Agentic Voice
+4. **Tool Registration** - Dynamic tool registration for different screens
+5. **Function Calling** - Enable AI to call functions during conversation
+6. **Tool Response Handling** - Send tool results back to continue response
+
+### Phase 3: Advanced Features
+7. **Mode Switching UI** - Allow user to toggle between Live, Transcription-Only, and Agent modes
+8. **Semantic VAD** - Use Azure's `semantic_vad` for smarter turn detection
+9. **Offline Queue** - Queue recordings when offline, sync when connected
+10. **Conversation History** - Persist and display conversation threads

@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "title": "Morning Clarity",
+    "short_description": "Start your day with a clear mind.",
+    "duration_seconds": 600,
+    "duration_display": "10 min",
+    "category_id": 1,
+    "instructor_id": 1,
+    "program_id": 1,
+    "lesson_number": 1,
+    "difficulty": "beginner",
+    "is_guided": 1,
+    "is_free": 1,
+    "tags": ["morning", "calm"],
+    "published_at": "2025-12-01T00:00:00Z"
+  }
+]

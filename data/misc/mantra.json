@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "text": "I am updating my source code. Every day I become a better version.",
+    "is_active": 1,
+    "category": "morning",
+    "created_at": "2026-01-01T00:00:00Z"
+  }
+]

@@ -78,7 +78,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _scrollProgress = initialPage.toDouble();
     _pageController.addListener(_onScroll);
     _checkPermissionStatus();
-    
+
     // Initialize audio output for playing Azure responses
     AudioOutputService.instance.initialize();
   }
@@ -116,12 +116,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Handle connection errors - clean up state to prevent getting stuck
     _speechService.onError = (error) {
       Logger.error('Voice service error: $error', tag: _tag);
-      
+
       // Clean up state on error to prevent stuck state
       _stopMicStream();
       _activeSessionScreen = null;
       _recordingStartTime = null;
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -140,12 +140,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Use forceStart to bypass _isConnected check since state hasn't propagated yet
       _startRecording(forceStart: true);
     };
-    
+
     // Play Azure's audio responses through the speaker
     _speechService.onAudioResponse = (audioBytes) {
       AudioOutputService.instance.feedAudio(audioBytes);
     };
-    
+
     // Handle voice interruptions: when user starts speaking during AI response
     // Per Azure Realtime API docs: use speech_started to interrupt playback
     _speechService.onSpeechStarted = () {
@@ -218,7 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Track recording start time to avoid buffer-too-small errors
   DateTime? _recordingStartTime;
-  
+
   // Track which screen started the active session (for screen-lock behavior)
   // 0 = Body, 1 = Voice, 2 = Mind, null = no active session
   int? _activeSessionScreen;
@@ -251,18 +251,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await _toggleTranscriptionRecording();
     }
   }
-  
+
   /// Check if there's an active voice session (connected or recording)
   bool get _hasActiveSession => _isConnected || _isRecording;
-  
+
   /// Navigate to a specific screen by index
   void _navigateToScreen(int targetIndex) {
     if (!_pageController.hasClients) return;
-    
+
     final int currentRawPage =
         _pageController.page?.round() ?? _initialPageOffset + 1;
-    final int targetRawPage = currentRawPage + (targetIndex - (currentRawPage % 3));
-    
+    final int targetRawPage =
+        currentRawPage + (targetIndex - (currentRawPage % 3));
+
     HapticFeedback.mediumImpact();
     _pageController.animateToPage(
       targetRawPage,
@@ -293,12 +294,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await _disconnect(); // Full stop for transcription mode
     } else if (_isConnected) {
       // Shouldn't happen in transcription mode, but handle it
-      Logger.info('Transcription: Already connected, starting recording', tag: _tag);
+      Logger.info('Transcription: Already connected, starting recording',
+          tag: _tag);
       await _startRecording();
     } else {
       // Not connected, connect and start recording
-      Logger.info('Transcription: Connecting and starting recording', tag: _tag);
-      
+      Logger.info('Transcription: Connecting and starting recording',
+          tag: _tag);
+
       if (!_hasPermission) {
         Logger.info('Requesting microphone permission', tag: _tag);
         final granted = await _requestMicrophonePermission();
@@ -308,13 +311,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
         Logger.info('Microphone permission granted', tag: _tag);
       }
-      
+
       _activeSessionScreen = _currentPage; // Body or Mind
 
       final connected = await ref
           .read(voiceViewModelProvider.notifier)
           .connect(mode: VoiceLiveMode.transcription);
-      
+
       if (connected) {
         await _startRecording();
       } else {
@@ -339,7 +342,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     await ref.read(voiceViewModelProvider.notifier).connect(mode: _targetMode);
-    
+
     // For Voice screen, start recording immediately after connecting
     if (_currentPage == 1) {
       await _startRecording();
@@ -374,12 +377,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // macOS: Only supports 48kHz stereo - must convert to 24kHz mono
       final bool isMacOS = Platform.isMacOS;
       final int targetSampleRate = isMacOS ? 48000 : 24000;
-      
+
       Logger.info(
         'Initializing microphone stream (${targetSampleRate}Hz, ${isMacOS ? "macOS stereo→mono" : "iOS native mono"})',
         tag: _tag,
       );
-      
+
       _micStream = await MicStream.microphone(
         sampleRate: targetSampleRate,
         channelConfig: ChannelConfig.CHANNEL_IN_MONO,
@@ -393,12 +396,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         (audioBytes) {
           chunkCount++;
           totalBytes += audioBytes.length;
-          
+
           // Log every 10 chunks to verify mic is working
           if (chunkCount % 10 == 0) {
-            Logger.debug('Mic: $chunkCount chunks, $totalBytes bytes total', tag: _tag);
+            Logger.debug('Mic: $chunkCount chunks, $totalBytes bytes total',
+                tag: _tag);
           }
-          
+
           // Platform-specific audio conversion
           Uint8List audioToSend;
           if (isMacOS) {
@@ -408,14 +412,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // iOS: Already 24kHz mono, send directly
             audioToSend = audioBytes;
           }
-          
+
+          // Debug: Log audio level every 50 chunks to verify signal is present
+          if (chunkCount % 50 == 0 && audioToSend.length >= 4) {
+            int maxLevel = 0;
+            for (var i = 0; i < audioToSend.length - 1; i += 2) {
+              final sample = (audioToSend[i + 1] << 8) | audioToSend[i];
+              final level = sample < 32768 ? sample : sample - 65536;
+              if (level.abs() > maxLevel) maxLevel = level.abs();
+            }
+            Logger.debug(
+                'Audio level: $maxLevel / 32768 (${(maxLevel / 32768 * 100).toStringAsFixed(1)}%)',
+                tag: _tag);
+          }
+
+          // Check if muted - skip sending audio but keep stream alive
+          final voiceState = ref.read(voiceViewModelProvider);
+          if (voiceState.isMuted) {
+            // When muted, don't send audio but keep listening to AI
+            return;
+          }
+
           voiceVM.sendAudioChunk(audioToSend);
         },
         onError: (error) {
           Logger.error('Mic stream error: $error', tag: _tag);
         },
         onDone: () {
-          Logger.info('Mic stream completed: $chunkCount chunks, $totalBytes bytes', tag: _tag);
+          Logger.info(
+              'Mic stream completed: $chunkCount chunks, $totalBytes bytes',
+              tag: _tag);
         },
       );
 
@@ -542,12 +568,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // - Otherwise: soundwave for all states (waveform animates when active)
           icon: _hasActiveSession && _activeSessionScreen != _currentPage
               ? Icons.lock_outline // Locked - tap to go back
-              : Icons.graphic_eq,  // Same icon for all screens, waveform animates
+              : Icons
+                  .graphic_eq, // Same icon for all screens, waveform animates
           // isActive: show waveform animation when:
           // - Voice screen: when connected (always listening mode)
           // - Body/Mind: when recording
-          isActive: _currentPage == 1 
-              ? voiceState.isConnected  // Voice: animate when connected
+          isActive: _currentPage == 1
+              ? voiceState.isConnected // Voice: animate when connected
               : voiceState.isRecording, // Body/Mind: animate when recording
           isConnected: voiceState.isConnected,
           isProcessing: voiceState.isConnecting,

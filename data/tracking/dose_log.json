@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "supplement_id": 1,
+    "timestamp": "2026-01-11T08:00:00Z",
+    "dose_mg": 5000.0,
+    "was_taken": 1,
+    "notes": "Straight powder in water."
+  },
+  {
+    "id": 2,
+    "supplement_id": 2,
+    "timestamp": "2026-01-11T08:05:00Z",
+    "dose_mg": 125.0,
+    "was_taken": 1
+  }
+]

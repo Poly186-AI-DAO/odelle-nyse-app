@@ -31,6 +31,7 @@ enum VoiceLiveMode {
 /// Docs: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/realtime-audio
 class AzureSpeechService {
   static const String _tag = 'AzureSpeechService';
+  static const int _audioChunkLogInterval = 10;
 
   // Azure configuration - loaded from .env
   late final String _apiKey;
@@ -43,6 +44,11 @@ class AzureSpeechService {
   // Audio buffer for collecting chunks before commit
   final List<Uint8List> _audioBuffer = [];
   int _totalAudioBytes = 0;
+  int _audioChunkCount = 0;
+  int _audioChunkCountSinceResponse = 0;
+  int _droppedAudioChunkCount = 0;
+  bool _awaitingAudioBufferClear = false;
+  DateTime? _lastResponseDoneAt;
 
   // Connection completer for waiting on session.created
   Completer<bool>? _connectionCompleter;
@@ -242,8 +248,8 @@ class AzureSpeechService {
       'session': {
         'modalities': modalities,
         'voice': 'alloy',
-        'instructions': OdelleSystemPrompt.getPrompt(
-            _mode == VoiceLiveMode.conversation),
+        'instructions':
+            OdelleSystemPrompt.getPrompt(_mode == VoiceLiveMode.conversation),
         'input_audio_format': 'pcm16',
         'output_audio_format': 'pcm16',
         'input_audio_transcription': {
@@ -276,13 +282,60 @@ class AzureSpeechService {
           break;
 
         case 'input_audio_buffer.speech_started':
-          Logger.info('Speech started', tag: _tag);
+          final audioStartMs = data['audio_start_ms'];
+          Logger.info(
+            'VAD: Speech started (item: ${data['item_id']}, audio_start_ms: $audioStartMs)',
+            tag: _tag,
+          );
           onSpeechStarted?.call();
           break;
 
         case 'input_audio_buffer.speech_stopped':
-          Logger.info('Speech stopped', tag: _tag);
+          Logger.info(
+            'VAD: Speech stopped (item: ${data['item_id']}, audio_end_ms: ${data['audio_end_ms']})',
+            tag: _tag,
+          );
           onSpeechStopped?.call();
+          break;
+
+        case 'input_audio_buffer.cleared':
+          _awaitingAudioBufferClear = false;
+          Logger.info('Input audio buffer cleared - ready for next turn',
+              tag: _tag,
+              data: {
+                'state': _state.name,
+                'mode': _mode.name,
+                'chunksSinceResponse': _audioChunkCountSinceResponse,
+              });
+          // In conversation mode, ensure we're still in recording state for next turn
+          if (_mode == VoiceLiveMode.conversation &&
+              _state != VoiceLiveState.recording) {
+            Logger.info('Restoring recording state for next turn', tag: _tag);
+            _setState(VoiceLiveState.recording);
+          }
+          break;
+
+        case 'input_audio_buffer.committed':
+          // Server VAD has committed the audio buffer (created a conversation item)
+          final itemId = data['item_id'] as String?;
+          final previousItemId = data['previous_item_id'] as String?;
+          Logger.info('Audio buffer committed by VAD', tag: _tag, data: {
+            'itemId': itemId,
+            'previousItemId': previousItemId,
+            'state': _state.name,
+          });
+          break;
+
+        case 'conversation.item.created':
+          // A new conversation item was created (user message or AI response)
+          final item = data['item'] as Map<String, dynamic>?;
+          final itemType = item?['type'] as String?;
+          final itemRole = item?['role'] as String?;
+          Logger.info('Conversation item created', tag: _tag, data: {
+            'type': itemType,
+            'role': itemRole,
+            'itemId': item?['id'],
+          });
           break;
 
         case 'conversation.item.input_audio_transcription.delta':
@@ -304,8 +357,12 @@ class AzureSpeechService {
               _transcriptionController.add(transcript);
             }
           }
-          // Return to connected state after transcription
-          _setState(VoiceLiveState.connected);
+          // In transcription mode, return to connected state after transcription
+          // In conversation mode, stay recording to continue listening for speech
+          if (_mode == VoiceLiveMode.transcription) {
+            _setState(VoiceLiveState.connected);
+          }
+          // In conversation mode, state stays as recording (mic is still streaming)
           break;
 
         case 'response.audio.delta':
@@ -327,7 +384,37 @@ class AzureSpeechService {
           break;
 
         case 'response.done':
-          Logger.info('Response complete', tag: _tag);
+          Logger.info('Response complete - preparing for next turn',
+              tag: _tag,
+              data: {
+                'state': _state.name,
+                'mode': _mode.name,
+                'totalChunks': _audioChunkCount,
+              });
+
+          _lastResponseDoneAt = DateTime.now();
+          _audioChunkCountSinceResponse = 0;
+          _droppedAudioChunkCount = 0; // Reset dropped counter for new turn
+
+          // In conversation mode, ensure state is recording so mic stream continues
+          if (_mode == VoiceLiveMode.conversation) {
+            if (_state != VoiceLiveState.recording) {
+              Logger.warning('State drift detected after response',
+                  tag: _tag,
+                  data: {
+                    'currentState': _state.name,
+                    'expectedState': 'recording',
+                  });
+              _setState(VoiceLiveState.recording);
+            }
+
+            // Clear the input audio buffer to reset VAD for next user turn
+            _awaitingAudioBufferClear = true;
+            _sendJson({
+              'type': 'input_audio_buffer.clear',
+            });
+            Logger.info('Sent buffer clear, awaiting confirmation', tag: _tag);
+          }
           break;
 
         case 'error':
@@ -381,11 +468,40 @@ class AzureSpeechService {
   /// Send audio chunk - call this with mic data
   /// [audioBytes] - PCM16 audio data at 24kHz mono
   void sendAudioChunk(Uint8List audioBytes) {
-    if (!_isConnected || !_isRecording) return;
+    if (!_isConnected || !_isRecording) {
+      _droppedAudioChunkCount += 1;
+      if (_droppedAudioChunkCount % _audioChunkLogInterval == 0) {
+        Logger.warning('Dropping audio chunk (not recording)',
+            tag: _tag,
+            data: {
+              'state': _state.name,
+              'connected': _isConnected,
+              'recording': _isRecording,
+              'droppedChunks': _droppedAudioChunkCount,
+            });
+      }
+      return;
+    }
 
     // Buffer the audio
     _audioBuffer.add(audioBytes);
     _totalAudioBytes += audioBytes.length;
+    _audioChunkCount += 1;
+    if (_lastResponseDoneAt != null) {
+      _audioChunkCountSinceResponse += 1;
+      if (_audioChunkCountSinceResponse % _audioChunkLogInterval == 0) {
+        final msSinceResponse =
+            DateTime.now().difference(_lastResponseDoneAt!).inMilliseconds;
+        Logger.debug('Audio chunks after response.done', tag: _tag, data: {
+          'chunksSinceResponse': _audioChunkCountSinceResponse,
+          'totalChunks': _audioChunkCount,
+          'totalBytes': _totalAudioBytes,
+          'state': _state.name,
+          'awaitingBufferClear': _awaitingAudioBufferClear,
+          'msSinceResponse': msSinceResponse,
+        });
+      }
+    }
 
     // Send to Azure
     final base64Audio = base64Encode(audioBytes);

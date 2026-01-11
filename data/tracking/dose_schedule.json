@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "supplement_id": 1,
+    "time_of_day": "08:00:00",
+    "dose_mg": 5000.0,
+    "frequency": "daily",
+    "is_active": 1
+  },
+  {
+    "id": 2,
+    "supplement_id": 2,
+    "time_of_day": "08:00:00",
+    "dose_mg": 125.0,
+    "frequency": "daily",
+    "is_active": 1
+  }
+]

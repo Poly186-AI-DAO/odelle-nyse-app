@@ -48,7 +48,8 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
 
     // Track user transcription changes to trigger fade
     final currentUserText = voiceState.currentTranscription;
-    if (currentUserText.isNotEmpty && currentUserText != _lastUserTranscription) {
+    if (currentUserText.isNotEmpty &&
+        currentUserText != _lastUserTranscription) {
       _lastUserTranscription = currentUserText;
       WidgetsBinding.instance.addPostFrameCallback((_) => _startFadeTimer());
     }
@@ -106,6 +107,7 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
         userText: userText,
         isRecording: isRecording,
         isConnected: isConnected,
+        isMuted: voiceState.isMuted,
       );
     }
 
@@ -144,6 +146,7 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
     required String userText,
     required bool isRecording,
     required bool isConnected,
+    required bool isMuted,
   }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -201,6 +204,12 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
               color: Colors.white.withValues(alpha: 0.6),
             ),
           ),
+
+        // Mute button (shown when connected)
+        if (isConnected || isRecording) ...[
+          const SizedBox(height: 24),
+          _buildMuteButton(isMuted),
+        ],
 
         // User's last transcription (subtle, fades after 3s)
         if (userText.isNotEmpty) ...[
@@ -278,5 +287,52 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
     if (isRecording) return 'Listening...';
     if (isConnected) return 'Tap to disconnect';
     return '';
+  }
+
+  Widget _buildMuteButton(bool isMuted) {
+    return GestureDetector(
+      onTap: () {
+        ref.read(voiceViewModelProvider.notifier).toggleMute();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isMuted
+              ? Colors.red.withValues(alpha: 0.3)
+              : Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isMuted
+                ? Colors.red.withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isMuted ? Icons.mic_off : Icons.mic,
+              color: isMuted
+                  ? Colors.red.withValues(alpha: 0.9)
+                  : Colors.white.withValues(alpha: 0.7),
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isMuted ? 'Muted' : 'Tap to mute',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: isMuted
+                    ? Colors.red.withValues(alpha: 0.9)
+                    : Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -1,0 +1,26 @@
+[
+  {
+    "lessonNumber": 1,
+    "title": "Welcome to Odelle",
+    "description": "An introduction to the self-actualization system.",
+    "objectives": ["Understand the core philosophy", "Learn how to use the voice journal"],
+    "lessonFolder": "lesson_01",
+    "duration": "10:00",
+    "phrases": [
+      {
+        "spanish": "Hola, ¿cómo estás?",
+        "english": "Hello, how are you?",
+        "components": [],
+        "practiceSequence": [],
+        "variations": [],
+        "femaleAudio": "...",
+        "maleAudio": "...",
+        "componentAudio": {}
+      }
+    ],
+    "learningStrategy": {
+      "totalRepetitions": 5,
+      "anticipationMethod": ["echo"]
+    }
+  }
+]

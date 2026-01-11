@@ -1,0 +1,15 @@
+[
+  {
+    "date": "2026-01-11",
+    "doses_logged": 2,
+    "doses_scheduled": 2,
+    "workouts_completed": 1,
+    "meals_logged": 2,
+    "meditation_minutes": 20,
+    "journal_entries": 1,
+    "adherence_score": 100.0,
+    "wellness_score": 85.0,
+    "morning_mood": 7,
+    "evening_mood": 8
+  }
+]

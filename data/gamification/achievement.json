@@ -1,0 +1,22 @@
+[
+  {
+    "id": "streak_7",
+    "title": "One Week Strong",
+    "description": "Maintain a 7-day streak of any activity.",
+    "category": "habits",
+    "xpReward": 100,
+    "requirement_type": "streakDays",
+    "target_value": 7,
+    "rarity": "common"
+  },
+  {
+    "id": "meditation_100",
+    "title": "Zen Master",
+    "description": "Complete 100 meditation sessions.",
+    "category": "meditation",
+    "xpReward": 500,
+    "requirement_type": "totalCount",
+    "target_value": 100,
+    "rarity": "rare"
+  }
+]

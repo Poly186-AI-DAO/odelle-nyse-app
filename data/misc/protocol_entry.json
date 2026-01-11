@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2026-01-11T09:00:00Z",
+    "type": "gym",
+    "data": "{\"duration_minutes\": 90, \"workout\": \"Push Day\"}",
+    "notes": "Good focus."
+  }
+]

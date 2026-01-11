@@ -11,6 +11,7 @@ class VoiceState {
   final VoiceLiveState connectionState;
   final VoiceLiveMode activeMode;
   final bool isModeLocked;
+  final bool isMuted; // Mute mic but still hear AI
   final String currentTranscription;
   final String partialTranscription;
   final String aiResponseText;
@@ -21,6 +22,7 @@ class VoiceState {
     this.connectionState = VoiceLiveState.disconnected,
     this.activeMode = VoiceLiveMode.transcription,
     this.isModeLocked = false,
+    this.isMuted = false,
     this.currentTranscription = '',
     this.partialTranscription = '',
     this.aiResponseText = '',
@@ -41,6 +43,7 @@ class VoiceState {
     VoiceLiveState? connectionState,
     VoiceLiveMode? activeMode,
     bool? isModeLocked,
+    bool? isMuted,
     String? currentTranscription,
     String? partialTranscription,
     String? aiResponseText,
@@ -51,6 +54,7 @@ class VoiceState {
       connectionState: connectionState ?? this.connectionState,
       activeMode: activeMode ?? this.activeMode,
       isModeLocked: isModeLocked ?? this.isModeLocked,
+      isMuted: isMuted ?? this.isMuted,
       currentTranscription: currentTranscription ?? this.currentTranscription,
       partialTranscription: partialTranscription ?? this.partialTranscription,
       aiResponseText: aiResponseText ?? this.aiResponseText,
@@ -227,6 +231,21 @@ class VoiceViewModel extends Notifier<VoiceState> {
       aiResponseText: '',
       isAISpeaking: false,
     );
+  }
+
+  /// Toggle mute - mutes mic but keeps listening to AI
+  void toggleMute() {
+    final newMuted = !state.isMuted;
+    Logger.info('Mute toggled: $newMuted', tag: _tag);
+    state = state.copyWith(isMuted: newMuted);
+  }
+
+  /// Set mute state directly
+  void setMuted(bool muted) {
+    if (state.isMuted != muted) {
+      Logger.info('Mute set: $muted', tag: _tag);
+      state = state.copyWith(isMuted: muted);
+    }
   }
 
   /// Clear error

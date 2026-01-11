@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Meditation",
+    "slug": "meditation",
+    "description": "Guided and unguided meditation sessions.",
+    "icon_name": "self_improvement",
+    "color_hex": "#6B5B95",
+    "sort_order": 1,
+    "content_type": "meditation"
+  },
+  {
+    "id": 2,
+    "name": "Workout",
+    "slug": "workout",
+    "description": "Strength and cardio routines.",
+    "icon_name": "fitness_center",
+    "color_hex": "#FF6B6B",
+    "sort_order": 2,
+    "content_type": "workout"
+  }
+]

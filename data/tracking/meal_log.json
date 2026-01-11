@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2026-01-11T08:30:00Z",
+    "type": "breakfast",
+    "description": "Oatmeal with protein powder and berries",
+    "calories": 450,
+    "protein_grams": 35,
+    "carbs_grams": 60,
+    "fat_grams": 8,
+    "quality": "excellent",
+    "homemade": 1,
+    "notes": "Post-workout meal."
+  },
+  {
+    "id": 2,
+    "timestamp": "2026-01-11T13:00:00Z",
+    "type": "lunch",
+    "description": "Chicken breast with rice and broccoli",
+    "calories": 600,
+    "protein_grams": 50,
+    "carbs_grams": 70,
+    "fat_grams": 12,
+    "quality": "good",
+    "homemade": 1,
+    "meal_prepped": 1
+  }
+]

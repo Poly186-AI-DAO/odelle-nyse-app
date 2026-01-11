@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1,
+    "user_id": "user_123",
+    "name": "Oliver Queen",
+    "level": 13,
+    "totalXP": 1250,
+    "currentStreak": 5,
+    "longestStreak": 12,
+    "title": "Vigilante",
+    "createdAt": "2026-01-01T12:00:00Z"
+  }
+]

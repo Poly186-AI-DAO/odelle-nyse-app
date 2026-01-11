@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "start_time": "2026-01-11T09:00:00Z",
+    "end_time": "2026-01-11T10:30:00Z",
+    "duration_minutes": 90,
+    "type": "strength",
+    "name": "Heavy Push Day",
+    "notes": "Felt strong today, focus on progressive overload on bench.",
+    "source": "manual",
+    "location_name": "Metro Flex Gym",
+    "calories_burned": 450,
+    "avg_heart_rate": 135,
+    "max_heart_rate": 165,
+    "perceived_effort": 8,
+    "energy_level": 9,
+    "mood": "Motivated"
+  },
+  {
+    "id": 2,
+    "start_time": "2026-01-10T07:30:00Z",
+    "end_time": "2026-01-10T08:00:00Z",
+    "duration_minutes": 30,
+    "type": "cardio",
+    "name": "Morning Run",
+    "notes": "Easy steady state cardio.",
+    "source": "healthKit",
+    "calories_burned": 300,
+    "avg_heart_rate": 145,
+    "max_heart_rate": 155,
+    "perceived_effort": 4,
+    "energy_level": 6,
+    "mood": "Calm"
+  }
+]

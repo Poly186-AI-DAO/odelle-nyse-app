@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "workout_log_id": 1,
+    "exercise_type_id": 101,
+    "set_number": 1,
+    "weight_lbs": 225.0,
+    "reps": 5,
+    "rpe": 8.0,
+    "rest_seconds": 180,
+    "notes": "Warm up set felt good."
+  },
+  {
+    "id": 2,
+    "workout_log_id": 1,
+    "exercise_type_id": 101,
+    "set_number": 2,
+    "weight_lbs": 235.0,
+    "reps": 5,
+    "rpe": 8.5,
+    "rest_seconds": 180
+  }
+]
