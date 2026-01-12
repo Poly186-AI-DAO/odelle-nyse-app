@@ -4,3 +4,6 @@ export 'macro_progress_bar.dart';
 export 'stat_card_small.dart';
 export 'macro_pill_row.dart';
 export 'achievement_badge.dart';
+export 'duration_slider.dart';
+export 'circular_timer.dart';
+export 'pomodoro_timer.dart';

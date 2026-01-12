@@ -9,6 +9,8 @@ import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../services/health_kit_service.dart';
 import '../providers/service_providers.dart';
+import 'mantra_screen.dart';
+import 'meditation_screen.dart';
 
 class MindScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
@@ -24,10 +26,8 @@ class _MindScreenState extends ConsumerState<MindScreen> {
   SleepData? _healthKitSleep; // From HealthKit
   bool _healthKitAvailable = false;
   int? _restingHeartRate;
-  int _steps = 0;
   Map<String, dynamic>? _sleepLog; // Fallback JSON
   Map<String, dynamic>? _identityData;
-  List<dynamic> _lessons = [];
   Duration? _mindfulMinutes;
   bool _isLoading = true;
 
@@ -51,14 +51,12 @@ class _MindScreenState extends ConsumerState<MindScreen> {
         final results = await Future.wait([
           healthKit.getLastNightSleep(),
           healthKit.getRestingHeartRate(),
-          healthKit.getSteps(now),
           healthKit.getMindfulMinutes(now),
         ]);
 
         _healthKitSleep = results[0] as SleepData?;
         _restingHeartRate = results[1] as int?;
-        _steps = results[2] as int;
-        _mindfulMinutes = results[3] as Duration?;
+        _mindfulMinutes = results[2] as Duration?;
 
         debugPrint(
             '[MindScreen] HealthKit sleep: ${_healthKitSleep?.totalDuration.inMinutes} min');
@@ -77,12 +75,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
         }
       }
 
-      // 3. Load Content (Lessons)
-      final lessonJson =
-          await rootBundle.loadString('data/content/lesson.json');
-      _lessons = json.decode(lessonJson);
-
-      // 4. Load Identity / Character Stats
+      // 3. Load Identity / Character Stats
       final identityJson =
           await rootBundle.loadString('data/misc/character_stats.json');
       final List<dynamic> identityList = json.decode(identityJson);
@@ -110,12 +103,15 @@ class _MindScreenState extends ConsumerState<MindScreen> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    final screenHeight = MediaQuery.of(context).size.height;
+    final minPanelHeight = screenHeight * 0.38;
+    final maxPanelHeight = screenHeight * 0.78;
 
     return FloatingHeroCard(
       panelVisibility: widget.panelVisibility,
       draggableBottomPanel: true,
-      bottomPanelMinHeight: MediaQuery.of(context).size.height * 0.38,
-      bottomPanelMaxHeight: MediaQuery.of(context).size.height * 0.78,
+      bottomPanelMinHeight: minPanelHeight,
+      bottomPanelMaxHeight: maxPanelHeight,
       bottomPanelShowHandle: true,
       bottomPanelPulseEnabled: true,
       bottomPanel: _buildBottomPanelContent(),
@@ -153,75 +149,146 @@ class _MindScreenState extends ConsumerState<MindScreen> {
 
     final astrology =
         Map<String, String>.from(_identityData!['astrology'] ?? {});
-    final archetypes = List<String>.from(_identityData!['archetypes'] ?? []);
-    final lifePath = _identityData!['numerology']?['lifePath'] ?? 0;
+    
+    // Archetypes can be a Map {ego, soul, self} or a List - handle both
+    final archetypesRaw = _identityData!['archetypes'];
+    List<String> archetypes = [];
+    if (archetypesRaw is Map) {
+      // Extract archetype values (ego, soul, self) from the map
+      final archetypeMap = Map<String, dynamic>.from(archetypesRaw);
+      if (archetypeMap['ego'] != null) archetypes.add(archetypeMap['ego'].toString());
+      if (archetypeMap['soul'] != null) archetypes.add(archetypeMap['soul'].toString());
+      if (archetypeMap['self'] != null) archetypes.add(archetypeMap['self'].toString());
+    } else if (archetypesRaw is List) {
+      archetypes = List<String>.from(archetypesRaw);
+    }
+    
+    final numerology =
+        Map<String, dynamic>.from(_identityData!['numerology'] ?? {});
+    final lifePath = (numerology['lifePath'] as num?)?.toInt();
+    final destiny = (numerology['destiny'] as num?)?.toInt();
+    final birthNumber = (numerology['birthNumber'] as num?)?.toInt() ??
+        (numerology['lifePath'] as num?)?.toInt();
+    final mbti = _identityData!['mbti']?.toString() ?? '';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Archetype badges
-        Wrap(
-          spacing: 8,
-          children: archetypes
-              .map((a) => Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      a.toUpperCase(),
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white70,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ))
-              .toList(),
-        ),
-        const SizedBox(height: 24),
-
-        // Astrology display
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildAstroColumn('☉', astrology['sun'] ?? '-'),
-            const SizedBox(width: 32),
-            _buildAstroColumn('☽', astrology['moon'] ?? '-'),
-            const SizedBox(width: 32),
-            _buildAstroColumn('↑', astrology['rising'] ?? '-'),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // Life path
         Text(
-          'LIFE PATH $lifePath',
+          'COSMIC STATS',
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: ThemeConstants.polyPurple300,
+            color: Colors.white70,
             letterSpacing: 2,
           ),
         ),
+        const SizedBox(height: 12),
+        _buildCosmicStatsCard(
+          astrology: astrology,
+          lifePath: lifePath,
+          destiny: destiny,
+          birthNumber: birthNumber,
+          mbti: mbti,
+        ),
+        if (archetypes.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: archetypes
+                .map((a) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        a.toUpperCase(),
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildAstroColumn(String symbol, String sign) {
+  Widget _buildCosmicStatsCard({
+    required Map<String, String> astrology,
+    required int? lifePath,
+    required int? destiny,
+    required int? birthNumber,
+    required String mbti,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.2),
+        borderRadius: ThemeConstants.borderRadiusXL,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildCosmicValue('BIRTH #', _formatNumber(birthNumber)),
+              _buildCosmicValue('LIFE PATH', _formatNumber(lifePath)),
+              _buildCosmicValue('DESTINY', _formatNumber(destiny)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.08),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildCosmicValue('SUN', astrology['sun'] ?? '--'),
+              _buildCosmicValue('MOON', astrology['moon'] ?? '--'),
+              _buildCosmicValue('RISING', astrology['rising'] ?? '--'),
+            ],
+          ),
+          if (mbti.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _buildCosmicTag('MBTI', mbti),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCosmicValue(String label, String value) {
     return Column(
       children: [
-        Text(symbol,
-            style: const TextStyle(fontSize: 24, color: Colors.white54)),
-        const SizedBox(height: 4),
         Text(
-          sign,
+          label,
           style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.white54,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
         ),
@@ -229,11 +296,45 @@ class _MindScreenState extends ConsumerState<MindScreen> {
     );
   }
 
+  Widget _buildCosmicTag(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Text(
+        '$label $value',
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.white70,
+          letterSpacing: 1,
+        ),
+      ),
+    );
+  }
+
+  String _formatNumber(int? value) {
+    if (value == null || value <= 0) return '--';
+    return value.toString();
+  }
+
   /// Bottom panel content (white panel with logs)
   Widget _buildBottomPanelContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // HealthKit Quick Stats - floating style at top of panel
+        if (_healthKitAvailable) ...[
+          Transform.translate(
+            offset: const Offset(0, -20),
+            child: _buildHealthKitMindStats(),
+          ),
+          const SizedBox(height: 8),
+        ],
+
         // Schedule / Week Day Picker
         WeekDayPicker(
           selectedDate: DateTime.now(),
@@ -248,13 +349,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
         // Sleep Card - prioritize HealthKit over JSON
         _buildSleepCard(),
 
-        const SizedBox(height: 16),
-
-        // HealthKit Quick Stats (if available)
-        if (_healthKitAvailable) ...[
-          _buildHealthKitMindStats(),
-          const SizedBox(height: 24),
-        ],
+        const SizedBox(height: 24),
 
         // Protocols
         _buildSectionHeader('OPEN PROTOCOLS'),
@@ -270,33 +365,31 @@ class _MindScreenState extends ConsumerState<MindScreen> {
                     'Breathe', Icons.air, Colors.cyan, () {})),
           ],
         ),
-
-        const SizedBox(height: 24),
-
-        // Continue Learning
-        _buildSectionHeader('CONTINUE LEARNING'),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 180,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _lessons.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final lesson = _lessons[index];
-              return ContentCard(
-                title: lesson['title'] ?? 'Untitled',
-                author: 'Dr. Huberman',
-                duration:
-                    '${lesson['duration_seconds'] != null ? lesson['duration_seconds'] ~/ 60 : 10} min',
-                imageUrl: index % 2 == 0
-                    ? 'https://images.unsplash.com/photo-1515023115689-589c33041697?auto=format&fit=crop&w=1200&q=80'
-                    : 'https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&w=1200&q=80',
-                onTap: () {},
-              );
-            },
-          ),
+        Row(
+          children: [
+            Expanded(
+                child: _buildProtocolButton(
+                    'Mantras', Icons.auto_awesome, ThemeConstants.polyMint400, () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const MantraScreen(),
+                        ),
+                      );
+                    })),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _buildProtocolButton(
+                    'Meditate', Icons.self_improvement, ThemeConstants.polyPurple300, () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const MeditationScreen(),
+                        ),
+                      );
+                    })),
+          ],
         ),
+
       ],
     );
   }
@@ -402,12 +495,11 @@ class _MindScreenState extends ConsumerState<MindScreen> {
         border: Border.all(color: ThemeConstants.glassBorderWeak),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildMindStat(
               '🧘', '${_mindfulMinutes?.inMinutes ?? 0}', 'mindful min'),
           _buildMindStat('❤️', '${_restingHeartRate ?? '--'}', 'resting HR'),
-          _buildMindStat('👟', '$_steps', 'steps'),
         ],
       ),
     );

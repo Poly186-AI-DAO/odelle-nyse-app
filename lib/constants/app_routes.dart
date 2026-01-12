@@ -7,4 +7,5 @@ class AppRoutes {
   static const String body = '/body';
   static const String voice = '/voice';
   static const String mind = '/mind';
+  static const String mealPlan = '/meal-plan';
 }

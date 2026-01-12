@@ -20,3 +20,15 @@ When in doubt, look through the code base using the search tool to understand wh
 I sometimes use transcription and trans transcriptions might get something wrong. So you're gonna have to use your head and think deeply and use high reasoning and high effort. How? How basically, you know, contextually speaking, what am I? What are we doing right? And and and how can we be able to make sure that you know the transcriptions, even if the transcriptions miss something, that you understand contextually what we're doing. So you want to use hybridity. You wanna think deeply about things don't overcome. Engineer, ground yourself in the code and the tools that you have. Be diligent and be A senior developer.
 
 I have a new mandate, we should try to add less code and optimize the code that we have. this is a mature project with bugs added cause coding agents might try to add too much code rather than optimizing existing code. So when you're implementing something, think about how can we optimize the existing code rather than adding new code. Only add new code when absolutely necessary. Always think about code optimization and refactoring rather than adding new code.
+
+## File Replacement Pattern
+
+When you need to completely rewrite a file (not just edit a few lines), use this pattern:
+
+1. Create a new file named `_new_<original_filename>` (e.g., `_new_daily_content_service.dart`)
+2. Write the complete new implementation in that file
+3. Verify it compiles and passes analysis
+4. Delete the original file
+5. Rename the new file to the original name (remove the `_new_` prefix)
+
+This prevents issues with the replace_string_in_file tool failing on large replacements and ensures we always have a working backup.

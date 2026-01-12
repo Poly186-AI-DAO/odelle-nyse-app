@@ -1,0 +1,276 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-01-11",
+  "identity": {
+    "name": "Princeps Polycap",
+    "dateOfBirth": "1996-06-18",
+    "birthplace": "Kenya",
+    "zodiac": {
+      "sun": "Gemini",
+      "moon": "Libra",
+      "rising": "Scorpio"
+    },
+    "numerology": {
+      "lifePathNumber": 4,
+      "birthNumber": 2,
+      "destinyNumber": 7
+    },
+    "mbti": "INTJ"
+  },
+  "cosmicProfile": {
+    "description": "Use this data to generate the Cosmic Story narration",
+    "zodiacMeaning": {
+      "sun_gemini": "The Communicator - intellectual curiosity, adaptability, dual nature of creator and analyst",
+      "moon_libra": "Emotional harmony seeker, values balance, diplomatic in relationships",
+      "rising_scorpio": "Presents as intense, magnetic, transformative presence to the world"
+    },
+    "numerologyMeaning": {
+      "lifePath4": "The Builder - methodical, disciplined, creates lasting foundations for humanity",
+      "birthNumber2": "The Diplomat - partnership-oriented, sensitive to others, bridge between worlds",
+      "destinyNumber7": "The Seeker - spiritual depth, analytical mind, pursuer of hidden truths"
+    },
+    "synthesis": "A Gemini sun's intellectual versatility combined with Libra moon's emotional equilibrium, projected through Scorpio rising's transformative intensity. Life Path 4 builds the structures that Destiny 7 fills with meaning, while Birth Number 2 ensures the work serves connection between beings."
+  },
+  "archetypes": {
+    "primary": {
+      "ego": "Hero",
+      "soul": "Creator",
+      "self": "Magician"
+    },
+    "traits": {
+      "Hero": {
+        "motto": "Where there's a will, there's a way",
+        "coreDesire": "To prove worth through courageous acts",
+        "goal": "Expert mastery that improves the world",
+        "fear": "Weakness, vulnerability",
+        "strategy": "Be as strong and competent as possible",
+        "talent": "Competence and courage"
+      },
+      "Creator": {
+        "motto": "If you can imagine it, it can be done",
+        "coreDesire": "To create things of enduring value",
+        "goal": "To realize a vision",
+        "fear": "Mediocre vision or execution",
+        "strategy": "Develop artistic control and skill",
+        "talent": "Creativity and imagination"
+      },
+      "Magician": {
+        "motto": "I make things happen",
+        "coreDesire": "Understanding fundamental laws of the universe",
+        "goal": "To make dreams come true",
+        "fear": "Unintended negative consequences",
+        "strategy": "Develop a vision and live by it",
+        "talent": "Finding win-win solutions"
+      }
+    }
+  },
+  "mission": {
+    "primary": "To raise the conscious awareness of the human race",
+    "vision": "A world where humanity consciously shapes its future, free from war, famine, disease",
+    "thesis": "Data-driven decisions towards self-determined behavioral change in pursuit of self-actualization"
+  },
+  "philosophy": {
+    "influences": [
+      "Carl Jung",
+      "Alan Watts",
+      "Zen Buddhism",
+      "CBT (Cognitive Behavioral Therapy)"
+    ],
+    "coreBeliefs": [
+      "Humanity is transitioning from unconsciously crafting its future to consciously shaping it",
+      "The purpose of everything in reality is to serve others",
+      "We are the creators of our future",
+      "The extent of suffering is inversely related to quality of living conditions",
+      "Data-driven decisions enable self-determined behavioral change"
+    ],
+    "approach": "Biomimicry of the human body - coordinating systems harmoniously"
+  },
+  "origin": {
+    "summary": "Born in Kenya, moved to America at age 14 when mother returned after 11 years. True awakening in 2012 - discovered life's purpose. Japan trip expanded worldview beyond national boundaries.",
+    "keyMoments": [
+      {
+        "year": 1996,
+        "event": "Born in Kenya"
+      },
+      {
+        "year": 1999,
+        "event": "Mother left for America"
+      },
+      {
+        "year": 2010,
+        "event": "Reunited with mother, moved to America"
+      },
+      {
+        "year": 2012,
+        "event": "Awakening - discovered life's purpose"
+      },
+      {
+        "year": 2017,
+        "event": "Japan trip - realized humanity is a single organism"
+      },
+      {
+        "year": 2021,
+        "event": "Defined Odelle Nyse vision"
+      },
+      {
+        "year": 2026,
+        "event": "Turning 30 - inflection point"
+      }
+    ]
+  },
+  "experiment": {
+    "name": "The 10-Week Protocol",
+    "startDate": "2026-01-11",
+    "endDate": "2026-03-22",
+    "protocol": {
+      "dose": "250mg (1 cap)",
+      "substance": "psilocybin",
+      "daysPerWeek": 4,
+      "schedule": ["Monday", "Tuesday", "Thursday", "Friday"],
+      "integrationDay": "Wednesday"
+    },
+    "restrictions": {
+      "avoid": ["coffee", "caffeine"],
+      "reason": "Caffeine can interfere with psilocybin effects",
+      "alternatives": ["decaf", "herbal tea", "pre-workout (non-caffeine if possible)"]
+    },
+    "required": {
+      "supplements": ["creatine monohydrate", "whey protein"],
+      "nutrition": "protein-focused meals",
+      "hydration": "3L+ water daily"
+    },
+    "targets": {
+      "mood": "+2 points",
+      "anxiety": "-2 points",
+      "gym": "5x/week",
+      "protein": "150g/day",
+      "deepWork": "6hrs/day",
+      "salesCalls": "10/week"
+    }
+  },
+  "currentFocus": {
+    "body": ["Gym consistency", "Protein intake", "Sleep optimization"],
+    "mind": ["Deep work", "Sales improvement", "Focus"],
+    "spirit": ["Meditation", "Mantras", "Presence"]
+  },
+  "rca": {
+    "definition": "Raising Conscious Awareness",
+    "pillars": {
+      "presence": "Being in the now, not past-ruminating or future-anxious",
+      "awareness": "Noticing thought patterns, cognitive biases, blind spots",
+      "integration": "Embodying insights into daily action and behavior"
+    },
+    "thesis": "The more I breathe, the more I'm aware, the more I'm present, the more I raise my conscious awareness. Objective reality lies within."
+  },
+  "fitness": {
+    "trainingAge": "5 years",
+    "style": "powerlifting / bodybuilding hybrid",
+    "focus": "strength with hypertrophy",
+    "splits": ["upper/lower", "push/pull/legs"],
+    "preferredExercises": "compound movements",
+    "frequency": "5x/week",
+    "currentMaxes": {
+      "squat": {
+        "weight": 315,
+        "unit": "lbs",
+        "reps": 1,
+        "notes": "3 plates - primary improvement goal"
+      },
+      "bench": {
+        "weight": 315,
+        "unit": "lbs",
+        "reps": 1,
+        "notes": "3 plates"
+      },
+      "overheadPress": {
+        "weight": 245,
+        "unit": "lbs",
+        "reps": 1,
+        "notes": "Smith machine, ~2 plates"
+      },
+      "deadlift": {
+        "weight": null,
+        "unit": "lbs",
+        "reps": 1,
+        "notes": "To be recorded"
+      }
+    },
+    "goals": {
+      "primary": "Improve squat strength and form",
+      "secondary": [
+        "Maintain bench strength",
+        "Increase overall work capacity"
+      ],
+      "targetSquat": 405
+    },
+    "equipment": ["barbell", "dumbbells", "cables", "smith_machine", "rack"],
+    "preferredCompounds": [
+      "barbell_squat",
+      "bench_press",
+      "overhead_press",
+      "barbell_row",
+      "deadlift",
+      "pull_ups",
+      "dips"
+    ],
+    "considerations": {
+      "warmup": "Dynamic stretching + light sets",
+      "restBetweenSets": "2-3 min for compounds, 60-90s for accessories",
+      "progressionStyle": "Linear progression on compounds, volume progression on accessories"
+    }
+  },
+  "nutrition": {
+    "goal": "lean muscle gain / recomposition",
+    "proteinTarget": {
+      "grams": 150,
+      "perKgBodyweight": 2.0,
+      "notes": "Minimum 150g daily, tracked via experiment targets"
+    },
+    "mealFrequency": "3-4 meals per day",
+    "preferences": {
+      "dietType": "flexible / IIFYM",
+      "restrictions": [],
+      "preferredProteinSources": [
+        "chicken breast",
+        "eggs",
+        "greek yogurt",
+        "protein shake",
+        "beef",
+        "fish"
+      ]
+    },
+    "hydration": {
+      "targetLiters": 3,
+      "notes": "More on training days"
+    },
+    "supplementation": ["whey protein", "creatine monohydrate"],
+    "mealTiming": {
+      "preworkout": "Carbs + protein 1-2 hours before",
+      "postworkout": "Protein shake within 30 min, full meal within 2 hours"
+    }
+  },
+  "dataIntegration": {
+    "healthKit": {
+      "pullWorkouts": true,
+      "pullHeartRate": true,
+      "pullSleep": true,
+      "pullActiveEnergy": true,
+      "pullSteps": true
+    },
+    "weather": {
+      "considerForCardio": true,
+      "outdoorThreshold": {
+        "minTemp": 50,
+        "maxTemp": 85,
+        "unit": "fahrenheit"
+      }
+    },
+    "tracking": {
+      "logProtein": true,
+      "logWorkouts": true,
+      "logMood": true,
+      "logSleep": true,
+      "logDose": true
+    }
+  }
+}

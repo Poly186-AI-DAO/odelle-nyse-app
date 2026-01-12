@@ -1,8 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/azure_agent_service.dart';
+import '../services/azure_image_service.dart';
 import '../services/azure_speech_service.dart';
-import '../services/backend_api_service.dart';
+import '../services/bootstrap_service.dart';
+import '../services/daily_content_service.dart';
+import '../services/psychograph_service.dart';
+import '../services/weather_service.dart';
 
-import '../services/poly_auth_service.dart';
 import '../services/health_kit_service.dart';
 import '../database/app_database.dart';
 
@@ -12,20 +16,33 @@ import '../database/app_database.dart';
 // These providers expose singleton service instances throughout the app.
 // Services are stateless - they don't change, they just provide methods.
 
-/// Backend base URL - can be overridden in tests
-const _backendBaseUrl = 'https://4b1db0965b44.ngrok-free.app';
-
-/// Poly authentication service
-final polyAuthServiceProvider = Provider<PolyAuthService>((ref) {
-  return PolyAuthService(baseUrl: _backendBaseUrl);
+/// Azure Agent Service for LLM completions
+final azureAgentServiceProvider = Provider<AzureAgentService>((ref) {
+  return AzureAgentService();
 });
 
-/// Backend API service for general API calls
-final backendApiServiceProvider = Provider<BackendApiService>((ref) {
-  return BackendApiService(baseUrl: _backendBaseUrl);
+/// Psychograph Service - the "subconscious" background LLM
+/// Processes user data, updates RCA meter, generates insights
+final psychographServiceProvider = Provider<PsychographService>((ref) {
+  final agentService = ref.watch(azureAgentServiceProvider);
+  final service = PsychographService(agentService: agentService);
+
+  // Start background processing (every 60 minutes)
+  service.startBackgroundProcessing(intervalMinutes: 60);
+
+  // Clean up when disposed
+  ref.onDispose(() {
+    service.dispose();
+  });
+
+  return service;
 });
 
-
+/// Current psychograph state (reactive)
+final psychographStateProvider = Provider<PsychographState>((ref) {
+  final service = ref.watch(psychographServiceProvider);
+  return service.state;
+});
 
 /// Azure speech/voice recognition service
 final voiceServiceProvider = Provider<AzureSpeechService>((ref) {
@@ -40,4 +57,51 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 /// Apple HealthKit service for health data access
 final healthKitServiceProvider = Provider<HealthKitService>((ref) {
   return HealthKitService();
+});
+
+/// Azure Image Generation service
+final imageServiceProvider = Provider<AzureImageService>((ref) {
+  return AzureImageService();
+});
+
+/// Apple WeatherKit service for weather data
+final weatherServiceProvider = Provider<WeatherService>((ref) {
+  return WeatherService();
+});
+
+/// Daily Content Generation Service
+/// Generates personalized meditations, affirmations, and images once per day
+/// Uses ElevenLabs for voice synthesis, Azure for images, WeatherKit for weather context
+final dailyContentServiceProvider = Provider<DailyContentService>((ref) {
+  final agentService = ref.watch(azureAgentServiceProvider);
+  final imageService = ref.watch(imageServiceProvider);
+  final weatherService = ref.watch(weatherServiceProvider);
+
+  final service = DailyContentService(
+    agentService: agentService,
+    imageService: imageService,
+    weatherService: weatherService,
+  );
+
+  return service;
+});
+
+/// Bootstrap Service - runs at app startup to check/generate required data
+/// Uses tool calling to let the LLM decide what needs to be done
+final bootstrapServiceProvider = Provider<BootstrapService>((ref) {
+  final agentService = ref.watch(azureAgentServiceProvider);
+  final healthKitService = ref.watch(healthKitServiceProvider);
+  final weatherService = ref.watch(weatherServiceProvider);
+
+  return BootstrapService(
+    agentService: agentService,
+    healthKitService: healthKitService,
+    weatherService: weatherService,
+  );
+});
+
+/// Bootstrap result state - tracks if bootstrap has run and its result
+final bootstrapResultProvider = FutureProvider<BootstrapResult>((ref) async {
+  final bootstrapService = ref.watch(bootstrapServiceProvider);
+  return bootstrapService.run();
 });

@@ -5,21 +5,42 @@
       "Strength": 75,
       "Intellect": 85,
       "Spirit": 92,
-      "Charisma": 68
+      "Sales": 68
     },
-    "archetypes": ["Magician", "Explorer"],
+    "archetypes": {
+      "ego": "Hero",
+      "soul": "Creator",
+      "self": "Magician",
+      "description": "The Hero proves worth through courageous acts. The Creator realizes visions of enduring value. The Magician makes dreams reality through understanding fundamental laws."
+    },
     "astrology": {
       "sun": "Gemini",
       "moon": "Libra",
       "rising": "Scorpio"
     },
     "numerology": {
+      "birthNumber": 18,
       "lifePath": 4,
       "destiny": 7
     },
     "mbti": "INTJ",
-    "psychograph": "Feeling focused but introspective. Seeking clarity in daily routines. Energy is shifting towards creation rather than consumption.",
+    "rcaMeter": {
+      "value": 65,
+      "trend": "rising",
+      "pillars": {
+        "presence": 70,
+        "breath": 60,
+        "awareness": 65
+      },
+      "description": "Raising Conscious Awareness (RCA) - The core metric. Objective reality lies within. The more you breathe, the more you're aware, the more you're present, the more your conscious awareness rises."
+    },
+    "psychograph": "Feeling focused but introspective. Seeking clarity in daily routines. Energy is shifting towards creation rather than consumption. The Hero archetype is driving action, while the Magician seeks to understand the patterns beneath.",
     "level": 13,
-    "xp": 1250
+    "xp": 1250,
+    "dob": "1996-06-18",
+    "turningAge": 30,
+    "experimentWeek": 1,
+    "philosophy": ["Zen Buddhism", "Carl Jung", "CBT", "Alan Watts"],
+    "mission": "Raise the conscious awareness of the human race"
   }
 ]

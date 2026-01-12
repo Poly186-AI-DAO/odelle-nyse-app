@@ -244,6 +244,7 @@ class HealthKitService {
       final endTime = DateTime(now.year, now.month, now.day, 12, 0);
 
       final sleepTypes = [
+        HealthDataType.SLEEP_IN_BED,
         HealthDataType.SLEEP_ASLEEP,
         HealthDataType.SLEEP_AWAKE,
         HealthDataType.SLEEP_DEEP,
@@ -262,49 +263,84 @@ class HealthKitService {
         return null;
       }
 
-      // Calculate durations for each sleep stage
-      Duration totalAsleep = Duration.zero;
-      Duration deepSleep = Duration.zero;
-      Duration remSleep = Duration.zero;
-      Duration lightSleep = Duration.zero;
-      Duration awake = Duration.zero;
+      // Aggregate durations by sleep type
+      Duration asleepTotal = Duration.zero;
+      Duration inBedTotal = Duration.zero;
+      Duration deepSleepTotal = Duration.zero;
+      Duration remSleepTotal = Duration.zero;
+      Duration lightSleepTotal = Duration.zero;
+      Duration awakeTotal = Duration.zero;
+      bool hasAwakeData = false;
+
+      DateTime? earliestStart;
+      DateTime? latestEnd;
+      DateTime? inBedStart;
+      DateTime? inBedEnd;
 
       for (final point in data) {
         final duration = point.dateTo.difference(point.dateFrom);
 
+        if (earliestStart == null || point.dateFrom.isBefore(earliestStart)) {
+          earliestStart = point.dateFrom;
+        }
+        if (latestEnd == null || point.dateTo.isAfter(latestEnd)) {
+          latestEnd = point.dateTo;
+        }
+
         switch (point.type) {
+          case HealthDataType.SLEEP_IN_BED:
+            inBedTotal += duration;
+            if (inBedStart == null || point.dateFrom.isBefore(inBedStart)) {
+              inBedStart = point.dateFrom;
+            }
+            if (inBedEnd == null || point.dateTo.isAfter(inBedEnd)) {
+              inBedEnd = point.dateTo;
+            }
+            break;
           case HealthDataType.SLEEP_ASLEEP:
-            totalAsleep += duration;
+            asleepTotal += duration;
             break;
           case HealthDataType.SLEEP_DEEP:
-            deepSleep += duration;
+            deepSleepTotal += duration;
             break;
           case HealthDataType.SLEEP_REM:
-            remSleep += duration;
+            remSleepTotal += duration;
             break;
           case HealthDataType.SLEEP_LIGHT:
-            lightSleep += duration;
+            lightSleepTotal += duration;
             break;
           case HealthDataType.SLEEP_AWAKE:
-            awake += duration;
+            awakeTotal += duration;
+            hasAwakeData = true;
             break;
           default:
             break;
         }
       }
 
-      // If we got stage data but no total, calculate total
-      if (totalAsleep == Duration.zero) {
-        totalAsleep = deepSleep + remSleep + lightSleep;
+      final stageTotal = deepSleepTotal + remSleepTotal + lightSleepTotal;
+      final hasStageData = stageTotal > Duration.zero;
+      Duration totalAsleep = hasStageData ? stageTotal : asleepTotal;
+
+      if (totalAsleep == Duration.zero && inBedTotal > Duration.zero) {
+        totalAsleep = inBedTotal;
+      }
+
+      if (!hasAwakeData && inBedTotal > Duration.zero) {
+        final inferredAwake = inBedTotal - totalAsleep;
+        if (!inferredAwake.isNegative) {
+          awakeTotal = inferredAwake;
+          hasAwakeData = true;
+        }
       }
 
       // Calculate a simple quality score based on deep sleep percentage
       final totalMinutes = totalAsleep.inMinutes;
-      final deepMinutes = deepSleep.inMinutes;
-      final awakeMinutes = awake.inMinutes;
+      final deepMinutes = deepSleepTotal.inMinutes;
+      final awakeMinutes = awakeTotal.inMinutes;
 
       int qualityScore = 75; // Default
-      if (totalMinutes > 0) {
+      if (totalMinutes > 0 && (hasStageData || hasAwakeData)) {
         // More deep sleep = better (target ~20%)
         final deepPercentage = deepMinutes / totalMinutes;
         // Less awake time = better
@@ -320,10 +356,12 @@ class HealthKitService {
 
       return SleepData(
         totalDuration: totalAsleep,
-        deepSleep: deepSleep,
-        remSleep: remSleep,
-        lightSleep: lightSleep,
-        awake: awake,
+        deepSleep: hasStageData ? deepSleepTotal : null,
+        remSleep: hasStageData ? remSleepTotal : null,
+        lightSleep: hasStageData ? lightSleepTotal : null,
+        awake: hasAwakeData ? awakeTotal : null,
+        bedTime: inBedStart ?? earliestStart,
+        wakeTime: inBedEnd ?? latestEnd,
         qualityScore: qualityScore,
       );
     } catch (e) {

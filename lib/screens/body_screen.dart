@@ -15,6 +15,7 @@ import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../services/health_kit_service.dart';
 import '../providers/service_providers.dart';
+import 'meal_plan_screen.dart';
 
 class BodyScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
@@ -210,12 +211,15 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    final screenHeight = MediaQuery.of(context).size.height;
+    final minPanelHeight = screenHeight * 0.38;
+    final maxPanelHeight = screenHeight * 0.78;
 
     return FloatingHeroCard(
       panelVisibility: widget.panelVisibility,
       draggableBottomPanel: true,
-      bottomPanelMinHeight: MediaQuery.of(context).size.height * 0.38,
-      bottomPanelMaxHeight: MediaQuery.of(context).size.height * 0.78,
+      bottomPanelMinHeight: minPanelHeight,
+      bottomPanelMaxHeight: maxPanelHeight,
       bottomPanelShowHandle: true,
       bottomPanelPulseEnabled: true,
       bottomPanel: _buildBottomPanelContent(),
@@ -324,6 +328,15 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // HealthKit Activity Stats - floating style at top of panel
+        if (_healthKitAvailable) ...[
+          Transform.translate(
+            offset: const Offset(0, -20),
+            child: _buildHealthKitStatsRow(),
+          ),
+          const SizedBox(height: 8),
+        ],
+
         // Schedule / Week Day Picker
         WeekDayPicker(
           selectedDate: DateTime.now(),
@@ -334,12 +347,6 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
         ),
 
         const SizedBox(height: 20),
-
-        // HealthKit Activity Stats (if available)
-        if (_healthKitAvailable) ...[
-          _buildHealthKitStatsRow(),
-          const SizedBox(height: 24),
-        ],
 
         // Macros Row
         Row(
@@ -356,7 +363,7 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
         const SizedBox(height: 24),
 
         // Today's Meals
-        _buildSectionHeader('TODAY\'S MEALS'),
+        _buildSectionHeaderWithAction('TODAY\'S MEALS', 'See all', _openMealPlan),
         const SizedBox(height: 12),
         ..._meals.asMap().entries.map((entry) {
           final index = entry.key;
@@ -369,6 +376,7 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
             isFirst: index == 0,
             isLast: index == _meals.length - 1,
             isComplete: true,
+            onTap: () => _openMealPlan(meal: meal),
           );
         }),
 
@@ -585,6 +593,53 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
         fontWeight: FontWeight.w600,
         color: ThemeConstants.textSecondary,
         letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  Widget _buildSectionHeaderWithAction(
+      String title, String actionText, VoidCallback onAction) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: ThemeConstants.textSecondary,
+            letterSpacing: 1.5,
+          ),
+        ),
+        GestureDetector(
+          onTap: onAction,
+          child: Row(
+            children: [
+              Text(
+                actionText,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeConstants.accentBlue,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 12,
+                color: ThemeConstants.accentBlue,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openMealPlan({MealLog? meal}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => MealPlanScreen(highlightedMeal: meal),
       ),
     );
   }

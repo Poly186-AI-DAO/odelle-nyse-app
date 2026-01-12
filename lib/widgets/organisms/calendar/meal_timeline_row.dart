@@ -10,6 +10,7 @@ class MealTimelineRow extends StatelessWidget {
   final bool isLast;
   final bool isComplete;
   final String? calories;
+  final VoidCallback? onTap;
 
   const MealTimelineRow({
     super.key,
@@ -20,6 +21,7 @@ class MealTimelineRow extends StatelessWidget {
     this.isLast = false,
     this.isComplete = false,
     this.calories,
+    this.onTap,
   });
 
   @override
@@ -46,35 +48,46 @@ class MealTimelineRow extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color: ThemeConstants.panelWhite,
-                  borderRadius: ThemeConstants.borderRadius,
-                border: Border.all(color: ThemeConstants.glassBorderWeak),
-              ),
-              child: Row(
-                children: [
-                  Text(icon, style: const TextStyle(fontSize: 20)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      mealName,
-                      style: ThemeConstants.bodyStyle.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: ThemeConstants.textOnLight,
+            child: GestureDetector(
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: ThemeConstants.panelWhite,
+                    borderRadius: ThemeConstants.borderRadius,
+                  border: Border.all(color: ThemeConstants.glassBorderWeak),
+                ),
+                child: Row(
+                  children: [
+                    Text(icon, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        mealName,
+                        style: ThemeConstants.bodyStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: ThemeConstants.textOnLight,
+                        ),
                       ),
                     ),
-                  ),
-                  if (calories != null)
-                    Text(
-                      calories!,
-                      style: ThemeConstants.captionStyle.copyWith(
-                        fontWeight: FontWeight.w700,
+                    if (calories != null)
+                      Text(
+                        calories!,
+                        style: ThemeConstants.captionStyle.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: ThemeConstants.textMuted,
+                        ),
+                      ),
+                    if (onTap != null) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 20,
                         color: ThemeConstants.textMuted,
                       ),
-                    ),
-                ],
+                    ],
+                  ],
+                ),
               ),
             ),
           ),

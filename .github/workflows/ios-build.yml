@@ -36,6 +36,7 @@ jobs:
           echo "WEATHER_KEY_ID=${{ secrets.WEATHER_KEY_ID }}" >> .env
           echo "WEATHER_PRIVATE_KEY=${{ secrets.WEATHER_PRIVATE_KEY }}" >> .env
           echo "WEATHER_BUNDLE_ID=com.poly186.odelle" >> .env
+          echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}" >> .env
 
       - name: Install dependencies
         run: flutter pub get
@@ -85,6 +86,7 @@ jobs:
           echo "WEATHER_KEY_ID=${{ secrets.WEATHER_KEY_ID }}" >> .env
           echo "WEATHER_PRIVATE_KEY=${{ secrets.WEATHER_PRIVATE_KEY }}" >> .env
           echo "WEATHER_BUNDLE_ID=com.poly186.odelle" >> .env
+          echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}" >> .env
 
       - name: Install dependencies
         run: flutter pub get

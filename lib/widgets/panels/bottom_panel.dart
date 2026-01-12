@@ -79,6 +79,7 @@ class DraggableBottomPanel extends StatefulWidget {
   final bool pulseEnabled;
   final Duration pulseDuration;
   final double pulseAmplitude;
+  final ValueChanged<double>? onProgressChanged;
 
   const DraggableBottomPanel({
     super.key,
@@ -95,6 +96,7 @@ class DraggableBottomPanel extends StatefulWidget {
     this.pulseEnabled = false,
     this.pulseDuration = const Duration(milliseconds: 2800),
     this.pulseAmplitude = 6,
+    this.onProgressChanged,
   });
 
   @override
@@ -114,6 +116,9 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel>
     super.initState();
     _currentHeight = widget.minHeight;
     _configurePulse();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _emitProgress();
+    });
   }
 
   @override
@@ -124,6 +129,20 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel>
         oldWidget.pulseAmplitude != widget.pulseAmplitude) {
       _configurePulse();
     }
+    if (oldWidget.minHeight != widget.minHeight ||
+        oldWidget.maxHeight != widget.maxHeight) {
+      _currentHeight =
+          _currentHeight.clamp(widget.minHeight, widget.maxHeight);
+      _emitProgress();
+    }
+  }
+
+  void _emitProgress() {
+    if (widget.onProgressChanged == null) return;
+    final range = widget.maxHeight - widget.minHeight;
+    final progress =
+        range <= 0 ? 0.0 : (_currentHeight - widget.minHeight) / range;
+    widget.onProgressChanged!(progress.clamp(0.0, 1.0));
   }
 
   void _configurePulse() {
@@ -163,6 +182,7 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel>
       _currentHeight -= details.delta.dy;
       _currentHeight = _currentHeight.clamp(widget.minHeight, widget.maxHeight);
     });
+    _emitProgress();
   }
 
   void _onDragEnd(DragEndDetails details) {
@@ -190,6 +210,7 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel>
         }
       }
     });
+    _emitProgress();
 
     if (widget.pulseEnabled) {
       _pulseController?.repeat(reverse: true);

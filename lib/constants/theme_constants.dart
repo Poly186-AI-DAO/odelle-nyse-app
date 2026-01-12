@@ -41,6 +41,7 @@ class ThemeConstants {
   static const Color polyPurple500 = Color(0xFF8200FF);
   static const Color polyPurple600 = Color(0xFFDC00FF);
   static const Color polyPurple700 = Color(0xFF4D0097);
+  static const Color polyPurple400 = Color(0xFF9D4EDD);
   static const Color polyPurple300 = Color(0xFFB366FF);
   static const Color polyPurple200 = Color(0xFFD9B3FF);
 
@@ -544,6 +545,14 @@ class ThemeConstants {
   static const Duration animationMedium = Duration(milliseconds: 300);
   static const Duration animationSlow = Duration(milliseconds: 500);
   static const Duration animationVerySlow = Duration(milliseconds: 800);
+
+  // ---- Zen Breathing Rhythm -------------------------------------------
+  // Based on coherent breathing: 6 breaths/min for HRV optimization
+  // 4 second inhale + 6 second exhale = 10 second cycle
+  static const Duration zenBreathCycle = Duration(seconds: 10);
+  static const double zenInhaleWeight = 40.0; // 4s of 10s = 40%
+  static const double zenExhaleWeight = 60.0; // 6s of 10s = 60%
+  static const double zenBreathAmplitude = 6.0; // pixels of movement
 
   // ---- Blur Constants -------------------------------------------------
   static const double blurStrength = 25.0;

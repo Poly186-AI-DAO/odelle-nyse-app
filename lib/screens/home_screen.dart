@@ -69,6 +69,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Scroll progress for animations
   double _scrollProgress = 1.0;
 
+  // Bootstrap status
+  bool _bootstrapStarted = false;
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +83,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Initialize audio output for playing Azure responses
     AudioOutputService.instance.initialize();
+
+    // Run bootstrap after first frame (deferred to avoid Riverpod issues)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runBootstrap();
+    });
+  }
+
+  /// Run bootstrap check to ensure all data is ready
+  Future<void> _runBootstrap() async {
+    if (_bootstrapStarted) return;
+    _bootstrapStarted = true;
+
+    Logger.info('Starting bootstrap...', tag: _tag);
+
+    // Trigger the bootstrap by reading the FutureProvider
+    // The result will be available via ref.watch(bootstrapResultProvider)
+    final result = await ref.read(bootstrapResultProvider.future);
+
+    Logger.info('Bootstrap complete: ${result.success}', tag: _tag, data: {
+      'summary': result.agentSummary,
+    });
+
+    if (result.agentSummary != null && mounted) {
+      // Show a brief toast with the bootstrap summary
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.agentSummary!.length > 100
+                ? '${result.agentSummary!.substring(0, 100)}...'
+                : result.agentSummary!,
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _onScroll() {

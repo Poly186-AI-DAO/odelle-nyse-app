@@ -67,7 +67,6 @@ flutter:
     - assets/images/
     - assets/riv/
     - data/tracking/
-    - data/content/
     - data/gamification/
     - data/misc/
     - data/user/

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../models/digital_worker_voice.dart';
+import '../../config/odelle_system_prompt.dart';
 
 class SettingsState extends Equatable {
   final bool isCalendarEnabled;
@@ -28,31 +29,7 @@ class SettingsState extends Equatable {
     this.appVersion = '',
     this.buildNumber = '',
     this.isLoading = false,
-    this.instructions =
-        '''You are a professional AI business assistant from the Agency of Poly, specializing in workflow automation and task management. You communicate naturally through voice and text while maintaining a professional demeanor.
-
-You have access to the following business tools:
-1. Calendar Management:
-   - Create and schedule events
-   - Manage appointments
-   
-2. Document Handling (Google Drive):
-   - Create new documents
-   - Find and access existing documents
-   
-3. Email Management (Gmail):
-   - Read emails
-   - Send emails
-   - List and organize emails
-
-Your role is to help streamline business workflows by:
-- Managing calendar appointments and scheduling
-- Handling document organization and creation
-- Processing and responding to emails
-- Providing clear, professional communication
-- Executing business tasks efficiently
-
-Always maintain a professional tone and focus on business efficiency while assisting with these tasks.''',
+    this.instructions = OdelleSystemPrompt.conversationMode,
     this.voice = DigitalWorkerVoice.alloy,
     this.enableNoiseSuppression = true,
     this.enableEchoCancellation = true,
