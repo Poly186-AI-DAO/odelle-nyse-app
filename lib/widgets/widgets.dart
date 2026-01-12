@@ -1,3 +1,8 @@
+// Core Atomic Design Layers
+export 'atoms/atoms.dart';
+export 'molecules/molecules.dart';
+export 'organisms/organisms.dart';
+
 // Voice widgets
 export 'voice/voice_button.dart';
 export 'voice/voice_waveform_animated.dart';
@@ -10,10 +15,7 @@ export 'navigation/pillar_nav_bar.dart';
 export 'panels/bottom_panel.dart';
 export 'panels/top_panel.dart';
 
-// Protocol widgets
-export 'protocol/protocol_button.dart';
-
-// Dashboard widgets
+// Dashboard widgets (Specific functional units)
 export 'dashboard/stat_card.dart';
 export 'dashboard/hero_number.dart';
 export 'dashboard/character_radar.dart';

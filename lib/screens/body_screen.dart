@@ -1,17 +1,19 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../constants/theme_constants.dart';
-import '../models/character_stats.dart';
-import '../models/protocol_entry.dart';
-import '../providers/service_providers.dart';
-import '../utils/logger.dart';
-import '../widgets/dashboard/hero_number.dart';
-import '../widgets/effects/breathing_card.dart';
-import '../widgets/protocol/protocol_button.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Body Screen - Physical tracking pillar
-/// Gym, Meal, Dose protocols with XP tracking
+import '../constants/theme_constants.dart';
+import '../models/tracking/meal_log.dart';
+import '../models/tracking/dose_log.dart';
+import '../models/tracking/workout_log.dart';
+import '../models/tracking/supplement.dart';
+import '../models/tracking/exercise_type.dart';
+import '../models/tracking/exercise_set.dart';
+import '../widgets/widgets.dart';
+import '../widgets/effects/breathing_card.dart';
+
 class BodyScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
 
@@ -22,491 +24,367 @@ class BodyScreen extends ConsumerStatefulWidget {
 }
 
 class _BodyScreenState extends ConsumerState<BodyScreen> {
-  static const String _tag = 'BodyScreen';
-  static const List<String> _weekdayLabels = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
-  static const List<String> _monthLabels = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
+  // Data State
+  List<MealLog> _meals = [];
+  List<DoseLog> _doses = [];
+  List<WorkoutLog> _workouts = [];
+  // Supplements map needed for DoseCard details
+  Map<String, Supplement> _supplements = {};
 
-  CharacterStats? _stats;
-  List<ProtocolEntry> _todayProtocols = [];
-  late DateTime _selectedDate;
+  // Nutrition Aggregates
+  int _caloriesConsumed = 0;
+  final int _caloriesGoal = 2500; // Default goal
+  int _caloriesBurned = 0;
+  double _proteinConsumed = 0;
+  final double _proteinGoal = 180;
+  double _fatsConsumed = 0;
+  final double _fatsGoal = 80;
+  double _carbsConsumed = 0;
+  final double _carbsGoal = 250;
 
-  // Protocol definitions
-  static const List<ProtocolType> _protocolTypes = [
-    ProtocolType.gym,
-    ProtocolType.meal,
-    ProtocolType.dose,
-  ];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = _normalizeDate(DateTime.now());
-    _loadData();
+    _loadJsonData();
   }
 
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
+  Future<void> _loadJsonData() async {
+    try {
+      // 1. Load Meals
+      final mealsJson = await rootBundle.loadString('data/tracking/meal_log.json');
+      final List<dynamic> mealsList = json.decode(mealsJson);
+      _meals = mealsList.map((j) => MealLog.fromJson(j)).toList();
 
-  DateTime _startOfWeek(DateTime date) {
-    final normalized = _normalizeDate(date);
-    return normalized.subtract(Duration(days: normalized.weekday - 1));
-  }
+      // 2. Load Doses
+      final dosesJson = await rootBundle.loadString('data/tracking/dose_log.json');
+      final List<dynamic> dosesList = json.decode(dosesJson);
+      _doses = dosesList.map((j) => DoseLog.fromJson(j)).toList();
 
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+      // 3. Load Supplements (for details)
+      final suppsJson = await rootBundle.loadString('data/tracking/supplement.json');
+      final List<dynamic> suppsList = json.decode(suppsJson);
+      final supps = suppsList.map((j) => Supplement.fromJson(j)).toList();
+      _supplements = {for (var s in supps) s.id.toString(): s};
 
-  String _formatSelectedDateLabel() {
-    final today = _normalizeDate(DateTime.now());
-    if (_isSameDay(_selectedDate, today)) {
-      return 'Today';
-    }
+      // 4. Load Exercise Catalog
+      final exercisesJson = await rootBundle.loadString('data/tracking/exercise_type.json');
+      final List<dynamic> exercisesList = json.decode(exercisesJson);
+      final exerciseCatalog = {
+        for (var j in exercisesList) 
+          j['id'].toString(): ExerciseType.fromJson(j)
+      };
 
-    final weekday = _weekdayLabels[_selectedDate.weekday - 1];
-    final month = _monthLabels[_selectedDate.month - 1];
-    return '$weekday, $month ${_selectedDate.day}';
-  }
+      // 5. Load Exercise Sets
+      final setsJson = await rootBundle.loadString('data/tracking/exercise_set.json');
+      final List<dynamic> setsList = json.decode(setsJson);
+      final allSets = setsList.map((j) {
+        final set = ExerciseSet.fromJson(j);
+        final type = exerciseCatalog[set.exerciseTypeId.toString()];
+        return set.copyWith(exercise: type);
+      }).toList();
 
-  Future<void> _setSelectedDate(DateTime date) async {
-    final normalized = _normalizeDate(date);
-    if (_isSameDay(normalized, _selectedDate)) {
-      return;
-    }
+      // 6. Load Workouts & Join Sets
+      final workoutsJson = await rootBundle.loadString('data/tracking/workout_log.json');
+      final List<dynamic> workoutsList = json.decode(workoutsJson);
+      _workouts = workoutsList.map((j) {
+        final workout = WorkoutLog.fromJson(j);
+        final workoutSets = allSets.where((s) => s.workoutLogId == workout.id).toList();
+        return workout.copyWith(sets: workoutSets);
+      }).toList();
 
-    setState(() {
-      _selectedDate = normalized;
-    });
+      // 7. Calculate Nutrition Totals
+      _calculateNutrition();
 
-    Logger.info('Selected body date changed',
-        tag: _tag, data: {'date': normalized.toIso8601String()});
-    await _loadData();
-  }
-
-  DateTime _timestampForSelectedDate() {
-    final now = DateTime.now();
-    return DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      now.hour,
-      now.minute,
-      now.second,
-      now.millisecond,
-      now.microsecond,
-    );
-  }
-
-  Future<void> _loadData() async {
-    final db = ref.read(databaseProvider);
-    final startOfDay = _selectedDate;
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    Logger.info('Loading body data',
-        tag: _tag, data: {'date': startOfDay.toIso8601String()});
-
-    final stats = await db.getCharacterStats(startOfDay);
-    final protocols =
-        await db.getProtocolEntries(startDate: startOfDay, endDate: endOfDay);
-
-    if (mounted) {
-      setState(() {
-        _stats = stats ?? CharacterStats(date: startOfDay);
-        _todayProtocols = protocols
-            .where((p) =>
-                p.type == ProtocolType.gym ||
-                p.type == ProtocolType.meal ||
-                p.type == ProtocolType.dose)
-            .toList();
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading body data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  Future<void> _logProtocol(ProtocolType type) async {
-    final db = ref.read(databaseProvider);
-    await db.insertProtocolEntry(
-      ProtocolEntry(
-        timestamp: _timestampForSelectedDate(),
-        type: type,
-        notes: null,
-      ),
-    );
-    await _loadData();
-  }
+  void _calculateNutrition() {
+    _caloriesConsumed = 0;
+    _proteinConsumed = 0;
+    _fatsConsumed = 0;
+    _carbsConsumed = 0;
 
-  ProtocolButtonState _getProtocolState(ProtocolType type) {
-    final count = _todayProtocols.where((p) => p.type == type).length;
-    if (count == 0) return ProtocolButtonState.empty;
-    if (count >= 3) return ProtocolButtonState.complete;
-    return ProtocolButtonState.partial;
+    for (var meal in _meals) {
+      _caloriesConsumed += meal.calories ?? 0;
+      _proteinConsumed += meal.proteinGrams ?? 0;
+      _fatsConsumed += meal.fatGrams ?? 0;
+      _carbsConsumed += meal.carbsGrams ?? 0;
+    }
+    
+    // Simple estimation for burned from workouts
+    _caloriesBurned = _workouts.fold(0, (sum, w) => sum + (w.caloriesBurned?.toInt() ?? 0));
   }
 
   @override
   Widget build(BuildContext context) {
-    // Use FloatingHeroCard with white bottom panel
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return FloatingHeroCard(
       panelVisibility: widget.panelVisibility,
       draggableBottomPanel: true,
+      bottomPanelMinHeight: MediaQuery.of(context).size.height * 0.38,
+      bottomPanelMaxHeight: MediaQuery.of(context).size.height * 0.78,
+      bottomPanelShowHandle: true,
       bottomPanelPulseEnabled: true,
-      // White bottom panel with stats and controls
-      bottomPanel: _buildBottomPanel(),
-      // Dark card content - Hero XP display at top
+      bottomPanel: _buildBottomPanelContent(),
       child: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            const SizedBox(height: 70), // Space for nav bar
-            const SizedBox(height: 40),
-            Center(child: _buildHeroXP()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomPanel() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildWeekStrip(),
-        const SizedBox(height: 16),
-        // Section header
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'PROTOCOLS',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
-                letterSpacing: 1.5,
-              ),
-            ),
-            Text(
-              _formatSelectedDateLabel(),
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Protocol buttons row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: _protocolTypes.map((type) {
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _buildWhiteProtocolButton(type),
-              ),
-            );
-          }).toList(),
-        ),
-
-        const SizedBox(height: 20),
-
-        // Stats row
-        Align(
-          alignment: Alignment.center,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Row(
-              children: [
-                Expanded(
-                    child: _buildWhiteStat(
-                        'TODAY\'S LOGS', _todayProtocols.length.toString())),
-                const SizedBox(width: 12),
-                Expanded(
-                    child: _buildWhiteStat('LEVEL', '${_stats?.level ?? 1}')),
-              ],
-            ),
-          ),
-        ),
-
-        // Recent activity
-        if (_todayProtocols.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(
-            'RECENT',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ListView.separated(
-            padding: EdgeInsets.zero,
-            itemCount: _todayProtocols.take(3).length,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final entry = _todayProtocols[index];
-              return _buildWhiteListItem(entry);
-            },
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildWeekStrip() {
-    final startOfWeek = _startOfWeek(_selectedDate);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F5),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: List.generate(7, (index) {
-          final date = startOfWeek.add(Duration(days: index));
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: _buildDayChip(date),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildDayChip(DateTime date) {
-    final isSelected = _isSameDay(date, _selectedDate);
-    final label = _weekdayLabels[date.weekday - 1];
-
-    return GestureDetector(
-      onTap: () => _setSelectedDate(date),
-      child: AnimatedContainer(
-        key: ValueKey(date.toIso8601String()),
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.grey[700] : Colors.grey[500],
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${date.day}',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.grey[900] : Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWhiteProtocolButton(ProtocolType type) {
-    final state = _getProtocolState(type);
-    final isComplete = state == ProtocolButtonState.complete;
-
-    return GestureDetector(
-      onTap: () => _logProtocol(type),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isComplete ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color:
-                isComplete ? const Color(0xFF81C784) : const Color(0xFFE0E0E0),
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(type.emoji, style: const TextStyle(fontSize: 24)),
-            const SizedBox(height: 4),
-            Text(
-              type.displayName.toUpperCase(),
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: isComplete ? const Color(0xFF388E3C) : Colors.grey[600],
-                letterSpacing: 1,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWhiteStat(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[500],
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWhiteListItem(ProtocolEntry entry) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Text(entry.type.emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  entry.type.displayName,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
+            // Space for nav bar
+            const SizedBox(height: 70),
+            
+            // Hero Content: Nutrition Overview (centered)
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildHeroContent(),
                 ),
-                Text(
-                  _formatTime(entry.timestamp),
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeroXP() {
-    final xp = _stats?.totalXP ?? 0;
-
+  /// The hero content (displayed in the dark breathing card)
+  Widget _buildHeroContent() {
+    final caloriesRemaining = _caloriesGoal - _caloriesConsumed + _caloriesBurned;
+    final progress = (_caloriesConsumed / _caloriesGoal).clamp(0.0, 1.5);
+    
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        // Large calorie number
         Text(
-          'TOTAL XP',
+          '$caloriesRemaining',
           style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
-            letterSpacing: 2,
+            fontSize: 72,
+            fontWeight: FontWeight.w200,
+            color: Colors.white,
+            letterSpacing: -2,
+          ),
+        ),
+        Text(
+          'calories remaining',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: Colors.white.withValues(alpha: 0.6),
+          ),
+        ),
+        const SizedBox(height: 24),
+        
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.white.withValues(alpha: 0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              progress > 1.0 ? Colors.orange : ThemeConstants.accentBlue,
+            ),
+            minHeight: 6,
           ),
         ),
         const SizedBox(height: 8),
-        HeroNumber(
-          value: xp.toDouble(),
-          decimalPlaces: 0,
-          prefix: '',
-          fontSize: 48,
-          color: ThemeConstants.textOnDark,
+        
+        // Sub-stats row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildMiniStat('Eaten', '$_caloriesConsumed'),
+            _buildMiniStat('Burned', '$_caloriesBurned'),
+            _buildMiniStat('Goal', '$_caloriesGoal'),
+          ],
         ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: ThemeConstants.textOnDark.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(20),
+      ],
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
           ),
-          child: Text(
-            'Level ${_stats?.level ?? 1}',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: ThemeConstants.textOnDark.withValues(alpha: 0.8),
-            ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            color: Colors.white.withValues(alpha: 0.5),
           ),
         ),
       ],
     );
   }
 
-  String _formatTime(DateTime timestamp) {
-    final hour = timestamp.hour;
-    final minute = timestamp.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    return '$displayHour:$minute $period';
+  /// Bottom panel content (white panel with logs)
+  Widget _buildBottomPanelContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Macros Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildMacroColumn('Protein', _proteinConsumed, _proteinGoal, ThemeConstants.accentBlue),
+            _buildMacroColumn('Carbs', _carbsConsumed, _carbsGoal, Colors.amber),
+            _buildMacroColumn('Fat', _fatsConsumed, _fatsGoal, Colors.pink),
+          ],
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Today's Meals
+        _buildSectionHeader('TODAY\'S MEALS'),
+        const SizedBox(height: 12),
+        ..._meals.asMap().entries.map((entry) {
+          final index = entry.key;
+          final meal = entry.value;
+          return MealTimelineRow(
+            time: _formatTime(meal.timestamp),
+            icon: _getMealIcon(meal.type.name),
+            mealName: meal.description ?? 'Meal',
+            calories: '${meal.calories ?? 0} kcal',
+            isFirst: index == 0,
+            isLast: index == _meals.length - 1,
+            isComplete: true, 
+          );
+        }),
+
+        const SizedBox(height: 24),
+
+        // Supplements
+        _buildSectionHeader('SUPPLEMENTS'),
+        const SizedBox(height: 12),
+        ..._doses.map((dose) {
+          final supp = _supplements[dose.supplementId.toString()];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: DoseCard(
+              supplementName: supp?.name ?? 'Supplement',
+              dosage: '${dose.amountMg}${dose.unit ?? "mg"}',
+              scheduledTime: _formatTime(dose.timestamp),
+              isTaken: true,
+              onToggle: () {},
+            ),
+          );
+        }),
+
+        const SizedBox(height: 24),
+
+        // Activity
+        _buildSectionHeader('ACTIVITY'),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 180,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _workouts.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final workout = _workouts[index];
+              return WorkoutCard(
+                title: workout.name ?? 'Workout', 
+                duration: '${workout.durationMinutes ?? 0} min',
+                exerciseCount: workout.sets?.length ?? 0, 
+                calories: workout.caloriesBurned?.toInt(),
+                isFeatured: index == 0,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMacroColumn(String label, double consumed, double goal, Color color) {
+    final progress = (consumed / goal).clamp(0.0, 1.0);
+    return Column(
+      children: [
+        Text(
+          '${consumed.toInt()}g',
+          style: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: ThemeConstants.textOnLight,
+          ),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: 60,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: color.withValues(alpha: 0.2),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 4,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            color: ThemeConstants.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: ThemeConstants.textSecondary,
+        letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  String _formatTime(DateTime dt) {
+    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    final minute = dt.minute.toString().padLeft(2, '0');
+    return '$hour:$minute $period';
+  }
+
+  String _getMealIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'breakfast': return '🍳';
+      case 'lunch': return '🥗';
+      case 'dinner': return '🥩';
+      case 'snack': return '🍎';
+      default: return '🍽️';
+    }
   }
 }

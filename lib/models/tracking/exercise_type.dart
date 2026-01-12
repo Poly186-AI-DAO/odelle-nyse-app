@@ -11,6 +11,9 @@ class ExerciseType {
   final String? instructions;
   final String? videoUrl;
   final String? imageUrl;
+  final String? level;
+  final String? force;
+  final String? mechanic;
   final bool isCompound;
   final bool isCustom;
   final DateTime createdAt;
@@ -25,6 +28,9 @@ class ExerciseType {
     this.instructions,
     this.videoUrl,
     this.imageUrl,
+    this.level,
+    this.force,
+    this.mechanic,
     this.isCompound = false,
     this.isCustom = false,
     DateTime? createdAt,
@@ -43,6 +49,9 @@ class ExerciseType {
       instructions: map['instructions'] as String?,
       videoUrl: map['video_url'] as String?,
       imageUrl: map['image_url'] as String?,
+      level: map['level'] as String?,
+      force: map['force'] as String?,
+      mechanic: map['mechanic'] as String?,
       isCompound: _parseBool(map['is_compound']),
       isCustom: _parseBool(map['is_custom']),
       createdAt: DateTime.parse(map['created_at'] as String),
@@ -61,6 +70,9 @@ class ExerciseType {
       'instructions': instructions,
       'video_url': videoUrl,
       'image_url': imageUrl,
+      'level': level,
+      'force': force,
+      'mechanic': mechanic,
       'is_compound': isCompound ? 1 : 0,
       'is_custom': isCustom ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
@@ -86,6 +98,9 @@ class ExerciseType {
     String? instructions,
     String? videoUrl,
     String? imageUrl,
+    String? level,
+    String? force,
+    String? mechanic,
     bool? isCompound,
     bool? isCustom,
     DateTime? createdAt,
@@ -100,6 +115,9 @@ class ExerciseType {
       instructions: instructions ?? this.instructions,
       videoUrl: videoUrl ?? this.videoUrl,
       imageUrl: imageUrl ?? this.imageUrl,
+      level: level ?? this.level,
+      force: force ?? this.force,
+      mechanic: mechanic ?? this.mechanic,
       isCompound: isCompound ?? this.isCompound,
       isCustom: isCustom ?? this.isCustom,
       createdAt: createdAt ?? this.createdAt,

@@ -1,0 +1,17 @@
+[
+  {
+    "id": 101,
+    "name": "Barbell Curl",
+    "category": "biceps",
+    "primary_muscle": "biceps",
+    "secondary_muscles": ["forearms"],
+    "equipment": "barbell",
+    "instructions": "Stand up with your torso upright while holding a barbell at a shoulder-width grip. The palm of your hands should be facing forward and the elbows should be close to the torso. This will be your starting position.\n\nWhile holding the upper arms stationary, curl the weights forward while contracting the biceps as you breathe out. Tip: Only the forearms should move.\n\nContinue the movement until your biceps are fully contracted and the bar is at shoulder level. Hold the contracted position for a second and squeeze the biceps hard.\n\nSlowly begin to bring the bar back to starting position as your breathe in.\n\nRepeat for the recommended amount of repetitions.",
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation",
+    "is_compound": 0,
+    "is_custom": 0,
+    "created_at": "2026-01-11T12:00:00Z"
+  }
+]

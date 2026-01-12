@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../models/protocol_entry.dart';
+import '../../../models/protocol_entry.dart';
 
 /// Quick-log protocol button (💪🥗💊🧘)
 /// Used for rapid protocol logging on dashboard

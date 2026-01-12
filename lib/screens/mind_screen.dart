@@ -1,15 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../constants/theme_constants.dart';
-import '../models/protocol_entry.dart';
-import '../providers/service_providers.dart';
-import '../utils/logger.dart';
-import '../widgets/effects/breathing_card.dart';
-import '../widgets/protocol/protocol_button.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Mind Screen - Mental/cognitive pillar
-/// Meditation, mantras, mindset tracking
+import '../constants/theme_constants.dart';
+import '../widgets/widgets.dart';
+import '../widgets/effects/breathing_card.dart';
+
 class MindScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
 
@@ -20,499 +18,263 @@ class MindScreen extends ConsumerStatefulWidget {
 }
 
 class _MindScreenState extends ConsumerState<MindScreen> {
-  static const String _tag = 'MindScreen';
-  static const List<String> _weekdayLabels = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
-  static const List<String> _monthLabels = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
-  List<ProtocolEntry> _todayProtocols = [];
-  String _dailyMantra = '';
-  late DateTime _selectedDate;
-
-  // Sample mantras - will be user-customizable later
-  static const List<String> _mantras = [
-    'I am focused and productive.',
-    'I create value with every action.',
-    'I am becoming the person I want to be.',
-    'My potential is unlimited.',
-    'I choose growth over comfort.',
-    'I am in control of my thoughts.',
-    'Today I make progress.',
-  ];
+  // Data State
+  Map<String, dynamic>? _sleepLog;
+  Map<String, dynamic>? _identityData; // New Identity Data
+  List<dynamic> _lessons = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = _normalizeDate(DateTime.now());
-    _dailyMantra = _mantraForDate(_selectedDate);
-    _loadData();
+    _loadJsonData();
   }
 
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
+  Future<void> _loadJsonData() async {
+    try {
+      // 1. Load Sleep Log
+      final sleepJson = await rootBundle.loadString('data/tracking/sleep_log.json');
+      final List<dynamic> sleepList = json.decode(sleepJson);
+      if (sleepList.isNotEmpty) {
+        _sleepLog = sleepList.last;
+      }
 
-  DateTime _startOfWeek(DateTime date) {
-    final normalized = _normalizeDate(date);
-    return normalized.subtract(Duration(days: normalized.weekday - 1));
-  }
+      // 2. Load Content (Lessons)
+      final lessonJson = await rootBundle.loadString('data/content/lesson.json');
+      _lessons = json.decode(lessonJson);
 
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+      // 3. Load Identity / Character Stats
+      final identityJson = await rootBundle.loadString('data/misc/character_stats.json');
+      final List<dynamic> identityList = json.decode(identityJson);
+      if (identityList.isNotEmpty) {
+        _identityData = identityList.last;
+      }
 
-  String _mantraForDate(DateTime date) {
-    final dayOfYear = date.difference(DateTime(date.year)).inDays;
-    final index = dayOfYear % _mantras.length;
-    return _mantras[index];
-  }
-
-  String _formatSelectedDateLabel() {
-    final today = _normalizeDate(DateTime.now());
-    if (_isSameDay(_selectedDate, today)) {
-      return 'Today';
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading mind data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-
-    final weekday = _weekdayLabels[_selectedDate.weekday - 1];
-    final month = _monthLabels[_selectedDate.month - 1];
-    return '$weekday, $month ${_selectedDate.day}';
-  }
-
-  Future<void> _setSelectedDate(DateTime date) async {
-    final normalized = _normalizeDate(date);
-    if (_isSameDay(normalized, _selectedDate)) {
-      return;
-    }
-
-    setState(() {
-      _selectedDate = normalized;
-      _dailyMantra = _mantraForDate(normalized);
-    });
-
-    Logger.info('Selected mind date changed',
-        tag: _tag, data: {'date': normalized.toIso8601String()});
-    await _loadData();
-  }
-
-  DateTime _timestampForSelectedDate() {
-    final now = DateTime.now();
-    return DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      now.hour,
-      now.minute,
-      now.second,
-      now.millisecond,
-      now.microsecond,
-    );
-  }
-
-  Future<void> _loadData() async {
-    final db = ref.read(databaseProvider);
-    final startOfDay = _selectedDate;
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    Logger.info('Loading mind data',
-        tag: _tag, data: {'date': startOfDay.toIso8601String()});
-
-    final protocols = await db.getProtocolEntries(
-      type: ProtocolType.meditation,
-      startDate: startOfDay,
-      endDate: endOfDay,
-    );
-
-    if (mounted) {
-      setState(() {
-        _todayProtocols = protocols;
-      });
-    }
-  }
-
-  Future<void> _logProtocol(ProtocolType type) async {
-    final db = ref.read(databaseProvider);
-    await db.insertProtocolEntry(
-      ProtocolEntry(
-        timestamp: _timestampForSelectedDate(),
-        type: type,
-        notes: null,
-      ),
-    );
-    await _loadData();
-  }
-
-  ProtocolButtonState _getProtocolState(ProtocolType type) {
-    final count = _todayProtocols.where((p) => p.type == type).length;
-    if (count == 0) return ProtocolButtonState.empty;
-    if (count >= 1) return ProtocolButtonState.complete;
-    return ProtocolButtonState.partial;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Use FloatingHeroCard for the floating design
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return FloatingHeroCard(
       panelVisibility: widget.panelVisibility,
       draggableBottomPanel: true,
+      bottomPanelMinHeight: MediaQuery.of(context).size.height * 0.38,
+      bottomPanelMaxHeight: MediaQuery.of(context).size.height * 0.78,
+      bottomPanelShowHandle: true,
       bottomPanelPulseEnabled: true,
-      bottomPanel: _buildBottomPanel(),
+      bottomPanel: _buildBottomPanelContent(),
       child: SafeArea(
         bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 70), // Space for nav bar
-              const SizedBox(height: 20),
-
-              // Daily mantra
-              _buildMantraSection(),
-
-              const Spacer(),
-            ],
-          ),
+        child: Column(
+          children: [
+            const SizedBox(height: 70),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildHeroContent(),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildMantraSection() {
-    return Column(
-      children: [
-        Text(
-          'TODAY\'S MANTRA',
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: ThemeConstants.textOnDark.withValues(alpha: 0.5),
-            letterSpacing: 2,
-          ),
+  /// Hero content (Identity Matrix on dark breathing card)
+  Widget _buildHeroContent() {
+    if (_identityData == null) {
+      return Text(
+        'Good Evening',
+        style: GoogleFonts.inter(
+          fontSize: 32,
+          fontWeight: FontWeight.w300,
+          color: Colors.white,
         ),
-        const SizedBox(height: 20),
+      );
+    }
 
-        // Mantra text with quotes
-        Text(
-          '"$_dailyMantra"',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: 22,
-            fontWeight: FontWeight.w300,
-            color: ThemeConstants.textOnDark,
-            height: 1.5,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ],
-    );
-  }
+    final astrology = Map<String, String>.from(_identityData!['astrology'] ?? {});
+    final archetypes = List<String>.from(_identityData!['archetypes'] ?? []);
+    final lifePath = _identityData!['numerology']?['lifePath'] ?? 0;
 
-  Widget _buildBottomPanel() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _buildWeekStrip(),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'MEDITATION',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
-                letterSpacing: 1.5,
-              ),
+        // Archetype badges
+        Wrap(
+          spacing: 8,
+          children: archetypes.map((a) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
             ),
-            Text(
-              _formatSelectedDateLabel(),
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: SizedBox(
-            width: 120,
-            child: _buildWhiteProtocolButton(ProtocolType.meditation),
-          ),
-        ),
-        const SizedBox(height: 20),
-        Align(
-          alignment: Alignment.center,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildWhiteStat(
-                    'SESSIONS TODAY',
-                    _todayProtocols.length.toString(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildWhiteStat(
-                    'MIND LEVEL',
-                    '${(_todayProtocols.length * 10) + 1}',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'SESSIONS',
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[600],
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (_todayProtocols.isEmpty)
-          Center(
             child: Text(
-              'No meditation sessions yet.\nTap to log one!',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          )
-        else
-          ListView.separated(
-            padding: EdgeInsets.zero,
-            itemCount: _todayProtocols.length,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final entry = _todayProtocols[index];
-              return _buildWhiteListItem(entry);
-            },
-          ),
-      ],
-    );
-  }
-
-  Widget _buildWeekStrip() {
-    final startOfWeek = _startOfWeek(_selectedDate);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F5),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: List.generate(7, (index) {
-          final date = startOfWeek.add(Duration(days: index));
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: _buildDayChip(date),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildDayChip(DateTime date) {
-    final isSelected = _isSameDay(date, _selectedDate);
-    final label = _weekdayLabels[date.weekday - 1];
-
-    return GestureDetector(
-      onTap: () => _setSelectedDate(date),
-      child: AnimatedContainer(
-        key: ValueKey(date.toIso8601String()),
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
+              a.toUpperCase(),
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.grey[700] : Colors.grey[500],
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${date.day}',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.grey[900] : Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWhiteProtocolButton(ProtocolType type) {
-    final state = _getProtocolState(type);
-    final isComplete = state == ProtocolButtonState.complete;
-
-    return GestureDetector(
-      onTap: () => _logProtocol(type),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isComplete ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color:
-                isComplete ? const Color(0xFF81C784) : const Color(0xFFE0E0E0),
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(type.emoji, style: const TextStyle(fontSize: 24)),
-            const SizedBox(height: 4),
-            Text(
-              type.displayName.toUpperCase(),
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: isComplete ? const Color(0xFF388E3C) : Colors.grey[600],
+                color: Colors.white70,
                 letterSpacing: 1,
               ),
             ),
+          )).toList(),
+        ),
+        const SizedBox(height: 24),
+        
+        // Astrology display
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildAstroColumn('☉', astrology['sun'] ?? '-'),
+            const SizedBox(width: 32),
+            _buildAstroColumn('☽', astrology['moon'] ?? '-'),
+            const SizedBox(width: 32),
+            _buildAstroColumn('↑', astrology['rising'] ?? '-'),
+          ],
+        ),
+        const SizedBox(height: 24),
+        
+        // Life path
+        Text(
+          'LIFE PATH $lifePath',
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: ThemeConstants.polyPurple300,
+            letterSpacing: 2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAstroColumn(String symbol, String sign) {
+    return Column(
+      children: [
+        Text(symbol, style: const TextStyle(fontSize: 24, color: Colors.white54)),
+        const SizedBox(height: 4),
+        Text(
+          sign,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Bottom panel content (white panel with logs)
+  Widget _buildBottomPanelContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Sleep Card
+        if (_sleepLog != null)
+          SleepCard(
+            totalSleep: '${(_sleepLog!['duration_minutes'] ?? 450) ~/ 60}h ${(_sleepLog!['duration_minutes'] ?? 450) % 60}m',
+            sleepScore: _sleepLog!['quality_score'] ?? 85,
+            timeAsleep: '7h 15m',
+            timeAwake: '45m',
+            deepSleepPercentage: 0.25,
+          ),
+        
+        const SizedBox(height: 24),
+
+        // Protocols
+        _buildSectionHeader('OPEN PROTOCOLS'),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildProtocolButton('Journal', Icons.edit_note, Colors.amber, () {})),
+            const SizedBox(width: 12),
+            Expanded(child: _buildProtocolButton('Breathe', Icons.air, Colors.cyan, () {})),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+
+        // Continue Learning
+        _buildSectionHeader('CONTINUE LEARNING'),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 180,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _lessons.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final lesson = _lessons[index];
+              return ContentCard(
+                title: lesson['title'] ?? 'Untitled',
+                author: 'Dr. Huberman',
+                duration: '${lesson['duration_seconds'] != null ? lesson['duration_seconds'] ~/ 60 : 10} min',
+                imageUrl: index % 2 == 0
+                    ? 'https://images.unsplash.com/photo-1515023115689-589c33041697'
+                    : 'https://images.unsplash.com/photo-1499209974431-9dddcece7f88',
+                onTap: () {},
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: ThemeConstants.textSecondary,
+        letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  Widget _buildProtocolButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: ThemeConstants.borderRadius,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: ThemeConstants.glassBackgroundWeak,
+          borderRadius: ThemeConstants.borderRadius,
+          border: Border.all(color: ThemeConstants.glassBorderWeak),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: ThemeConstants.buttonTextStyle.copyWith(fontSize: 14),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildWhiteStat(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[500],
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWhiteListItem(ProtocolEntry entry) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Text(
-            entry.type.emoji,
-            style: const TextStyle(fontSize: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  entry.type.displayName,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                Text(
-                  _formatTime(entry.timestamp),
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatTime(DateTime timestamp) {
-    final hour = timestamp.hour;
-    final minute = timestamp.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    return '$displayHour:$minute $period';
   }
 }
