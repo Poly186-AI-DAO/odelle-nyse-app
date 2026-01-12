@@ -48,8 +48,6 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
   // Card animation
   late AnimationController _cardAnimController;
 
-
-
   @override
   void initState() {
     super.initState();
@@ -450,9 +448,8 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
         ),
         const SizedBox(width: 12),
         _buildFloatingPillButton(
-          icon: _isAutoAdvancing
-              ? Icons.pause_rounded
-              : Icons.play_arrow_rounded,
+          icon:
+              _isAutoAdvancing ? Icons.pause_rounded : Icons.play_arrow_rounded,
           label: _isAutoAdvancing ? 'Pause' : 'Play',
           onTap: () {
             setState(() {
