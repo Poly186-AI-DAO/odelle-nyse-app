@@ -139,12 +139,21 @@ class WeatherService {
     final rawPrivateKey = dotenv.env['WEATHER_PRIVATE_KEY'];
     final bundleId = dotenv.env['WEATHER_BUNDLE_ID'] ?? 'com.poly186.odelle';
 
-    final privateKey = rawPrivateKey?.replaceAll(r'\n', '\n').trim();
+    // Handle various newline formats in the private key
+    final privateKey =
+        rawPrivateKey?.replaceAll(r'\n', '\n').replaceAll('\\n', '\n').trim();
+
+    // Validate private key has proper PEM format
+    final hasValidKey = privateKey != null &&
+        privateKey.contains('-----BEGIN PRIVATE KEY-----') &&
+        privateKey.contains('-----END PRIVATE KEY-----') &&
+        privateKey.length > 100; // Minimum reasonable key length
 
     if (teamId != null &&
+        teamId.isNotEmpty &&
         keyId != null &&
-        privateKey != null &&
-        privateKey.isNotEmpty) {
+        keyId.isNotEmpty &&
+        hasValidKey) {
       configure(
         teamId: teamId,
         keyId: keyId,
@@ -152,7 +161,12 @@ class WeatherService {
         bundleId: bundleId,
       );
     } else {
-      Logger.warning('WeatherKit env vars missing or invalid', tag: _tag);
+      if (!hasValidKey) {
+        Logger.warning('WeatherKit private key missing or invalid format',
+            tag: _tag);
+      } else {
+        Logger.warning('WeatherKit env vars missing or invalid', tag: _tag);
+      }
     }
   }
 
@@ -256,8 +270,7 @@ class WeatherService {
       );
 
       _lastPosition = position;
-      Logger.debug(
-          'Got location: ${position.latitude}, ${position.longitude}',
+      Logger.debug('Got location: ${position.latitude}, ${position.longitude}',
           tag: _tag);
       return position;
     } catch (e) {

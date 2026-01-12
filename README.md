@@ -1,5 +1,5 @@
 # Odelle Nyse (ON) 
-## Self-Actualization Operating System
+## Your Digital Twin for Self-Actualization
 
 > *"I want to recalibrate and update my source code. I wanna update my system prompt."*
 
@@ -7,38 +7,52 @@
 
 ## The Pitch
 
-**5 seconds**: "An app that helps me rewire my brain to think less and live more."
+**5 seconds**: "A digital twin that helps me become the best version of myself."
 
-**10 seconds**: "I'm using microdosing to weaken my brain's 'cortico-cortical recurrent loops'—the thinking-about-thinking patterns—and an AI to help me stay present."
+**10 seconds**: "Odelle is my digital twin — the clearest, wisest version of me — helping me optimize body, mind, and spirit through data-driven behavioral change."
 
-**30 seconds**: "Research just proved that psilocybin weakens *cortico-cortical recurrent loops*—the brain's feedback circuits responsible for rumination and the Default Mode Network. I'm building an app that combines microdosing with CBT and voice AI to leverage that plasticity window. The goal? Quiet the mental chatter, raise my conscious awareness, and actually be present. It's not just self-improvement—it's source code updates for my brain."
+**30 seconds**: "Odelle isn't an AI assistant. It's a digital twin — a reflection of my own potential that knows my goals, tracks my patterns, and holds me accountable to who I'm becoming. Combining voice journaling, CBT reframing, and protocol tracking across body/mind/spirit, it helps me understand myself, change my behavior, and become who I'm meant to be. Not through external motivation, but by reflecting my own wisdom back to me."
 
 ---
 
-**Odelle Nyse** (pronounced "Oh-DELL NYE-see") is a voice-first AI assistant designed to help you become the best version of yourself. The name spells **ON** — because we're turning you ON.
+**Odelle Nyse** (pronounced "Oh-DELL NYE-see") is a voice-first digital twin designed to help you become the best version of yourself. The name spells **ON** — because we're turning you ON.
 
 ---
 
 ## 🎯 What is this?
 
-A mobile app designed to test a core hypothesis: **Can microdosing psilocybin help reduce cortico-cortical feedback loops (the "thinking about thinking" patterns of the Default Mode Network) and increase present-moment awareness?**
+A mobile app built around a core concept: **Your Digital Twin** — the clearest, wisest version of yourself, externalized.
+
+Odelle knows:
+- Your goals and where you want to go
+- Your patterns — what you keep doing, what trips you up
+- Your values and mantras
+- Your protocols — the daily practices that move you forward
 
 ### The Trifecta Protocol
 
-- **🧬 Bio-Chemical Priming**: Track microdosing protocol to open neuroplasticity windows
-- **🧠 CBT & Mantras**: Cognitive reframing during peak plasticity to rewire thought patterns  
-- **🤖 AI Companion**: Voice-first journaling and accountability to maintain consistency
+- **🏋️ BODY**: Gym, nutrition, sleep, physical optimization
+- **🧠 MIND**: Focus, goals, cognitive sharpness, CBT reframing
+- **🧘 SPIRIT**: Meditation, mantras, presence, Zen
 
-### The Science
+### The Thesis
 
-Based on the landmark [Jiang et al. (2025)](https://doi.org/10.1016/j.cell.2025.11.009) study published in *Cell*, which discovered that psilocybin:
-- **Weakens** cortico-cortical recurrent loops (the biological signature of the Default Mode Network)
+**Understand yourself → Change behavior → Become who you're meant to be**
+
+Odelle builds a "psychograph" of you over time:
+- Your patterns (what you keep doing)
+- Your projections (who you're trying to become)
+- Your blind spots (what you can't see)
+- Your bridges (what connects current-you to future-you)
+
+### Optional: Neuroplasticity Enhancement
+
+For those exploring cognitive enhancement, the app can track microdosing protocols based on the landmark [Jiang et al. (2025)](https://doi.org/10.1016/j.cell.2025.11.009) study in *Cell*, which found that psilocybin:
+- **Weakens** cortico-cortical recurrent loops (Default Mode Network patterns)
 - **Strengthens** inputs from perceptual/sensory regions
-- Rewires the brain in an **activity-dependent** manner (what you do during administration shapes the rewiring)
+- Rewires the brain in an **activity-dependent** manner
 
-Full details in the [Odelle Nyse Whitepaper](docs/WHITEPAPER.md).
-
-> ⚠️ **Disclaimer**: This is a personal self-improvement experiment, not medical advice. Psilocybin is a controlled substance in most jurisdictions. Consult healthcare professionals and understand local laws before making any decisions.
+> ⚠️ **Disclaimer**: This is a personal self-improvement tool. Psilocybin is a controlled substance in most jurisdictions. Consult healthcare professionals and understand local laws.
 
 ---
 
@@ -90,14 +104,17 @@ Full details in the [Odelle Nyse Whitepaper](docs/WHITEPAPER.md).
 
 ## 📱 Features
 
+### Note to Self (NTS)
+Text-based reflection with your digital twin. Not a chatbot — a mirror that reflects your own wisdom back to you. Warm but direct, grounded in YOUR values and goals.
+
 ### Voice Journal (The "Kitchen Confessional")
-Capture thoughts via voice while your hands are busy. Say "Note to self" and your thoughts are transcribed and saved.
+Capture thoughts via voice while your hands are busy. Speak naturally and your thoughts are transcribed, saved, and integrated into your psychograph.
 
 ### Protocol Logging
 Quick-tap buttons to log:
 - 💪 Gym sessions
 - 🥗 Meals & nutrition
-- 💊 Microdose tracking
+- 💊 Supplement/protocol tracking
 - 🧘 Meditation minutes
 - 🎯 Deep work sessions
 

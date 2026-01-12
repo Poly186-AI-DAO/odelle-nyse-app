@@ -4,6 +4,8 @@ import '../repositories/dose_repository.dart';
 import '../repositories/habit_repository.dart';
 import '../repositories/mood_repository.dart';
 import '../repositories/streak_repository.dart';
+import '../repositories/meal_repository.dart';
+import '../repositories/workout_repository.dart';
 import 'service_providers.dart';
 
 /// Repository providers
@@ -30,4 +32,14 @@ final moodRepositoryProvider = Provider<MoodRepository>((ref) {
 final streakRepositoryProvider = Provider<StreakRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return StreakRepository(db);
+});
+
+final mealRepositoryProvider = Provider<MealRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  return MealRepository(db);
+});
+
+final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  return WorkoutRepository(db);
 });

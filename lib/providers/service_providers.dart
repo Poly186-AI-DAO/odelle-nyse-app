@@ -5,6 +5,8 @@ import '../services/azure_speech_service.dart';
 import '../services/bootstrap_service.dart';
 import '../services/daily_content_service.dart';
 import '../services/psychograph_service.dart';
+import '../services/user_context_service.dart';
+import '../services/voice_action_service.dart';
 import '../services/weather_service.dart';
 
 import '../services/health_kit_service.dart';
@@ -25,7 +27,11 @@ final azureAgentServiceProvider = Provider<AzureAgentService>((ref) {
 /// Processes user data, updates RCA meter, generates insights
 final psychographServiceProvider = Provider<PsychographService>((ref) {
   final agentService = ref.watch(azureAgentServiceProvider);
-  final service = PsychographService(agentService: agentService);
+  final userContextService = ref.watch(userContextServiceProvider);
+  final service = PsychographService(
+    agentService: agentService,
+    userContextService: userContextService,
+  );
 
   // Start background processing (every 60 minutes)
   service.startBackgroundProcessing(intervalMinutes: 60);
@@ -69,6 +75,11 @@ final weatherServiceProvider = Provider<WeatherService>((ref) {
   return WeatherService();
 });
 
+/// User Context Service - loads full documents for LLM context
+final userContextServiceProvider = Provider<UserContextService>((ref) {
+  return UserContextService();
+});
+
 /// Daily Content Generation Service
 /// Generates personalized meditations, affirmations, and images once per day
 /// Uses ElevenLabs for voice synthesis, Azure for images, WeatherKit for weather context
@@ -94,11 +105,15 @@ final bootstrapServiceProvider = Provider<BootstrapService>((ref) {
   final agentService = ref.watch(azureAgentServiceProvider);
   final healthKitService = ref.watch(healthKitServiceProvider);
   final weatherService = ref.watch(weatherServiceProvider);
+  final userContextService = ref.watch(userContextServiceProvider);
+  final database = ref.watch(databaseProvider);
 
   return BootstrapService(
     agentService: agentService,
     healthKitService: healthKitService,
     weatherService: weatherService,
+    userContextService: userContextService,
+    database: database,
   );
 });
 
@@ -106,4 +121,18 @@ final bootstrapServiceProvider = Provider<BootstrapService>((ref) {
 final bootstrapResultProvider = FutureProvider<BootstrapResult>((ref) async {
   final bootstrapService = ref.watch(bootstrapServiceProvider);
   return bootstrapService.run();
+});
+
+/// Voice Action Service - processes voice commands and executes actions
+/// Flow: Voice → LLM (intent) → Execute action → Return confirmation
+final voiceActionServiceProvider = Provider<VoiceActionService>((ref) {
+  final agentService = ref.watch(azureAgentServiceProvider);
+  final userContextService = ref.watch(userContextServiceProvider);
+  final database = ref.watch(databaseProvider);
+
+  return VoiceActionService(
+    agentService: agentService,
+    userContextService: userContextService,
+    database: database,
+  );
 });

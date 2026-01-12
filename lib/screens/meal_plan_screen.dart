@@ -58,14 +58,6 @@ class _MealPlanScreenState extends State<MealPlanScreen>
     }
   }
 
-  List<MealLog> get _todayMeals {
-    final now = DateTime.now();
-    return _allMeals.where((m) {
-      return m.timestamp.year == now.year &&
-          m.timestamp.month == now.month &&
-          m.timestamp.day == now.day;
-    }).toList();
-  }
 
   List<MealLog> get _selectedDateMeals {
     return _allMeals.where((m) {
@@ -629,7 +621,7 @@ class _MealPlanScreenState extends State<MealPlanScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Daily ${dailyMealCount}-Meal Plan',
+                'Daily $dailyMealCount-Meal Plan',
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -804,12 +796,6 @@ class _MealPlanScreenState extends State<MealPlanScreen>
     );
   }
 
-  String _formatTime(DateTime dt) {
-    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
-    final minute = dt.minute.toString().padLeft(2, '0');
-    return '$hour:$minute $period';
-  }
 
   String _getMealIcon(String type) {
     switch (type.toLowerCase()) {

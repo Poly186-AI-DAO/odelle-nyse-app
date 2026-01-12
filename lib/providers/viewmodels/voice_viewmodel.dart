@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/azure_speech_service.dart';
+import '../../services/voice_action_service.dart';
 import '../../utils/logger.dart';
 import '../service_providers.dart';
 
@@ -17,6 +18,8 @@ class VoiceState {
   final String aiResponseText;
   final bool isAISpeaking;
   final String? error;
+  final ActionResult? lastActionResult; // Result of voice command processing
+  final bool isProcessingAction; // True while LLM is processing command
 
   const VoiceState({
     this.connectionState = VoiceLiveState.disconnected,
@@ -28,6 +31,8 @@ class VoiceState {
     this.aiResponseText = '',
     this.isAISpeaking = false,
     this.error,
+    this.lastActionResult,
+    this.isProcessingAction = false,
   });
 
   bool get isDisconnected => connectionState == VoiceLiveState.disconnected;
@@ -49,6 +54,9 @@ class VoiceState {
     String? aiResponseText,
     bool? isAISpeaking,
     String? error,
+    ActionResult? lastActionResult,
+    bool? isProcessingAction,
+    bool clearActionResult = false,
   }) {
     return VoiceState(
       connectionState: connectionState ?? this.connectionState,
@@ -60,6 +68,10 @@ class VoiceState {
       aiResponseText: aiResponseText ?? this.aiResponseText,
       isAISpeaking: isAISpeaking ?? this.isAISpeaking,
       error: error,
+      lastActionResult: clearActionResult
+          ? null
+          : (lastActionResult ?? this.lastActionResult),
+      isProcessingAction: isProcessingAction ?? this.isProcessingAction,
     );
   }
 }
@@ -75,6 +87,7 @@ class VoiceViewModel extends Notifier<VoiceState> {
   StreamSubscription<String>? _aiResponseSubscription;
 
   AzureSpeechService get _service => ref.read(voiceServiceProvider);
+  VoiceActionService get _actionService => ref.read(voiceActionServiceProvider);
 
   @override
   VoiceState build() {
@@ -251,6 +264,46 @@ class VoiceViewModel extends Notifier<VoiceState> {
   /// Clear error
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  /// Process the current transcription as a voice command
+  /// Sends to LLM to determine intent and execute action
+  Future<ActionResult?> processVoiceCommand() async {
+    final transcription = state.currentTranscription;
+    if (transcription.isEmpty) {
+      Logger.warning('No transcription to process', tag: _tag);
+      return null;
+    }
+
+    Logger.info('Processing voice command: "$transcription"', tag: _tag);
+    state = state.copyWith(isProcessingAction: true);
+
+    try {
+      final result = await _actionService.processVoiceCommand(transcription);
+      state = state.copyWith(
+        lastActionResult: result,
+        isProcessingAction: false,
+      );
+      return result;
+    } catch (e) {
+      Logger.error('Voice command processing failed: $e', tag: _tag);
+      final errorResult = ActionResult(
+        success: false,
+        type: ActionType.error,
+        message: 'Failed to process command',
+        error: e.toString(),
+      );
+      state = state.copyWith(
+        lastActionResult: errorResult,
+        isProcessingAction: false,
+      );
+      return errorResult;
+    }
+  }
+
+  /// Clear the last action result
+  void clearActionResult() {
+    state = state.copyWith(clearActionResult: true);
   }
 }
 

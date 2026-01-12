@@ -244,9 +244,12 @@ class AzureAgentService {
       'messages': messages.map((m) => m.toJson()).toList(),
     };
 
-    // gpt-5-nano doesn't support temperature parameter, only default (1.0)
-    // gpt-5.2-chat supports temperature
-    if (temperature != null && deployment != AzureAIDeployment.gpt5Nano) {
+    // Note: GPT-5 models (gpt-5-nano, gpt-5.2-chat) don't support temperature
+    // Only default (1.0) is supported. Temperature param is ignored for these models.
+    // Keep this code for future models that might support it.
+    if (temperature != null &&
+        deployment != AzureAIDeployment.gpt5Nano &&
+        deployment != AzureAIDeployment.gpt5Chat) {
       body['temperature'] = temperature;
     }
 

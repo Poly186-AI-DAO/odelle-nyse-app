@@ -417,6 +417,40 @@ it features a **Hero Card** extending from the top edge with a light background 
 - Nav bar overlays using `Stack` in HomeScreen
 - Content centered with `SafeArea` + internal spacing
 
+### Body/Mind: Floating Stats + Bottom Panel
+
+Body and Mind screens use a floating stats card that tracks the bottom panel
+position. The card sits above the panel at rest, then compresses into a
+compact bar as the panel expands. Avoid jump cuts by anchoring the card using
+its bottom edge and lerping between two bottom offsets.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [Nav Bar]                                                               │
+│                                                                         │
+│                      (breathing space)                                  │
+│                                                                         │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │ Full Stats Card (resting)                                        │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │ Bottom Panel (collapsed)                                        │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Positioning Rules**:
+- `minPanelHeight = screenHeight * 0.38`
+- `maxPanelHeight = screenHeight - safeTop - navBarHeight - compactBarHeight`
+- `cardBottomAtRest = minPanelHeight + 20`
+- `cardBottomAtExpanded = maxPanelHeight + 16`
+- `cardBottom = lerp(cardBottomAtRest, cardBottomAtExpanded, panelProgress)`
+
+**Transition Rules**:
+- Use a single `Positioned` card with `bottom: cardBottom` to avoid jumps.
+- Crossfade full card → compact bar at ~60% panel progress.
+- Keep a small gap between compact bar and nav bar; never overlap nav tabs.
+
 ### Screen 3: Portfolio Breakdown
 
 ```

@@ -148,10 +148,14 @@ class AudioOutputService {
   }
 
   /// Callback when player needs more audio (low buffer)
+  /// Also detects when playback completes (remainingFrames == 0)
   void _onFeedCallback(int remainingFrames) {
-    // This is called when buffer is running low
-    // We don't need to do anything here since we're feeding
-    // audio as it arrives from Azure
+    // When buffer is fully drained, playback has stopped
+    // Reset _isPlaying so start() is called for the next response
+    if (remainingFrames == 0 && _isPlaying) {
+      _isPlaying = false;
+      Logger.debug('Audio playback completed (buffer drained)', tag: _tag);
+    }
   }
 
   /// Stop playback immediately (for interruption handling)

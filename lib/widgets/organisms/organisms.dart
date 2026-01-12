@@ -12,4 +12,3 @@ export 'tracking/sleep_card.dart';
 export 'content/content_card.dart';
 export 'profile/profile_header.dart';
 export 'mind/identity_card.dart';
-export 'mind/mantra_card.dart';

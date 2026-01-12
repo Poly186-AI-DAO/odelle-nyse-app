@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -99,7 +98,6 @@ class ContentGenerationService {
   final http.Client _httpClient;
 
   // Progress tracking
-  final Map<ContentType, GenerationTask> _activeTasks = {};
   ProgressCallback? onProgress;
 
   // Cached profile data
@@ -180,7 +178,7 @@ class ContentGenerationService {
     // Wait for all parallel tasks
     await Future.wait(futures);
 
-    Logger.info('Initial generation complete', tag: _tag, data: results);
+    Logger.info('Initial generation complete', tag: _tag, data: _resultMap(results));
     return results;
   }
 
@@ -223,7 +221,7 @@ class ContentGenerationService {
 
     await Future.wait(futures);
 
-    Logger.info('Daily content complete', tag: _tag, data: results);
+    Logger.info('Daily content complete', tag: _tag, data: _resultMap(results));
     return results;
   }
 
@@ -297,7 +295,7 @@ Tone: Reverent but personal, mystical but grounded.
           ContentType.cosmicStory, 'Generating audio narration...', 0.5);
 
       // Generate audio with ElevenLabs
-      final audioBytes = await _generateAudio(script, 'narrator');
+      final audioBytes = await _generateAudio(script, VoiceType.guidance);
       final audioPath = audioBytes != null
           ? await _saveAudioFile('cosmic_story', audioBytes)
           : null;
@@ -346,8 +344,6 @@ Tone: Reverent but personal, mystical but grounded.
 
     try {
       final mission = _genesisProfile?['mission'] as Map<String, dynamic>?;
-      final archetypes =
-          _genesisProfile?['archetypes'] as Map<String, dynamic>?;
       final currentFocus =
           _genesisProfile?['currentFocus'] as Map<String, dynamic>?;
       final experiment =
@@ -470,7 +466,7 @@ Return JSON array with:
         final progress = 0.3 + (0.6 * completed / exercises.length);
         _notifyProgress(
           ContentType.exercises,
-          'Creating ${exercise['name']} (${completed}/${exercises.length})...',
+          'Creating ${exercise['name']} ($completed/${exercises.length})...',
           progress,
         );
 
@@ -483,12 +479,10 @@ Return JSON array with:
             size: ImageSize.square,
           );
 
-          if (imageResult.success && imageResult.imageBytes != null) {
-            imagePath = await _saveImageFile(
-              'exercise_${exercise['name'].toString().toLowerCase().replaceAll(' ', '_')}',
-              imageResult.imageBytes!,
-            );
-          }
+          imagePath = await _saveImageFile(
+            'exercise_${exercise['name'].toString().toLowerCase().replaceAll(' ', '_')}',
+            imageResult.bytes,
+          );
         } catch (e) {
           Logger.warning('Failed to generate image for ${exercise['name']}: $e',
               tag: _tag);
@@ -605,8 +599,6 @@ Include RPE guidelines for main lifts.
 
     try {
       final rca = _genesisProfile?['rca'] as Map<String, dynamic>?;
-      final archetypes =
-          _genesisProfile?['archetypes'] as Map<String, dynamic>?;
 
       final prompt = '''
 Create a ${_getMeditationDuration(type)} minute $type meditation script.
@@ -649,7 +641,7 @@ Return JSON:
       // Generate audio
       final audioBytes = await _generateAudio(
         script.replaceAll(RegExp(r'\[pause \d+ seconds?\]'), '...'),
-        'meditation',
+        VoiceType.meditation,
       );
 
       _notifyProgress(ContentType.meditation, 'Saving meditation...', 0.8);
@@ -775,6 +767,11 @@ Return JSON:
   // HELPER METHODS
   // ============================================================
 
+  // Convert content-type keyed results into a logger-friendly map
+  Map<String, dynamic> _resultMap(Map<ContentType, bool> results) {
+    return results.map((key, value) => MapEntry(key.name, value));
+  }
+
   void _notifyProgress(ContentType type, String message, double progress) {
     Logger.info('[$type] $message ($progress)', tag: _tag);
     onProgress?.call(type, message, progress);
@@ -887,7 +884,7 @@ Return JSON:
     return (result.first['count'] as int?) ?? 0;
   }
 
-  Future<Uint8List?> _generateAudio(String text, String voiceType) async {
+  Future<Uint8List?> _generateAudio(String text, VoiceType voiceType) async {
     try {
       final apiKey = ElevenLabsConfig.apiKey;
       if (apiKey.isEmpty) {

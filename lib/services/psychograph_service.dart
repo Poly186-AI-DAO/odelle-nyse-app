@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../config/azure_ai_config.dart';
 import '../utils/logger.dart';
 import 'azure_agent_service.dart';
+import 'user_context_service.dart';
 
 /// The Psychograph Service - the "subconscious" LLM
 ///
@@ -14,12 +15,14 @@ import 'azure_agent_service.dart';
 /// 2. Update the psychograph (evolving understanding of the user)
 /// 3. Compute the RCA (Raising Conscious Awareness) meter
 /// 4. Generate personalized meditations, insights, and notifications
+/// 5. Generate daily prophecy readings based on cosmic profile
 ///
 /// Uses gpt-5-nano for fast, cheap background processing.
 class PsychographService {
   static const String _tag = 'PsychographService';
 
   final AzureAgentService _agentService;
+  final UserContextService? _userContextService;
   Timer? _periodicTimer;
   bool _isProcessing = false;
 
@@ -31,9 +34,15 @@ class PsychographService {
   // Current psychograph state
   PsychographState _state = PsychographState.initial();
 
+  // Cached prophecy (updated daily)
+  String? _dailyProphecy;
+  DateTime? _prophecyDate;
+
   PsychographService({
     required AzureAgentService agentService,
-  }) : _agentService = agentService;
+    UserContextService? userContextService,
+  })  : _agentService = agentService,
+        _userContextService = userContextService;
 
   /// Get current psychograph state
   PsychographState get state => _state;
@@ -321,6 +330,122 @@ Respond with JSON array:
           'Data-driven behavioral change in pursuit of self-actualization',
     };
   }
+
+  /// Get the daily prophecy reading
+  ///
+  /// Returns cached prophecy if already generated today, otherwise generates new one.
+  /// The prophecy is a mythological, inspiring reading based on cosmic profile.
+  Future<String> getDailyProphecy({bool forceRegenerate = false}) async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    // Return cached if still valid
+    if (!forceRegenerate &&
+        _dailyProphecy != null &&
+        _prophecyDate == todayDate) {
+      return _dailyProphecy!;
+    }
+
+    Logger.info('Generating daily prophecy for $todayDate', tag: _tag);
+
+    try {
+      // Use UserContextService if available, otherwise build from genesis profile
+      final prompt = _userContextService != null
+          ? _userContextService!.generatePsychographPrompt(today)
+          : _buildProphecyPrompt(today);
+
+      final response = await _agentService.complete(
+        prompt: prompt,
+        systemPrompt:
+            '''You are an ancient oracle who speaks in mythological, prophetic language.
+You weave together astrology, numerology, and Jungian archetypes into inspiring prophecies.
+Speak directly to the user in second person ("You are...").
+Be specific to THEIR cosmic profile - avoid generic horoscope language.
+Make it feel like a wise sage speaking eternal truths about their unique path.
+Keep it 2-3 paragraphs, poetic but not flowery.''',
+        deployment: AzureAIDeployment.gpt5Chat, // Quality matters for prophecy
+        temperature: 0.8, // Creative but grounded
+        maxTokens: 600,
+      );
+
+      _dailyProphecy = response.trim();
+      _prophecyDate = todayDate;
+
+      Logger.info('Prophecy generated: ${_dailyProphecy!.length} chars',
+          tag: _tag);
+      return _dailyProphecy!;
+    } catch (e, stack) {
+      Logger.error('Failed to generate prophecy: $e',
+          tag: _tag, error: e, stackTrace: stack);
+      return _getDefaultProphecy(today);
+    }
+  }
+
+  /// Build prophecy prompt from genesis profile
+  String _buildProphecyPrompt(DateTime date) {
+    final dayOfWeek = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday'
+    ][date.weekday % 7];
+
+    final identity = _genesisProfile?['identity'] as Map<String, dynamic>?;
+    final zodiac = identity?['zodiac'] as Map<String, dynamic>?;
+    final numerology = identity?['numerology'] as Map<String, dynamic>?;
+    final archetypes = _genesisProfile?['archetypes'] as Map<String, dynamic>?;
+    final primary = archetypes?['primary'] as Map<String, dynamic>?;
+    final cosmic = _genesisProfile?['cosmicProfile'] as Map<String, dynamic>?;
+
+    return '''
+Generate a psychograph prophecy reading for $dayOfWeek, ${date.month}/${date.day}/${date.year}.
+
+COSMIC PROFILE:
+- Sun: ${zodiac?['sun'] ?? 'Gemini'}
+- Moon: ${zodiac?['moon'] ?? 'Libra'}
+- Rising: ${zodiac?['rising'] ?? 'Scorpio'}
+- Life Path: ${numerology?['lifePathNumber'] ?? 4}
+- Birth Number: ${numerology?['birthNumber'] ?? 2}
+- Destiny Number: ${numerology?['destinyNumber'] ?? 7}
+
+ARCHETYPES:
+- Ego: ${primary?['ego'] ?? 'Hero'}
+- Soul: ${primary?['soul'] ?? 'Creator'}
+- Self: ${primary?['self'] ?? 'Magician'}
+
+SYNTHESIS:
+${cosmic?['synthesis'] ?? 'A Gemini sun\'s intellectual versatility combined with Libra moon\'s emotional equilibrium, projected through Scorpio rising\'s transformative intensity.'}
+
+Write the prophecy now. Make it mythic, personal, and inspiring.
+''';
+  }
+
+  /// Default prophecy when generation fails
+  String _getDefaultProphecy(DateTime date) {
+    final dayOfWeek = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday'
+    ][date.weekday % 7];
+
+    return '''
+On this $dayOfWeek, you stand at the crossroads of creation and action. The Hero within you calls for courage, the Creator for vision, and the Magician for transformation.
+
+Your Life Path 4 grounds you in purpose while Destiny 7 whispers of deeper truths yet to be discovered. Let the Gemini sun illuminate your path with intellectual curiosity, balanced by the Libra moon's harmony.
+
+Today is not merely a day—it is another step in the great work of raising consciousness. Move forward with intention.
+''';
+  }
+
+  /// Get the cached daily prophecy (returns null if not yet generated)
+  String? get dailyProphecy => _dailyProphecy;
 
   /// Dispose resources
   void dispose() {

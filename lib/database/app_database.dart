@@ -7,6 +7,8 @@ import '../models/mantra.dart';
 import '../models/user/user_profile.dart';
 import '../models/tracking/supplement.dart';
 import '../models/tracking/dose_log.dart';
+import '../models/tracking/meal_log.dart';
+import '../models/tracking/workout_log.dart';
 import '../models/habits/habit.dart';
 import '../models/habits/habit_log.dart';
 import '../models/mood/mood_entry.dart';
@@ -21,6 +23,8 @@ part 'app_database_mantras.dart';
 part 'app_database_user_profiles.dart';
 part 'app_database_supplements.dart';
 part 'app_database_dose_logs.dart';
+part 'app_database_meal_logs.dart';
+part 'app_database_workout_logs.dart';
 part 'app_database_habits.dart';
 part 'app_database_habit_logs.dart';
 part 'app_database_mood_entries.dart';
@@ -44,6 +48,8 @@ class AppDatabase extends AppDatabaseBase
         UserProfileCrud,
         SupplementCrud,
         DoseLogCrud,
+        MealLogCrud,
+        WorkoutLogCrud,
         HabitCrud,
         HabitLogCrud,
         MoodEntryCrud,

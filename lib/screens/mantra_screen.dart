@@ -10,16 +10,9 @@ import '../models/mantra.dart';
 import '../utils/logger.dart';
 import '../widgets/atoms/odelle_button.dart';
 import '../widgets/effects/breathing_card.dart';
-import '../widgets/organisms/mind/mantra_card.dart';
 
-/// A beautiful infinite carousel screen for mantras and affirmations
-///
-/// Features:
-/// - Infinite scrolling in both directions
-/// - 3D card perspective animations
-/// - Auto-advance with pause on touch
-/// - Category filtering
-/// - Add/edit mantras
+/// Mantra Screen with Z-stacked vertical card swipe
+/// Cards stack on top of each other, swipe up/down to navigate
 class MantraScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
   final bool showBackButton;
@@ -43,19 +36,21 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
   bool _isLoading = true;
   String? _selectedCategory;
 
-  // Carousel state
-  late PageController _pageController;
-  double _currentPage = 0;
-  int _virtualPage = 10000; // Start in the middle for infinite scroll
+  // Card stack state
+  int _currentIndex = 0;
+  double _dragOffset = 0;
 
   // Auto-advance
   late AnimationController _autoAdvanceController;
   bool _isAutoAdvancing = true;
   static const Duration _autoAdvanceInterval = Duration(seconds: 8);
 
-  // Categories for filtering
+  // Card animation
+  late AnimationController _cardAnimController;
+
+  // Categories
   final List<String?> _categories = [
-    null, // All
+    null,
     'morning',
     'focus',
     'motivation',
@@ -67,43 +62,26 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(
-      initialPage: _virtualPage,
-      viewportFraction: 0.92, // Show peek of adjacent cards
-    );
-    _pageController.addListener(_onScroll);
 
-    // Auto-advance timer
     _autoAdvanceController = AnimationController(
       vsync: this,
       duration: _autoAdvanceInterval,
     );
     _autoAdvanceController.addStatusListener(_onAutoAdvanceComplete);
 
-    _loadMantras();
-  }
+    _cardAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
 
-  void _onScroll() {
-    setState(() {
-      _currentPage = _pageController.page ?? 0;
-    });
+    _loadMantras();
   }
 
   void _onAutoAdvanceComplete(AnimationStatus status) {
     if (status == AnimationStatus.completed && _isAutoAdvancing && mounted) {
-      _advanceToNextCard();
+      _goToNext();
       _autoAdvanceController.forward(from: 0);
     }
-  }
-
-  void _advanceToNextCard() {
-    if (_mantras.isEmpty) return;
-    _pageController.animateToPage(
-      _virtualPage + 1,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOutCubic,
-    );
-    _virtualPage++;
   }
 
   void _pauseAutoAdvance() {
@@ -127,7 +105,6 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
           _isLoading = false;
         });
 
-        // Start auto-advance after loading
         if (_mantras.isNotEmpty) {
           _autoAdvanceController.forward();
         }
@@ -137,9 +114,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
     } catch (e) {
       Logger.error('Failed to load mantras: $e', tag: _tag);
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -149,155 +124,99 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
     return _mantras.where((m) => m.category == _selectedCategory).toList();
   }
 
+  void _goToNext() {
+    if (_filteredMantras.isEmpty) return;
+    setState(() {
+      _currentIndex = (_currentIndex + 1) % _filteredMantras.length;
+    });
+    HapticFeedback.selectionClick();
+  }
+
+  void _goToPrevious() {
+    if (_filteredMantras.isEmpty) return;
+    setState(() {
+      _currentIndex = (_currentIndex - 1 + _filteredMantras.length) %
+          _filteredMantras.length;
+    });
+    HapticFeedback.selectionClick();
+  }
+
+  void _onVerticalDragStart(DragStartDetails details) {
+    _pauseAutoAdvance();
+  }
+
+  void _onVerticalDragUpdate(DragUpdateDetails details) {
+    setState(() {
+      _dragOffset += details.delta.dy;
+    });
+  }
+
+  void _onVerticalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+
+    // Swipe up = next, swipe down = previous
+    if (_dragOffset < -50 || velocity < -500) {
+      _goToNext();
+    } else if (_dragOffset > 50 || velocity > 500) {
+      _goToPrevious();
+    }
+
+    setState(() => _dragOffset = 0);
+    _resumeAutoAdvance();
+  }
+
   @override
   void dispose() {
-    _pageController.removeListener(_onScroll);
-    _pageController.dispose();
     _autoAdvanceController.removeStatusListener(_onAutoAdvanceComplete);
     _autoAdvanceController.dispose();
+    _cardAnimController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cardOffset = (1 - widget.panelVisibility) * 50;
-    final cardOpacity = widget.panelVisibility.clamp(0.0, 1.0);
+    return FloatingHeroCard(
+      panelVisibility: widget.panelVisibility,
+      bottomPercentage: 0.0,
+      bottomPanel: null,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              const SizedBox(height: 70),
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFE2E8F0), // Light silver background
-      extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          // Background breathing card
-          Positioned(
-            top: 6,
-            left: 8,
-            right: 8,
-            bottom: MediaQuery.of(context).size.height * 0.18,
-            child: Transform.translate(
-              offset: Offset(0, cardOffset),
-              child: Opacity(
-                opacity: cardOpacity,
-                child: BreathingCard(
-                  borderRadius: 48,
-                  child: const SizedBox.expand(),
-                ),
+              // Z-stacked cards
+              Expanded(
+                child: _isLoading
+                    ? _buildLoading()
+                    : _filteredMantras.isEmpty
+                        ? _buildEmpty()
+                        : _buildCardStack(),
               ),
-            ),
+
+              // Progress indicator
+              if (_filteredMantras.isNotEmpty) _buildProgressIndicator(),
+
+              const SizedBox(height: 16),
+
+              // Floating action buttons (voice screen style)
+              _buildFloatingActionButtons(),
+
+              const SizedBox(height: 32),
+            ],
           ),
-
-          // Main content
-          SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                // Header
-                _buildHeader(),
-
-                const SizedBox(height: 16),
-
-                // Category filter pills
-                _buildCategoryFilter(),
-
-                const SizedBox(height: 24),
-
-                // Main carousel
-                Expanded(
-                  child: _isLoading
-                      ? _buildLoading()
-                      : _filteredMantras.isEmpty
-                          ? _buildEmpty()
-                          : _buildCarousel(),
-                ),
-
-                // Bottom spacer for visual balance
-                SizedBox(height: MediaQuery.of(context).size.height * 0.18),
-              ],
-            ),
-          ),
-
-          // Bottom panel with controls
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomPanel(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Row(
-        children: [
-          if (widget.showBackButton)
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios,
-                  color: Colors.white, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: widget.showBackButton
-                  ? CrossAxisAlignment.start
-                  : CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'MANTRAS',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withValues(alpha: 0.6),
-                    letterSpacing: 3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Daily Affirmations',
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Auto-advance toggle
-          IconButton(
-            icon: Icon(
-              _isAutoAdvancing
-                  ? Icons.pause_circle_outline
-                  : Icons.play_circle_outline,
-              color: Colors.white.withValues(alpha: 0.8),
-              size: 28,
-            ),
-            onPressed: () {
-              setState(() {
-                if (_isAutoAdvancing) {
-                  _pauseAutoAdvance();
-                } else {
-                  _resumeAutoAdvance();
-                }
-              });
-            },
-            tooltip:
-                _isAutoAdvancing ? 'Pause auto-advance' : 'Resume auto-advance',
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildCategoryFilter() {
     return SizedBox(
-      height: 36,
+      height: 32,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
           final category = _categories[index];
@@ -310,33 +229,30 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
               onTap: () {
                 setState(() {
                   _selectedCategory = category;
-                  // Reset to first card when filter changes
-                  _virtualPage = 10000;
-                  _pageController.jumpToPage(_virtualPage);
+                  _currentIndex = 0;
                 });
                 HapticFeedback.selectionClick();
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? Colors.white.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(20),
+                      : Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
-                        ? Colors.white.withValues(alpha: 0.4)
-                        : Colors.white.withValues(alpha: 0.1),
-                    width: 1,
+                        ? Colors.white.withValues(alpha: 0.3)
+                        : Colors.transparent,
                   ),
                 ),
                 child: Text(
                   label,
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     color: isSelected
                         ? Colors.white
                         : Colors.white.withValues(alpha: 0.6),
@@ -351,63 +267,196 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
     );
   }
 
-  Widget _buildCarousel() {
+  Widget _buildCardStack() {
     final mantras = _filteredMantras;
+    if (mantras.isEmpty) return _buildEmpty();
 
     return GestureDetector(
-      // Pause auto-advance on touch
-      onPanDown: (_) => _pauseAutoAdvance(),
-      onPanEnd: (_) => _resumeAutoAdvance(),
-      onPanCancel: () => _resumeAutoAdvance(),
-      child: PageView.builder(
-        controller: _pageController,
-        physics: const BouncingScrollPhysics(),
-        onPageChanged: (page) {
-          _virtualPage = page;
-          HapticFeedback.selectionClick();
-        },
-        itemBuilder: (context, index) {
-          // Infinite loop through mantras
-          final mantraIndex = index % mantras.length;
-          final mantra = mantras[mantraIndex];
+      onVerticalDragStart: _onVerticalDragStart,
+      onVerticalDragUpdate: _onVerticalDragUpdate,
+      onVerticalDragEnd: _onVerticalDragEnd,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Background cards (stacked behind)
+          for (int i = 2; i >= 1; i--)
+            if (_currentIndex + i < mantras.length ||
+                mantras.length > 2) // Show stack preview
+              _buildStackedCard(
+                mantras[(_currentIndex + i) % mantras.length],
+                stackPosition: i,
+              ),
 
-          // Calculate scroll offset for animations (-1 to 1)
-          final offset = (_currentPage - index).clamp(-1.0, 1.0);
-
-          return MantraCard(
-            mantra: mantra,
-            scrollOffset: offset,
-            index: mantraIndex,
-            totalCount: mantras.length,
-            isActive: offset.abs() < 0.5,
-            onTap: () {
-              // Copy to clipboard on tap
-              Clipboard.setData(ClipboardData(text: mantra.text));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Mantra copied to clipboard',
-                    style: GoogleFonts.inter(color: Colors.white),
-                  ),
-                  backgroundColor: ThemeConstants.deepNavy,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-              HapticFeedback.mediumImpact();
-            },
-            onDoubleTap: () {
-              // Favorite/unfavorite on double tap
-              HapticFeedback.heavyImpact();
-              // TODO: Implement favorite functionality
-            },
-          );
-        },
+          // Current card (top of stack)
+          _buildCurrentCard(mantras[_currentIndex]),
+        ],
       ),
     );
+  }
+
+  Widget _buildStackedCard(Mantra mantra, {required int stackPosition}) {
+    // Cards behind are smaller and offset down
+    final scale = 1.0 - (stackPosition * 0.05);
+    final yOffset = stackPosition * 12.0;
+    final opacity = 1.0 - (stackPosition * 0.2);
+
+    return Transform.translate(
+      offset: Offset(0, yOffset),
+      child: Transform.scale(
+        scale: scale,
+        alignment: Alignment.topCenter,
+        child: Opacity(
+          opacity: opacity.clamp(0.0, 1.0),
+          child: _buildCardContent(mantra, isBackground: true),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCurrentCard(Mantra mantra) {
+    // Animate based on drag
+    final dragProgress = (_dragOffset / 150).clamp(-1.0, 1.0);
+    final rotation = dragProgress * 0.02;
+    final yOffset = _dragOffset * 0.3;
+
+    return Transform.translate(
+      offset: Offset(0, yOffset),
+      child: Transform.rotate(
+        angle: rotation,
+        child: _buildCardContent(mantra, isBackground: false),
+      ),
+    );
+  }
+
+  Widget _buildCardContent(Mantra mantra, {required bool isBackground}) {
+    final categoryColor = _getCategoryColor(mantra.category);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: isBackground ? 0.08 : 0.15),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Category badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: categoryColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _getCategoryIcon(mantra.category),
+                  size: 14,
+                  color: categoryColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  (mantra.category ?? 'mantra').toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: categoryColor,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Mantra text
+          Text(
+            '"${mantra.text}"',
+            style: GoogleFonts.playfairDisplay(
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+              height: 1.5,
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Swipe hint
+          if (!isBackground)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.keyboard_arrow_up_rounded,
+                  size: 16,
+                  color: Colors.white.withValues(alpha: 0.4),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Swipe to explore',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: Colors.white.withValues(alpha: 0.4),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Color _getCategoryColor(String? category) {
+    switch (category?.toLowerCase()) {
+      case 'morning':
+        return const Color(0xFFFFB347);
+      case 'focus':
+        return ThemeConstants.accentBlue;
+      case 'motivation':
+        return const Color(0xFFFF6B6B);
+      case 'meditation':
+        return const Color(0xFF9B59B6);
+      case 'stress':
+        return const Color(0xFF26C6DA);
+      case 'evening':
+        return const Color(0xFF5C6BC0);
+      default:
+        return ThemeConstants.polyMint400;
+    }
+  }
+
+  IconData _getCategoryIcon(String? category) {
+    switch (category?.toLowerCase()) {
+      case 'morning':
+        return Icons.wb_sunny_outlined;
+      case 'focus':
+        return Icons.center_focus_strong_outlined;
+      case 'motivation':
+        return Icons.flash_on_outlined;
+      case 'meditation':
+        return Icons.self_improvement_outlined;
+      case 'stress':
+        return Icons.spa_outlined;
+      case 'evening':
+        return Icons.nightlight_round_outlined;
+      default:
+        return Icons.auto_awesome_outlined;
+    }
   }
 
   Widget _buildLoading() {
@@ -415,10 +464,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(
-            color: Colors.white,
-            strokeWidth: 2,
-          ),
+          const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
           const SizedBox(height: 16),
           Text(
             'Loading mantras...',
@@ -439,7 +485,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
         children: [
           Icon(
             Icons.auto_awesome_outlined,
-            size: 64,
+            size: 48,
             color: Colors.white.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
@@ -452,91 +498,100 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
               fontSize: 16,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Add your first affirmation',
-            style: GoogleFonts.inter(
-              color: Colors.white.withValues(alpha: 0.4),
-              fontSize: 14,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildFloatingPillButton(
+          icon: Icons.add_rounded,
+          label: 'Add',
+          onTap: _showAddMantraDialog,
+        ),
+        const SizedBox(width: 12),
+        _buildFloatingPillButton(
+          icon: _isAutoAdvancing
+              ? Icons.pause_rounded
+              : Icons.play_arrow_rounded,
+          label: _isAutoAdvancing ? 'Pause' : 'Play',
+          onTap: () {
+            setState(() {
+              if (_isAutoAdvancing) {
+                _pauseAutoAdvance();
+              } else {
+                _resumeAutoAdvance();
+              }
+            });
+            HapticFeedback.selectionClick();
+          },
+        ),
+        const SizedBox(width: 12),
+        _buildFloatingPillButton(
+          icon: Icons.shuffle_rounded,
+          label: 'Shuffle',
+          onTap: _shuffleToRandom,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFloatingPillButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: Colors.white.withValues(alpha: 0.8),
+              size: 18,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomPanel() {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.18,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x15000000),
-            blurRadius: 20,
-            offset: Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-          child: Column(
-            children: [
-              // Progress dots
-              if (_filteredMantras.isNotEmpty) _buildProgressDots(),
-
-              const Spacer(),
-
-              // Action buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    icon: Icons.add_rounded,
-                    label: 'Add',
-                    onTap: _showAddMantraDialog,
-                  ),
-                  _buildActionButton(
-                    icon: Icons.shuffle_rounded,
-                    label: 'Shuffle',
-                    onTap: _shuffleToRandom,
-                  ),
-                  _buildActionButton(
-                    icon: Icons.volume_up_rounded,
-                    label: 'Speak',
-                    onTap: _speakCurrentMantra,
-                  ),
-                ],
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withValues(alpha: 0.8),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildProgressDots() {
+  Widget _buildProgressIndicator() {
     final mantras = _filteredMantras;
-    final currentIndex = _virtualPage % mantras.length;
+    final currentIndex = _currentIndex % mantras.length;
 
-    // Show max 7 dots with ellipsis behavior
-    const maxDots = 7;
+    const maxDots = 5;
     final showEllipsis = mantras.length > maxDots;
     final dotsToShow = showEllipsis ? maxDots : mantras.length;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(dotsToShow, (index) {
-        // Calculate which dot should be active
         int dotIndex;
         if (showEllipsis) {
-          // Center the current page in the dot display
           final offset = currentIndex - (maxDots ~/ 2);
           dotIndex = (offset + index) % mantras.length;
           if (dotIndex < 0) dotIndex += mantras.length;
@@ -548,53 +603,17 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 24 : 8,
-          height: 8,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: isActive ? 20 : 6,
+          height: 6,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(3),
             color: isActive
-                ? ThemeConstants.accentBlue
-                : ThemeConstants.textMuted.withValues(alpha: 0.3),
+                ? Colors.white.withValues(alpha: 0.9)
+                : Colors.white.withValues(alpha: 0.3),
           ),
         );
       }),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: ThemeConstants.deepNavy.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              icon,
-              size: 24,
-              color: ThemeConstants.deepNavy,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: ThemeConstants.textSecondary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -626,7 +645,6 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Handle
                     Center(
                       child: Container(
                         width: 40,
@@ -638,18 +656,15 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     Text(
                       'Add New Mantra',
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 24,
+                      style: GoogleFonts.inter(
+                        fontSize: 20,
                         fontWeight: FontWeight.w600,
                         color: ThemeConstants.textOnLight,
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // Text input
                     TextField(
                       controller: textController,
                       maxLines: 3,
@@ -659,9 +674,8 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       ),
                       decoration: InputDecoration(
                         hintText: 'Enter your affirmation...',
-                        hintStyle: GoogleFonts.inter(
-                          color: ThemeConstants.textMuted,
-                        ),
+                        hintStyle:
+                            GoogleFonts.inter(color: ThemeConstants.textMuted),
                         filled: true,
                         fillColor: Colors.grey.shade100,
                         border: OutlineInputBorder(
@@ -672,8 +686,6 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Category selector
                     Text(
                       'Category',
                       style: GoogleFonts.inter(
@@ -696,16 +708,11 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       ].map((cat) {
                         final isSelected = selectedCategory == cat;
                         return GestureDetector(
-                          onTap: () {
-                            setSheetState(() {
-                              selectedCategory = cat;
-                            });
-                          },
+                          onTap: () =>
+                              setSheetState(() => selectedCategory = cat),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
+                                horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? ThemeConstants.accentBlue
@@ -728,26 +735,18 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       }).toList(),
                     ),
                     const SizedBox(height: 24),
-
-                    // Save button
                     OdelleButtonFullWidth.dark(
                       text: 'Save Mantra',
                       onPressed: () async {
                         if (textController.text.trim().isEmpty) return;
-
                         final mantra = Mantra(
                           text: textController.text.trim(),
                           category: selectedCategory,
                           isActive: true,
                         );
-
                         await AppDatabase.instance.insertMantra(mantra);
                         await _loadMantras();
-
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                        }
-
+                        if (context.mounted) Navigator.of(context).pop();
                         HapticFeedback.mediumImpact();
                       },
                     ),
@@ -764,43 +763,10 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
 
   void _shuffleToRandom() {
     if (_filteredMantras.isEmpty) return;
-
     final random = math.Random();
-    final randomOffset = random.nextInt(_filteredMantras.length);
-
-    _pageController.animateToPage(
-      _virtualPage + randomOffset,
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeInOutCubic,
-    );
-    _virtualPage += randomOffset;
-
+    setState(() {
+      _currentIndex = random.nextInt(_filteredMantras.length);
+    });
     HapticFeedback.mediumImpact();
-  }
-
-  void _speakCurrentMantra() {
-    if (_filteredMantras.isEmpty) return;
-
-    final currentIndex = _virtualPage % _filteredMantras.length;
-    final mantra = _filteredMantras[currentIndex];
-
-    // TODO: Integrate with TTS service (ElevenLabs)
-    // For now, just show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Speaking: "${mantra.text.substring(0, math.min(50, mantra.text.length))}..."',
-          style: GoogleFonts.inter(color: Colors.white),
-        ),
-        backgroundColor: ThemeConstants.deepNavy,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    HapticFeedback.selectionClick();
   }
 }
