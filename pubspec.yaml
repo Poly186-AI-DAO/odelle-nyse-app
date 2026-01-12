@@ -1,7 +1,7 @@
 name: odelle_nyse
 description: Odelle Nyse (ON) - Self-Actualization Operating System
 publish_to: 'none'
-version: 1.5.2+11
+version: 1.6.0+12
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -10,37 +10,39 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_secure_storage: ^9.2.4
-  flutter_riverpod: ^2.5.1
-  google_fonts: ^6.3.2
-  shared_preferences: ^2.5.3
+  flutter_riverpod: ^3.1.0
+  google_fonts: ^7.0.0
+  shared_preferences: ^2.5.4
   flutter_dotenv: ^6.0.0
   just_audio: ^0.10.5
-  flutter_tts: ^4.2.3
+  flutter_tts: ^4.2.5
   googleapis: ^15.0.0
   url_launcher: ^6.3.2
-  extension_google_sign_in_as_googleapis_auth: ^2.0.12
-  google_sign_in: ^6.2.2
-  flutter_webrtc: ^1.2.0
-  equatable: ^2.0.7
+
+  flutter_webrtc: ^1.2.1
+  equatable: ^2.0.8
   flutter_bloc: ^9.1.1
   provider: ^6.1.2
   package_info_plus: ^9.0.0
   http: ^1.6.0
-  flutter_facebook_auth: ^6.2.0
+  flutter_facebook_auth: ^7.1.5
   font_awesome_flutter: ^10.7.0
-  image: ^4.5.4
-  flutter_svg: ^2.0.10+1
+  image: ^4.7.2
+  flutter_svg: ^2.2.3
   web_socket_channel: ^3.0.3
-  rive: ^0.13.4
+
   mic_stream: ^0.7.2
   audio_session: ^0.2.2
-  permission_handler: ^11.3.1
+  permission_handler: ^11.4.0
   path_provider: ^2.1.2
   sqflite: ^2.3.0
   path: ^1.8.3
   uuid: ^4.2.1
-  intl: ^0.19.0
+  intl: ^0.20.2
   flutter_pcm_sound: ^3.3.3
+  health: ^13.2.1
+  weather_kit: ^0.3.0
+  geolocator: ^13.0.2
 
 dev_dependencies:
   flutter_test:
@@ -64,3 +66,8 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/riv/
+    - data/tracking/
+    - data/content/
+    - data/gamification/
+    - data/misc/
+    - data/user/

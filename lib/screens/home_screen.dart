@@ -77,7 +77,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _pageController = PageController(initialPage: initialPage);
     _scrollProgress = initialPage.toDouble();
     _pageController.addListener(_onScroll);
-    _checkPermissionStatus();
 
     // Initialize audio output for playing Azure responses
     AudioOutputService.instance.initialize();
@@ -157,22 +156,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     };
   }
 
-  Future<void> _checkPermissionStatus() async {
-    // permission_handler not available on desktop - assume granted
-    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-      setState(() => _hasPermission = true);
-      return;
-    }
-    final status = await Permission.microphone.status;
-    setState(() => _hasPermission = status.isGranted);
-  }
+  /// Check current microphone permission status (without prompting)
 
   Future<bool> _requestMicrophonePermission() async {
-    // permission_handler not available on desktop - assume granted
-    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-      setState(() => _hasPermission = true);
-      return true;
-    }
+    // permission_handler is now available on all platforms
     final status = await Permission.microphone.status;
     if (status.isGranted) {
       setState(() => _hasPermission = true);
@@ -389,20 +376,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         audioFormat: AudioFormat.ENCODING_PCM_16BIT,
       );
 
-      // FIX: MicStream resets AVAudioSession to default (earpiece) on iOS.
-      // We must force re-configure it to use the Speaker explicitly.
-      if (Platform.isIOS) {
-        Logger.info('Forcing audio session to Speaker (iOS fix)', tag: _tag);
-        await AudioOutputService.instance.configureAudioSession(force: true);
-      }
-
       final voiceVM = ref.read(voiceViewModelProvider.notifier);
       voiceVM.startRecording();
+
+      // iOS: Mark that audio session needs re-configuration before playback
+      // mic_stream resets AVAudioSession when subscription begins
+      if (Platform.isIOS) {
+        AudioOutputService.instance.markAudioSessionNeedsReconfig();
+      }
+
+      // Track if we've configured the audio session after mic starts
+      bool hasConfiguredAudioSession = false;
 
       _micSubscription = _micStream!.listen(
         (audioBytes) {
           chunkCount++;
           totalBytes += audioBytes.length;
+
+          // iOS FIX: Configure audio session AFTER mic stream starts.
+          // mic_stream resets AVAudioSession when subscription begins,
+          // so we must re-configure on first audio chunk to route to speaker.
+          if (!hasConfiguredAudioSession && Platform.isIOS) {
+            hasConfiguredAudioSession = true;
+            Logger.info(
+                'iOS: Configuring audio session after mic stream started',
+                tag: _tag);
+            // Use Future to not block the audio callback
+            AudioOutputService.instance
+                .configureAudioSession(force: true)
+                .then((_) {
+              Logger.info('iOS: Audio session configured for speaker output',
+                  tag: _tag);
+            });
+          }
 
           // Log every 10 chunks to verify mic is working
           if (chunkCount % 10 == 0) {

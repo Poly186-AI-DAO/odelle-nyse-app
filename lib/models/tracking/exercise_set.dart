@@ -13,7 +13,7 @@ class ExerciseSet {
   final double? weightKg;
   final int? reps;
   final int? targetReps;
-  final int? rpe; // 1-10 Rating of Perceived Exertion
+  final double? rpe; // 1-10 Rating of Perceived Exertion
   final bool? toFailure;
 
   // For cardio/timed
@@ -63,7 +63,7 @@ class ExerciseSet {
       weightKg: (map['weight_kg'] as num?)?.toDouble(),
       reps: map['reps'] as int?,
       targetReps: map['target_reps'] as int?,
-      rpe: map['rpe'] as int?,
+      rpe: (map['rpe'] as num?)?.toDouble(),
       toFailure: _parseBool(map['to_failure']),
       durationSeconds: map['duration_seconds'] as int?,
       distanceMiles: (map['distance_miles'] as num?)?.toDouble(),
@@ -116,7 +116,7 @@ class ExerciseSet {
     double? weightKg,
     int? reps,
     int? targetReps,
-    int? rpe,
+    double? rpe,
     bool? toFailure,
     int? durationSeconds,
     double? distanceMiles,

@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/azure_speech_service.dart';
 import '../services/backend_api_service.dart';
-import '../services/google_auth_service.dart';
+
 import '../services/poly_auth_service.dart';
+import '../services/health_kit_service.dart';
 import '../database/app_database.dart';
 
 // =============================================================================
@@ -24,10 +25,7 @@ final backendApiServiceProvider = Provider<BackendApiService>((ref) {
   return BackendApiService(baseUrl: _backendBaseUrl);
 });
 
-/// Google authentication service
-final googleAuthServiceProvider = Provider<GoogleAuthService>((ref) {
-  return GoogleAuthService();
-});
+
 
 /// Azure speech/voice recognition service
 final voiceServiceProvider = Provider<AzureSpeechService>((ref) {
@@ -37,4 +35,9 @@ final voiceServiceProvider = Provider<AzureSpeechService>((ref) {
 /// SQLite database instance
 final databaseProvider = Provider<AppDatabase>((ref) {
   return AppDatabase.instance;
+});
+
+/// Apple HealthKit service for health data access
+final healthKitServiceProvider = Provider<HealthKitService>((ref) {
+  return HealthKitService();
 });

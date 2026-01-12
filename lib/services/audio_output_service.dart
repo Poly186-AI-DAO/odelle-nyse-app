@@ -13,6 +13,10 @@ class AudioOutputService {
   bool _isPlaying = false;
   bool _isAudioSessionConfigured = false;
 
+  // iOS: Track if mic_stream may have reset the audio session
+  // Set to true when mic stream starts, cleared after we re-configure
+  bool _needsAudioSessionReconfig = false;
+
   // Azure sends 24kHz PCM16 mono audio
   static const int sampleRate = 24000;
   static const int numChannels = 1;
@@ -22,6 +26,15 @@ class AudioOutputService {
   static AudioOutputService get instance {
     _instance ??= AudioOutputService._();
     return _instance!;
+  }
+
+  /// Call this when mic_stream starts on iOS to mark that audio session
+  /// may have been reset and needs re-configuration before playback
+  void markAudioSessionNeedsReconfig() {
+    if (Platform.isIOS) {
+      _needsAudioSessionReconfig = true;
+      Logger.info('iOS: Marked audio session for re-configuration', tag: _tag);
+    }
   }
 
   /// Configure the iOS audio session for voice chat with speaker output
@@ -107,6 +120,15 @@ class AudioOutputService {
       return;
     }
 
+    // iOS: Re-configure audio session if mic_stream may have reset it
+    // This ensures speaker output even if AI responds very quickly
+    if (Platform.isIOS && _needsAudioSessionReconfig) {
+      _needsAudioSessionReconfig = false;
+      Logger.info('iOS: Re-configuring audio session before playback',
+          tag: _tag);
+      configureAudioSession(force: true);
+    }
+
     try {
       // Convert Uint8List (bytes) to Int16List (samples)
       // PCM16 = 2 bytes per sample, little-endian
@@ -149,6 +171,12 @@ class AudioOutputService {
         channelCount: numChannels,
       );
       FlutterPcmSound.setFeedCallback(_onFeedCallback);
+
+      // iOS: Re-configure audio session to ensure speaker output after stop
+      // FlutterPcmSound.release() may affect audio routing
+      if (Platform.isIOS) {
+        await configureAudioSession(force: true);
+      }
 
       Logger.info('Audio playback stopped (interruption)', tag: _tag);
     } catch (e) {

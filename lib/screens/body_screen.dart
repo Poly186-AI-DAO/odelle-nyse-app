@@ -13,6 +13,8 @@ import '../models/tracking/exercise_type.dart';
 import '../models/tracking/exercise_set.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
+import '../services/health_kit_service.dart';
+import '../providers/service_providers.dart';
 
 class BodyScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
@@ -31,6 +33,17 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
   // Supplements map needed for DoseCard details
   Map<String, Supplement> _supplements = {};
 
+  // HealthKit Data
+  bool _healthKitAvailable = false;
+  int _healthKitSteps = 0;
+  double _healthKitActiveCalories = 0;
+  double _healthKitBasalCalories = 0;
+  List<WorkoutData> _healthKitWorkouts = [];
+  int _healthKitExerciseMinutes = 0;
+  double _healthKitDistance = 0; // in meters
+  double _healthKitWater = 0; // in liters
+  int? _healthKitRestingHR;
+
   // Nutrition Aggregates
   int _caloriesConsumed = 0;
   final int _caloriesGoal = 2500; // Default goal
@@ -47,55 +60,21 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
   @override
   void initState() {
     super.initState();
-    _loadJsonData();
+    _loadData();
   }
 
-  Future<void> _loadJsonData() async {
+  Future<void> _loadData() async {
     try {
-      // 1. Load Meals
-      final mealsJson = await rootBundle.loadString('data/tracking/meal_log.json');
-      final List<dynamic> mealsList = json.decode(mealsJson);
-      _meals = mealsList.map((j) => MealLog.fromJson(j)).toList();
+      // Load HealthKit and JSON data in parallel
+      await Future.wait([
+        _loadHealthKitData(),
+        _loadJsonData(),
+      ]);
 
-      // 2. Load Doses
-      final dosesJson = await rootBundle.loadString('data/tracking/dose_log.json');
-      final List<dynamic> dosesList = json.decode(dosesJson);
-      _doses = dosesList.map((j) => DoseLog.fromJson(j)).toList();
-
-      // 3. Load Supplements (for details)
-      final suppsJson = await rootBundle.loadString('data/tracking/supplement.json');
-      final List<dynamic> suppsList = json.decode(suppsJson);
-      final supps = suppsList.map((j) => Supplement.fromJson(j)).toList();
-      _supplements = {for (var s in supps) s.id.toString(): s};
-
-      // 4. Load Exercise Catalog
-      final exercisesJson = await rootBundle.loadString('data/tracking/exercise_type.json');
-      final List<dynamic> exercisesList = json.decode(exercisesJson);
-      final exerciseCatalog = {
-        for (var j in exercisesList) 
-          j['id'].toString(): ExerciseType.fromJson(j)
-      };
-
-      // 5. Load Exercise Sets
-      final setsJson = await rootBundle.loadString('data/tracking/exercise_set.json');
-      final List<dynamic> setsList = json.decode(setsJson);
-      final allSets = setsList.map((j) {
-        final set = ExerciseSet.fromJson(j);
-        final type = exerciseCatalog[set.exerciseTypeId.toString()];
-        return set.copyWith(exercise: type);
-      }).toList();
-
-      // 6. Load Workouts & Join Sets
-      final workoutsJson = await rootBundle.loadString('data/tracking/workout_log.json');
-      final List<dynamic> workoutsList = json.decode(workoutsJson);
-      _workouts = workoutsList.map((j) {
-        final workout = WorkoutLog.fromJson(j);
-        final workoutSets = allSets.where((s) => s.workoutLogId == workout.id).toList();
-        return workout.copyWith(sets: workoutSets);
-      }).toList();
-
-      // 7. Calculate Nutrition Totals
-      _calculateNutrition();
+      // Use HealthKit calories burned if available
+      if (_healthKitAvailable && _healthKitActiveCalories > 0) {
+        _caloriesBurned = _healthKitActiveCalories.toInt();
+      }
 
       if (mounted) {
         setState(() {
@@ -112,6 +91,102 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
     }
   }
 
+  Future<void> _loadHealthKitData() async {
+    try {
+      final healthKit = ref.read(healthKitServiceProvider);
+      final authorized = await healthKit.requestAuthorization();
+
+      if (!authorized) {
+        debugPrint('[BodyScreen] HealthKit not authorized');
+        return;
+      }
+
+      _healthKitAvailable = true;
+      final now = DateTime.now();
+
+      // Fetch all health data in parallel
+      final results = await Future.wait([
+        healthKit.getSteps(now),
+        healthKit.getActiveCalories(now),
+        healthKit.getBasalCalories(now),
+        healthKit.getTodayWorkouts(),
+        healthKit.getExerciseMinutes(now),
+        healthKit.getDistance(now),
+        healthKit.getWaterIntake(now),
+        healthKit.getRestingHeartRate(),
+      ]);
+
+      _healthKitSteps = results[0] as int;
+      _healthKitActiveCalories = results[1] as double;
+      _healthKitBasalCalories = results[2] as double;
+      _healthKitWorkouts = results[3] as List<WorkoutData>;
+      _healthKitExerciseMinutes = results[4] as int;
+      _healthKitDistance = results[5] as double;
+      _healthKitWater = results[6] as double;
+      _healthKitRestingHR = results[7] as int?;
+
+      debugPrint('[BodyScreen] HealthKit data loaded: '
+          'steps=$_healthKitSteps, '
+          'active=${_healthKitActiveCalories.toInt()}kcal, '
+          'workouts=${_healthKitWorkouts.length}');
+    } catch (e) {
+      debugPrint('[BodyScreen] HealthKit error: $e');
+    }
+  }
+
+  Future<void> _loadJsonData() async {
+    // 1. Load Meals
+    final mealsJson =
+        await rootBundle.loadString('data/tracking/meal_log.json');
+    final List<dynamic> mealsList = json.decode(mealsJson);
+    _meals = mealsList.map((j) => MealLog.fromJson(j)).toList();
+
+    // 2. Load Doses
+    final dosesJson =
+        await rootBundle.loadString('data/tracking/dose_log.json');
+    final List<dynamic> dosesList = json.decode(dosesJson);
+    _doses = dosesList.map((j) => DoseLog.fromJson(j)).toList();
+
+    // 3. Load Supplements (for details)
+    final suppsJson =
+        await rootBundle.loadString('data/tracking/supplement.json');
+    final List<dynamic> suppsList = json.decode(suppsJson);
+    final supps = suppsList.map((j) => Supplement.fromJson(j)).toList();
+    _supplements = {for (var s in supps) s.id.toString(): s};
+
+    // 4. Load Exercise Catalog
+    final exercisesJson =
+        await rootBundle.loadString('data/tracking/exercise_type.json');
+    final List<dynamic> exercisesList = json.decode(exercisesJson);
+    final exerciseCatalog = {
+      for (var j in exercisesList) j['id'].toString(): ExerciseType.fromJson(j)
+    };
+
+    // 5. Load Exercise Sets
+    final setsJson =
+        await rootBundle.loadString('data/tracking/exercise_set.json');
+    final List<dynamic> setsList = json.decode(setsJson);
+    final allSets = setsList.map((j) {
+      final set = ExerciseSet.fromJson(j);
+      final type = exerciseCatalog[set.exerciseTypeId.toString()];
+      return set.copyWith(exercise: type);
+    }).toList();
+
+    // 6. Load Workouts & Join Sets
+    final workoutsJson =
+        await rootBundle.loadString('data/tracking/workout_log.json');
+    final List<dynamic> workoutsList = json.decode(workoutsJson);
+    _workouts = workoutsList.map((j) {
+      final workout = WorkoutLog.fromJson(j);
+      final workoutSets =
+          allSets.where((s) => s.workoutLogId == workout.id).toList();
+      return workout.copyWith(sets: workoutSets);
+    }).toList();
+
+    // 7. Calculate Nutrition Totals
+    _calculateNutrition();
+  }
+
   void _calculateNutrition() {
     _caloriesConsumed = 0;
     _proteinConsumed = 0;
@@ -124,9 +199,10 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
       _fatsConsumed += meal.fatGrams ?? 0;
       _carbsConsumed += meal.carbsGrams ?? 0;
     }
-    
+
     // Simple estimation for burned from workouts
-    _caloriesBurned = _workouts.fold(0, (sum, w) => sum + (w.caloriesBurned?.toInt() ?? 0));
+    _caloriesBurned =
+        _workouts.fold(0, (sum, w) => sum + (w.caloriesBurned?.toInt() ?? 0));
   }
 
   @override
@@ -149,7 +225,7 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
           children: [
             // Space for nav bar
             const SizedBox(height: 70),
-            
+
             // Hero Content: Nutrition Overview (centered)
             Expanded(
               child: Center(
@@ -167,9 +243,10 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
 
   /// The hero content (displayed in the dark breathing card)
   Widget _buildHeroContent() {
-    final caloriesRemaining = _caloriesGoal - _caloriesConsumed + _caloriesBurned;
+    final caloriesRemaining =
+        _caloriesGoal - _caloriesConsumed + _caloriesBurned;
     final progress = (_caloriesConsumed / _caloriesGoal).clamp(0.0, 1.5);
-    
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -192,7 +269,7 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        
+
         // Progress bar
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
@@ -206,7 +283,7 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        
+
         // Sub-stats row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -247,18 +324,37 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Schedule / Week Day Picker
+        WeekDayPicker(
+          selectedDate: DateTime.now(),
+          headerText: "Let's make progress today!",
+          onDateSelected: (date) {
+            // TODO: Filter data by selected date
+          },
+        ),
+
+        const SizedBox(height: 20),
+
+        // HealthKit Activity Stats (if available)
+        if (_healthKitAvailable) ...[
+          _buildHealthKitStatsRow(),
+          const SizedBox(height: 24),
+        ],
+
         // Macros Row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildMacroColumn('Protein', _proteinConsumed, _proteinGoal, ThemeConstants.accentBlue),
-            _buildMacroColumn('Carbs', _carbsConsumed, _carbsGoal, Colors.amber),
+            _buildMacroColumn('Protein', _proteinConsumed, _proteinGoal,
+                ThemeConstants.accentBlue),
+            _buildMacroColumn(
+                'Carbs', _carbsConsumed, _carbsGoal, Colors.amber),
             _buildMacroColumn('Fat', _fatsConsumed, _fatsGoal, Colors.pink),
           ],
         ),
-        
+
         const SizedBox(height: 24),
-        
+
         // Today's Meals
         _buildSectionHeader('TODAY\'S MEALS'),
         const SizedBox(height: 12),
@@ -272,7 +368,7 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
             calories: '${meal.calories ?? 0} kcal',
             isFirst: index == 0,
             isLast: index == _meals.length - 1,
-            isComplete: true, 
+            isComplete: true,
           );
         }),
 
@@ -297,32 +393,154 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
 
         const SizedBox(height: 24),
 
-        // Activity
+        // Activity - Combine HealthKit workouts + JSON workouts
         _buildSectionHeader('ACTIVITY'),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 180,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _workouts.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final workout = _workouts[index];
-              return WorkoutCard(
-                title: workout.name ?? 'Workout', 
-                duration: '${workout.durationMinutes ?? 0} min',
-                exerciseCount: workout.sets?.length ?? 0, 
-                calories: workout.caloriesBurned?.toInt(),
-                isFeatured: index == 0,
-              );
-            },
+        _buildActivitySection(),
+      ],
+    );
+  }
+
+  /// Build HealthKit stats row (steps, distance, exercise, water, HR)
+  Widget _buildHealthKitStatsRow() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ThemeConstants.glassBackgroundWeak,
+        borderRadius: ThemeConstants.borderRadius,
+        border: Border.all(color: ThemeConstants.glassBorderWeak),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildHealthStat('👟', _healthKitSteps.toString(), 'steps'),
+          _buildHealthStat(
+              '🔥',
+              (_healthKitActiveCalories + _healthKitBasalCalories)
+                  .toInt()
+                  .toString(),
+              'kcal'),
+          _buildHealthStat(
+              '📍', (_healthKitDistance / 1000).toStringAsFixed(1), 'km'),
+          _buildHealthStat('⏱️', _healthKitExerciseMinutes.toString(), 'min'),
+          if (_healthKitWater > 0)
+            _buildHealthStat('💧', _healthKitWater.toStringAsFixed(1), 'L'),
+          if (_healthKitRestingHR != null)
+            _buildHealthStat('❤️', _healthKitRestingHR.toString(), 'bpm'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHealthStat(String emoji, String value, String unit) {
+    return Column(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 20)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: ThemeConstants.textOnLight,
+          ),
+        ),
+        Text(
+          unit,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            color: ThemeConstants.textSecondary,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMacroColumn(String label, double consumed, double goal, Color color) {
+  /// Build activity section combining HealthKit + JSON workouts
+  Widget _buildActivitySection() {
+    // Combine HealthKit workouts with JSON workouts
+    final hasHealthKitWorkouts = _healthKitWorkouts.isNotEmpty;
+    final hasJsonWorkouts = _workouts.isNotEmpty;
+
+    if (!hasHealthKitWorkouts && !hasJsonWorkouts) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: ThemeConstants.glassBackgroundWeak,
+          borderRadius: ThemeConstants.borderRadius,
+          border: Border.all(color: ThemeConstants.glassBorderWeak),
+        ),
+        child: Center(
+          child: Text(
+            'No workouts recorded today',
+            style: GoogleFonts.inter(
+              color: ThemeConstants.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 180,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          // HealthKit workouts first (from Apple Watch / Health app)
+          ..._healthKitWorkouts.asMap().entries.map((entry) {
+            final index = entry.key;
+            final workout = entry.value;
+            return Padding(
+              padding: EdgeInsets.only(
+                  right:
+                      index < _healthKitWorkouts.length - 1 || hasJsonWorkouts
+                          ? 12
+                          : 0),
+              child: WorkoutCard(
+                title: _formatWorkoutType(workout.type),
+                duration: '${workout.duration.inMinutes} min',
+                exerciseCount: 0, // HealthKit doesn't track exercise count
+                calories: workout.caloriesBurned?.toInt(),
+                isFeatured: index == 0,
+              ),
+            );
+          }),
+          // JSON workouts (manually logged)
+          ..._workouts.asMap().entries.map((entry) {
+            final index = entry.key;
+            final workout = entry.value;
+            return Padding(
+              padding:
+                  EdgeInsets.only(right: index < _workouts.length - 1 ? 12 : 0),
+              child: WorkoutCard(
+                title: workout.name ?? 'Workout',
+                duration: '${workout.durationMinutes ?? 0} min',
+                exerciseCount: workout.sets?.length ?? 0,
+                calories: workout.caloriesBurned?.toInt(),
+                isFeatured: !hasHealthKitWorkouts && index == 0,
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  /// Format HealthKit workout type to display name
+  String _formatWorkoutType(String type) {
+    // Convert RUNNING to Running, TRADITIONAL_STRENGTH_TRAINING to Strength Training, etc.
+    return type
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .split(' ')
+        .map((word) => word.isNotEmpty
+            ? '${word[0].toUpperCase()}${word.substring(1)}'
+            : '')
+        .join(' ');
+  }
+
+  Widget _buildMacroColumn(
+      String label, double consumed, double goal, Color color) {
     final progress = (consumed / goal).clamp(0.0, 1.0);
     return Column(
       children: [
@@ -380,11 +598,16 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
 
   String _getMealIcon(String type) {
     switch (type.toLowerCase()) {
-      case 'breakfast': return '🍳';
-      case 'lunch': return '🥗';
-      case 'dinner': return '🥩';
-      case 'snack': return '🍎';
-      default: return '🍽️';
+      case 'breakfast':
+        return '🍳';
+      case 'lunch':
+        return '🥗';
+      case 'dinner':
+        return '🥩';
+      case 'snack':
+        return '🍎';
+      default:
+        return '🍽️';
     }
   }
 }

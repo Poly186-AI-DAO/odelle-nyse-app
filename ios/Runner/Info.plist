@@ -91,5 +91,16 @@
 	<string>Microphone access is required for voice chat with the digital worker</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is required for video calls with the digital worker</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Odelle reads your health data to display sleep, heart rate, and workout metrics on your dashboard</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Odelle can log workouts and health metrics on your behalf</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Odelle uses your location to show local weather in your morning routine</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+	</array>
 </dict>
 </plist>

@@ -1,26 +1,21 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/google_auth_service.dart';
+
 import '../../models/digital_worker_voice.dart';
 import '../../config/digital_worker_config.dart';
 import 'settings_event.dart';
 import 'settings_state.dart';
 
 class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
-  final GoogleAuthService _googleAuthService;
   final SharedPreferences _prefs;
 
   SettingsBloc({
-    required GoogleAuthService googleAuthService,
     required SharedPreferences prefs,
-  })  : _googleAuthService = googleAuthService,
-        _prefs = prefs,
+  })  : _prefs = prefs,
         super(const SettingsState()) {
     on<LoadSettingsEvent>(_onLoadSettings);
-    on<ToggleCalendarPermissionEvent>(_onToggleCalendarPermission);
-    on<ToggleDrivePermissionEvent>(_onToggleDrivePermission);
-    on<ToggleGmailPermissionEvent>(_onToggleGmailPermission);
+
 
     // Digital Worker Settings
     on<UpdateVoiceEvent>(_onUpdateVoice);
@@ -124,8 +119,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final permissions =
-          await _googleAuthService.checkIntegrationPermissions();
 
       // Load saved digital worker settings
       const defaultConfig = DigitalWorkerConfig();
@@ -155,9 +148,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       emit(state.copyWith(
         appVersion: packageInfo.version,
         buildNumber: packageInfo.buildNumber,
-        isCalendarEnabled: permissions['calendar'] ?? false,
-        isDriveEnabled: permissions['drive'] ?? false,
-        isGmailEnabled: permissions['gmail'] ?? false,
+        isCalendarEnabled: false,
+        isDriveEnabled: false,
+        isGmailEnabled: false,
         isLoading: false,
         instructions: instructions,
         voice: voice,
@@ -175,72 +168,5 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     }
   }
 
-  Future<void> _onToggleCalendarPermission(
-    ToggleCalendarPermissionEvent event,
-    Emitter<SettingsState> emit,
-  ) async {
-    emit(state.copyWith(isLoading: true));
-    try {
-      final success =
-          await _googleAuthService.requestRequiredScopesPermission();
-      if (success) {
-        final permissions =
-            await _googleAuthService.checkIntegrationPermissions();
-        emit(state.copyWith(
-          isCalendarEnabled: permissions['calendar'] ?? false,
-          isLoading: false,
-        ));
-      } else {
-        emit(state.copyWith(isLoading: false));
-      }
-    } catch (e) {
-      emit(state.copyWith(isLoading: false));
-    }
-  }
 
-  Future<void> _onToggleDrivePermission(
-    ToggleDrivePermissionEvent event,
-    Emitter<SettingsState> emit,
-  ) async {
-    emit(state.copyWith(isLoading: true));
-    try {
-      final success =
-          await _googleAuthService.requestRequiredScopesPermission();
-      if (success) {
-        final permissions =
-            await _googleAuthService.checkIntegrationPermissions();
-        emit(state.copyWith(
-          isDriveEnabled: permissions['drive'] ?? false,
-          isLoading: false,
-        ));
-      } else {
-        emit(state.copyWith(isLoading: false));
-      }
-    } catch (e) {
-      emit(state.copyWith(isLoading: false));
-    }
-  }
-
-  Future<void> _onToggleGmailPermission(
-    ToggleGmailPermissionEvent event,
-    Emitter<SettingsState> emit,
-  ) async {
-    emit(state.copyWith(isLoading: true));
-    try {
-      final success =
-          await _googleAuthService.requestRequiredScopesPermission();
-      if (success) {
-        final permissions =
-            await _googleAuthService.checkIntegrationPermissions();
-        emit(state.copyWith(
-          isGmailEnabled: permissions['gmail'] ?? false,
-          isLoading: false,
-        ));
-      } else {
-        emit(state.copyWith(isLoading: false));
-      }
-    } catch (e) {
-      emit(state.copyWith(isLoading: false));
-    }
-  }
 }

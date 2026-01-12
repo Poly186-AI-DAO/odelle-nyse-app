@@ -10,11 +10,7 @@ abstract class SettingsEvent extends Equatable {
 
 class LoadSettingsEvent extends SettingsEvent {}
 
-class ToggleCalendarPermissionEvent extends SettingsEvent {}
 
-class ToggleDrivePermissionEvent extends SettingsEvent {}
-
-class ToggleGmailPermissionEvent extends SettingsEvent {}
 
 // Digital Worker Settings Events
 class UpdateVoiceEvent extends SettingsEvent {

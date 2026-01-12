@@ -25,8 +25,17 @@ jobs:
           echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
           echo "AZURE_AI_FOUNDRY_KEY=${{ secrets.AZURE_AI_FOUNDRY_KEY }}" >> .env
           echo "AZURE_AI_FOUNDRY_ENDPOINT=${{ secrets.AZURE_AI_FOUNDRY_ENDPOINT }}" >> .env
+          echo "AZURE_GPT_5_2_CHAT_DEPLOYMENT=${{ secrets.AZURE_GPT_5_2_CHAT_DEPLOYMENT }}" >> .env
+          echo "AZURE_GPT_5_NANO_DEPLOYMENT=${{ secrets.AZURE_GPT_5_NANO_DEPLOYMENT }}" >> .env
+          echo "FLUX_2_PRO_AZURE_URL=${{ secrets.FLUX_2_PRO_AZURE_URL }}" >> .env
+          echo "FLUX_2_PRO_KEY=${{ secrets.FLUX_2_PRO_KEY }}" >> .env
+          echo "FLUX_2_PRO_DEPLOYMENT=${{ secrets.FLUX_2_PRO_DEPLOYMENT }}" >> .env
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
           echo "POLY_PRODUCTION_BACKEND_URL=${{ secrets.POLY_PRODUCTION_BACKEND_URL }}" >> .env
+          echo "WEATHER_TEAM_ID=${{ secrets.WEATHER_TEAM_ID }}" >> .env
+          echo "WEATHER_KEY_ID=${{ secrets.WEATHER_KEY_ID }}" >> .env
+          echo "WEATHER_PRIVATE_KEY=${{ secrets.WEATHER_PRIVATE_KEY }}" >> .env
+          echo "WEATHER_BUNDLE_ID=com.poly186.odelle" >> .env
 
       - name: Install dependencies
         run: flutter pub get
@@ -65,8 +74,17 @@ jobs:
           echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
           echo "AZURE_AI_FOUNDRY_KEY=${{ secrets.AZURE_AI_FOUNDRY_KEY }}" >> .env
           echo "AZURE_AI_FOUNDRY_ENDPOINT=${{ secrets.AZURE_AI_FOUNDRY_ENDPOINT }}" >> .env
+          echo "AZURE_GPT_5_2_CHAT_DEPLOYMENT=${{ secrets.AZURE_GPT_5_2_CHAT_DEPLOYMENT }}" >> .env
+          echo "AZURE_GPT_5_NANO_DEPLOYMENT=${{ secrets.AZURE_GPT_5_NANO_DEPLOYMENT }}" >> .env
+          echo "FLUX_2_PRO_AZURE_URL=${{ secrets.FLUX_2_PRO_AZURE_URL }}" >> .env
+          echo "FLUX_2_PRO_KEY=${{ secrets.FLUX_2_PRO_KEY }}" >> .env
+          echo "FLUX_2_PRO_DEPLOYMENT=${{ secrets.FLUX_2_PRO_DEPLOYMENT }}" >> .env
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
           echo "POLY_PRODUCTION_BACKEND_URL=${{ secrets.POLY_PRODUCTION_BACKEND_URL }}" >> .env
+          echo "WEATHER_TEAM_ID=${{ secrets.WEATHER_TEAM_ID }}" >> .env
+          echo "WEATHER_KEY_ID=${{ secrets.WEATHER_KEY_ID }}" >> .env
+          echo "WEATHER_PRIVATE_KEY=${{ secrets.WEATHER_PRIVATE_KEY }}" >> .env
+          echo "WEATHER_BUNDLE_ID=com.poly186.odelle" >> .env
 
       - name: Install dependencies
         run: flutter pub get

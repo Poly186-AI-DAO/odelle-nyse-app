@@ -24,7 +24,7 @@ import '../utils/logger.dart';
 class AppDatabase {
   static const String _tag = 'AppDatabase';
   static const String _databaseName = 'odelle_nyse.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4; // Bumped for health data table
 
   static Database? _database;
   static final AppDatabase instance = AppDatabase._internal();
@@ -60,6 +60,7 @@ class AppDatabase {
     await _createCoreTables(db);
     await _createPhase1Tables(db);
     await _createPhase2Tables(db);
+    await _createHealthTables(db);
     await _createIndexes(db);
     await _seedMantras(db);
 
@@ -78,6 +79,90 @@ class AppDatabase {
       await _createPhase2Tables(db);
       await _createIndexes(db);
     }
+    if (oldVersion < 4) {
+      await _createHealthTables(db);
+      await _createIndexes(db);
+    }
+  }
+
+  /// Create health data tables for caching HealthKit data
+  Future<void> _createHealthTables(Database db) async {
+    Logger.info('Creating health data tables', tag: _tag);
+
+    // Daily health summary cache
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS health_daily_summary (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        steps INTEGER DEFAULT 0,
+        active_calories REAL DEFAULT 0,
+        basal_calories REAL DEFAULT 0,
+        resting_heart_rate INTEGER,
+        average_heart_rate INTEGER,
+        exercise_minutes INTEGER DEFAULT 0,
+        distance_meters REAL DEFAULT 0,
+        flights_climbed INTEGER DEFAULT 0,
+        water_liters REAL DEFAULT 0,
+        mindful_minutes INTEGER DEFAULT 0,
+        weight_kg REAL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    // Sleep data cache
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS health_sleep_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        bed_time TEXT,
+        wake_time TEXT,
+        total_minutes INTEGER,
+        deep_sleep_minutes INTEGER,
+        rem_sleep_minutes INTEGER,
+        light_sleep_minutes INTEGER,
+        awake_minutes INTEGER,
+        quality_score INTEGER,
+        source TEXT,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    // Workout cache (from HealthKit)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS health_workout (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        healthkit_uuid TEXT UNIQUE,
+        workout_type TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL,
+        calories_burned REAL,
+        distance_meters REAL,
+        steps INTEGER,
+        source_name TEXT,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    // Heart rate samples (optional, for detailed HR tracking)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS health_heart_rate (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        value INTEGER NOT NULL,
+        source TEXT
+      )
+    ''');
+
+    // Create indexes
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_health_daily_date ON health_daily_summary(date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_health_sleep_date ON health_sleep_log(date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_health_workout_start ON health_workout(start_time)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_health_hr_timestamp ON health_heart_rate(timestamp)');
   }
 
   Future<void> _createCoreTables(Database db) async {

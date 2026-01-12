@@ -1,4 +1,5 @@
 export 'streak_badge.dart';
+export 'week_day_picker.dart';
 export 'macro_progress_bar.dart';
 export 'stat_card_small.dart';
 export 'macro_pill_row.dart';
