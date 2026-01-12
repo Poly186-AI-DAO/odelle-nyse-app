@@ -97,9 +97,11 @@ class AudioOutputService {
       FlutterPcmSound.setLogLevel(LogLevel.standard);
 
       // Setup with sample rate and channel count
+      // CRITICAL: Use playAndRecord so audio works while mic is active
       await FlutterPcmSound.setup(
         sampleRate: sampleRate,
         channelCount: numChannels,
+        iosAudioCategory: IosAudioCategory.playAndRecord,
       );
 
       // Set callback for when more audio is needed (optional)
@@ -170,9 +172,11 @@ class AudioOutputService {
       _isPlaying = false;
 
       // Re-initialize for next audio
+      // CRITICAL: Use playAndRecord so audio works while mic is active
       await FlutterPcmSound.setup(
         sampleRate: sampleRate,
         channelCount: numChannels,
+        iosAudioCategory: IosAudioCategory.playAndRecord,
       );
       FlutterPcmSound.setFeedCallback(_onFeedCallback);
 
