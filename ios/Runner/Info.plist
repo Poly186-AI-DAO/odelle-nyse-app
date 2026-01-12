@@ -97,6 +97,8 @@
 	<string>Odelle can log workouts and health metrics on your behalf</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Odelle uses your location to show local weather in your morning routine</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Odelle uses your location to show local weather in your morning routine</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
