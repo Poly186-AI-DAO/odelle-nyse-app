@@ -51,13 +51,6 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
 
 // Calculate the stats card position using BOTTOM coordinate
     // This is simpler: card sits N pixels above the panel top
-    final panelTopAtRest = screenHeight - minPanelHeight;
-    final panelTopAtExpanded = screenHeight - maxPanelHeight;
-
-    // Lerp the panel top based on progress
-    final currentPanelTop = panelTopAtRest -
-        (state.panelProgress * (panelTopAtRest - panelTopAtExpanded));
-
     // Card bottom = distance from screen bottom
     // At rest: card's bottom edge is 20px above panel top
     // At expanded: card sits 16px above the expanded panel

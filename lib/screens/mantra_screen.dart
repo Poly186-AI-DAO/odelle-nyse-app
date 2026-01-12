@@ -48,16 +48,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
   // Card animation
   late AnimationController _cardAnimController;
 
-  // Categories
-  final List<String?> _categories = [
-    null,
-    'morning',
-    'focus',
-    'motivation',
-    'meditation',
-    'stress',
-    'evening',
-  ];
+
 
   @override
   void initState() {
@@ -208,61 +199,6 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryFilter() {
-    return SizedBox(
-      height: 32,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
-          final category = _categories[index];
-          final isSelected = _selectedCategory == category;
-          final label = category?.toUpperCase() ?? 'ALL';
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedCategory = category;
-                  _currentIndex = 0;
-                });
-                HapticFeedback.selectionClick();
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected
-                        ? Colors.white.withValues(alpha: 0.3)
-                        : Colors.transparent,
-                  ),
-                ),
-                child: Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.6),
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }

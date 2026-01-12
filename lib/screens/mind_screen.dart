@@ -125,12 +125,15 @@ class _MindScreenState extends ConsumerState<MindScreen> {
     List<String> archetypes = [];
     if (archetypesRaw is Map) {
       final archetypeMap = Map<String, dynamic>.from(archetypesRaw);
-      if (archetypeMap['ego'] != null)
+      if (archetypeMap['ego'] != null) {
         archetypes.add(archetypeMap['ego'].toString());
-      if (archetypeMap['soul'] != null)
+      }
+      if (archetypeMap['soul'] != null) {
         archetypes.add(archetypeMap['soul'].toString());
-      if (archetypeMap['self'] != null)
+      }
+      if (archetypeMap['self'] != null) {
         archetypes.add(archetypeMap['self'].toString());
+      }
     } else if (archetypesRaw is List) {
       archetypes = List<String>.from(archetypesRaw);
     }
