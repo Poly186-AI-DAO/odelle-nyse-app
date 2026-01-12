@@ -363,7 +363,8 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
         const SizedBox(height: 24),
 
         // Today's Meals
-        _buildSectionHeaderWithAction('TODAY\'S MEALS', 'See all', _openMealPlan),
+        _buildSectionHeaderWithAction(
+            'TODAY\'S MEALS', 'See all', _openMealPlan),
         const SizedBox(height: 12),
         ..._meals.asMap().entries.map((entry) {
           final index = entry.key;

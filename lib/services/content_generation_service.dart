@@ -298,10 +298,15 @@ Tone: Reverent but personal, mystical but grounded.
 
       // Generate audio with ElevenLabs
       final audioBytes = await _generateAudio(script, 'narrator');
+      final audioPath = audioBytes != null
+          ? await _saveAudioFile('cosmic_story', audioBytes)
+          : null;
 
       _notifyProgress(ContentType.cosmicStory, 'Saving cosmic story...', 0.8);
 
       // Save to database
+      final createdAt = DateTime.now().toIso8601String();
+      final contentDate = createdAt.split('T')[0];
       final db = await _database.database;
       await db.insert('generation_queue', {
         'type': 'cosmic_story',
@@ -312,12 +317,13 @@ Tone: Reverent but personal, mystical but grounded.
         }),
         'output_data': jsonEncode({
           'script': script,
-          'audioPath': audioBytes != null
-              ? await _saveAudioFile('cosmic_story', audioBytes)
-              : null,
+          'audioPath': audioPath,
         }),
-        'created_at': DateTime.now().toIso8601String(),
-        'completed_at': DateTime.now().toIso8601String(),
+        'content_date': contentDate,
+        'image_path': null,
+        'audio_path': audioPath,
+        'created_at': createdAt,
+        'completed_at': createdAt,
       });
 
       _notifyProgress(
@@ -655,6 +661,8 @@ Return JSON:
               'meditation_${type}_${DateTime.now().millisecondsSinceEpoch}',
               audioBytes)
           : null;
+      final createdAt = DateTime.now().toIso8601String();
+      final contentDate = createdAt.split('T')[0];
 
       await db.insert('generation_queue', {
         'type': 'meditation',
@@ -664,8 +672,11 @@ Return JSON:
           ...meditation,
           'audioPath': audioPath,
         }),
-        'created_at': DateTime.now().toIso8601String(),
-        'completed_at': DateTime.now().toIso8601String(),
+        'content_date': contentDate,
+        'image_path': null,
+        'audio_path': audioPath,
+        'created_at': createdAt,
+        'completed_at': createdAt,
       });
 
       _notifyProgress(
@@ -870,8 +881,8 @@ Return JSON:
 
   Future<int> _getTodayMeditationsCount(Database db, String today) async {
     final result = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM generation_queue WHERE type = 'meditation' AND created_at LIKE ?",
-      ['$today%'],
+      "SELECT COUNT(*) as count FROM generation_queue WHERE type = 'meditation' AND (content_date = ? OR created_at LIKE ?)",
+      [today, '$today%'],
     );
     return (result.first['count'] as int?) ?? 0;
   }

@@ -132,7 +132,11 @@
     "restrictions": {
       "avoid": ["coffee", "caffeine"],
       "reason": "Caffeine can interfere with psilocybin effects",
-      "alternatives": ["decaf", "herbal tea", "pre-workout (non-caffeine if possible)"]
+      "alternatives": [
+        "decaf",
+        "herbal tea",
+        "pre-workout (non-caffeine if possible)"
+      ]
     },
     "required": {
       "supplements": ["creatine monohydrate", "whey protein"],

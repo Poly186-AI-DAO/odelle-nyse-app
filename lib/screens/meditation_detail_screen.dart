@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/theme_constants.dart';
 import '../models/tracking/meditation_log.dart';
+import '../widgets/widgets.dart';
 import 'active_meditation_screen.dart';
 
-class MeditationDetailScreen extends StatelessWidget {
+class MeditationDetailScreen extends StatefulWidget {
   final String title;
   final int duration;
   final MeditationType type;
@@ -17,22 +18,35 @@ class MeditationDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<MeditationDetailScreen> createState() => _MeditationDetailScreenState();
+}
+
+class _MeditationDetailScreenState extends State<MeditationDetailScreen> {
+  late int _selectedDuration;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDuration = widget.duration;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ThemeConstants.panelWhite,
+      backgroundColor: ThemeConstants.deepNavy,
       appBar: AppBar(
-        backgroundColor: ThemeConstants.panelWhite,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: ThemeConstants.textOnLight),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          title,
+          widget.title,
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: ThemeConstants.textOnLight,
+            color: Colors.white,
           ),
         ),
         centerTitle: true,
@@ -45,157 +59,88 @@ class MeditationDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    // Illustration / Icon
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: ThemeConstants.polyPurple400.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.self_improvement,
-                          size: 64,
-                          color: ThemeConstants.polyPurple400,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    
+                    const SizedBox(height: 20),
+
                     Text(
-                      'Ready to Begin?',
+                      'Set Your Duration',
                       style: GoogleFonts.inter(
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: FontWeight.w600,
-                        color: ThemeConstants.textOnLight,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Find a quiet space where you can sit comfortably for $duration minutes.',
+                      'Slide to choose how long you want to meditate',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: ThemeConstants.textSecondary,
-                        height: 1.5,
+                        fontSize: 14,
+                        color: Colors.white70,
                       ),
                     ),
+                    const SizedBox(height: 32),
+
+                    // Duration Slider Component
+                    DurationSlider(
+                      initialMinutes: _selectedDuration,
+                      minMinutes: 1,
+                      maxMinutes: 60,
+                      stepMinutes: 1,
+                      onChanged: (minutes) {
+                        setState(() {
+                          _selectedDuration = minutes;
+                        });
+                      },
+                    ),
+
                     const SizedBox(height: 48),
 
-                    // Steps
-                    _buildStepRow(
-                      '1',
-                      'Find a comfortable position.',
-                      'Sit upright with your back straight but relaxed.',
+                    // Preview of what the timer will look like
+                    Text(
+                      'Session Preview',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white54,
+                        letterSpacing: 1.5,
+                      ),
                     ),
-                    const SizedBox(height: 24),
-                    _buildStepRow(
-                      '2',
-                      'Let your body settle.',
-                      'Close your eyes and release any tension.',
-                    ),
-                    const SizedBox(height: 24),
-                    _buildStepRow(
-                      '3',
-                      'Focus on your breath.',
-                      'Follow the rhythm of your inhalation and exhalation.',
+                    const SizedBox(height: 16),
+
+                    // Circular Timer Preview (static, not running)
+                    CircularTimer(
+                      durationSeconds: _selectedDuration * 60,
+                      mode: TimerMode.countdown,
+                      size: 200,
+                      showControls: false,
+                      label: widget.type.displayName.toUpperCase(),
                     ),
                   ],
                 ),
               ),
             ),
-            
+
             // Bottom Action Button
             Padding(
               padding: const EdgeInsets.all(24),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => ActiveMeditationScreen(
-                          title: title,
-                          durationSeconds: duration * 60,
-                          type: type,
-                        ),
+              child: OdelleButtonFullWidth.dark(
+                text: 'Start ${_selectedDuration}m Session',
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => ActiveMeditationScreen(
+                        title: widget.title,
+                        durationSeconds: _selectedDuration * 60,
+                        type: widget.type,
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ThemeConstants.deepNavy,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ),
-                  child: Text(
-                    'Start Session',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStepRow(String number, String title, String description) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: ThemeConstants.polyPurple400.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              number,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: ThemeConstants.polyPurple400,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: ThemeConstants.textOnLight,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: ThemeConstants.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/theme_constants.dart';
 import '../models/tracking/meditation_log.dart';
+import '../widgets/atoms/odelle_button.dart';
 import 'meditation_detail_screen.dart';
 
 class MeditationScreen extends StatefulWidget {
@@ -108,12 +109,14 @@ class _MeditationScreenState extends State<MeditationScreen> {
       width: double.infinity,
       height: 180,
       decoration: BoxDecoration(
-        color: ThemeConstants.deepNavy,
         borderRadius: BorderRadius.circular(24),
-        image: const DecorationImage(
-          image: AssetImage('assets/images/meditation_hero.png'), // Placeholder
-          fit: BoxFit.cover,
-          opacity: 0.6,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ThemeConstants.polyPurple400,
+            ThemeConstants.deepNavy,
+          ],
         ),
       ),
       child: Stack(
@@ -236,27 +239,9 @@ class _MeditationScreenState extends State<MeditationScreen> {
               }).toList(),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () => _navigateToDetail(data),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ThemeConstants.polyPurple400,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  'Begin Meditation',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+            OdelleButtonFullWidth.primary(
+              text: 'Begin Meditation',
+              onPressed: () => _navigateToDetail(data),
             ),
           ],
         ),

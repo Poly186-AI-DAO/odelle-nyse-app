@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:weather_kit/weather_kit.dart';
+
+import '../utils/logger.dart';
 
 /// Data class for current weather conditions
 class CurrentWeather {
@@ -116,6 +117,7 @@ class DailyForecast {
 /// 3. Location permission from user
 /// 4. A WeatherKit key from Apple Developer (p8 file)
 class WeatherService {
+  static const String _tag = 'WeatherService';
   static final WeatherService _instance = WeatherService._internal();
   factory WeatherService() => _instance;
   WeatherService._internal() {
@@ -134,16 +136,23 @@ class WeatherService {
   void _configureFromEnv() {
     final teamId = dotenv.env['WEATHER_TEAM_ID'];
     final keyId = dotenv.env['WEATHER_KEY_ID'];
-    final privateKey = dotenv.env['WEATHER_PRIVATE_KEY'];
+    final rawPrivateKey = dotenv.env['WEATHER_PRIVATE_KEY'];
     final bundleId = dotenv.env['WEATHER_BUNDLE_ID'] ?? 'com.poly186.odelle';
 
-    if (teamId != null && keyId != null && privateKey != null) {
+    final privateKey = rawPrivateKey?.replaceAll(r'\n', '\n').trim();
+
+    if (teamId != null &&
+        keyId != null &&
+        privateKey != null &&
+        privateKey.isNotEmpty) {
       configure(
         teamId: teamId,
         keyId: keyId,
         privateKey: privateKey,
         bundleId: bundleId,
       );
+    } else {
+      Logger.warning('WeatherKit env vars missing or invalid', tag: _tag);
     }
   }
 
@@ -172,7 +181,7 @@ class WeatherService {
     _keyId = keyId;
     _privateKey = privateKey;
     _bundleId = bundleId;
-    debugPrint('[Weather] WeatherKit configured');
+    Logger.info('WeatherKit configured', tag: _tag);
   }
 
   /// Check if WeatherKit is configured
@@ -192,7 +201,7 @@ class WeatherService {
     }
 
     if (!isConfigured) {
-      debugPrint('[Weather] WeatherKit not configured');
+      Logger.warning('WeatherKit not configured', tag: _tag);
       return null;
     }
 
@@ -205,10 +214,10 @@ class WeatherService {
         expiresIn: _jwtDuration,
       );
       _jwtExpiry = DateTime.now().add(_jwtDuration);
-      debugPrint('[Weather] Generated new JWT');
+      Logger.debug('Generated new JWT', tag: _tag);
       return _jwt;
     } catch (e) {
-      debugPrint('[Weather] Error generating JWT: $e');
+      Logger.error('Error generating JWT: $e', tag: _tag);
       return null;
     }
   }
@@ -219,7 +228,7 @@ class WeatherService {
       // Check if location services are enabled
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('[Weather] Location services disabled');
+        Logger.warning('Location services disabled', tag: _tag);
         return null;
       }
 
@@ -228,13 +237,13 @@ class WeatherService {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          debugPrint('[Weather] Location permission denied');
+          Logger.warning('Location permission denied', tag: _tag);
           return null;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        debugPrint('[Weather] Location permission permanently denied');
+        Logger.warning('Location permission permanently denied', tag: _tag);
         return null;
       }
 
@@ -247,11 +256,12 @@ class WeatherService {
       );
 
       _lastPosition = position;
-      debugPrint(
-          '[Weather] Got location: ${position.latitude}, ${position.longitude}');
+      Logger.debug(
+          'Got location: ${position.latitude}, ${position.longitude}',
+          tag: _tag);
       return position;
     } catch (e) {
-      debugPrint('[Weather] Error getting location: $e');
+      Logger.warning('Error getting location: $e', tag: _tag);
       return _lastPosition; // Return cached position if available
     }
   }
@@ -264,19 +274,19 @@ class WeatherService {
         _cachedWeather != null &&
         _cacheTime != null &&
         DateTime.now().difference(_cacheTime!) < _cacheDuration) {
-      debugPrint('[Weather] Returning cached weather');
+      Logger.debug('Returning cached weather', tag: _tag);
       return _cachedWeather;
     }
 
     final jwt = _getJWT();
     if (jwt == null) {
-      debugPrint('[Weather] No JWT available');
+      Logger.warning('No JWT available', tag: _tag);
       return _cachedWeather;
     }
 
     final position = await _getCurrentLocation();
     if (position == null) {
-      debugPrint('[Weather] No location available');
+      Logger.warning('No location available', tag: _tag);
       return _cachedWeather;
     }
 
@@ -309,12 +319,13 @@ class WeatherService {
       );
 
       _cacheTime = DateTime.now();
-      debugPrint(
-          '[Weather] Current: ${_cachedWeather!.temperature.round()}°C, ${_cachedWeather!.condition}');
+      Logger.info(
+          'Current: ${_cachedWeather!.temperature.round()}°C, ${_cachedWeather!.condition}',
+          tag: _tag);
 
       return _cachedWeather;
     } catch (e) {
-      debugPrint('[Weather] Error fetching weather: $e');
+      Logger.warning('Error fetching weather: $e', tag: _tag);
       return _cachedWeather; // Return stale cache on error
     }
   }
@@ -325,7 +336,7 @@ class WeatherService {
   Future<List<DailyForecast>> getDailyForecast({int days = 5}) async {
     // TODO: Implement when weather_kit supports forecastDaily
     // For now, return empty list - focus on current weather
-    debugPrint('[Weather] Daily forecast not yet implemented');
+    Logger.debug('Daily forecast not yet implemented', tag: _tag);
     return [];
   }
 
@@ -389,6 +400,6 @@ class WeatherService {
   void clearCache() {
     _cachedWeather = null;
     _cacheTime = null;
-    debugPrint('[Weather] Cache cleared');
+    Logger.info('Cache cleared', tag: _tag);
   }
 }

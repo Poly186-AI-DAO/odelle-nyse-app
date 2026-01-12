@@ -8,399 +8,328 @@ import 'package:google_fonts/google_fonts.dart';
 enum TimerMode {
   /// Counts down from the set duration to zero
   countdown,
-
   /// Counts up from zero (stopwatch mode)
   countUp,
 }
 
-/// A beautiful circular timer with animated progress ring.
-/// Supports countdown, count-up, and can be used for meditation, pomodoro, etc.
+/// A photorealistic, rotatable metallic timer knob.
+/// Matches the physical "kitchen timer" aesthetic with knurled edges and glass face.
 class CircularTimer extends StatefulWidget {
-  /// Total duration in seconds (for countdown mode)
+  /// Total duration in seconds
   final int durationSeconds;
 
-  /// Timer mode: countdown or countUp
+  /// Timer mode
   final TimerMode mode;
 
-  /// Size of the timer circle
+  /// Size of the timer knob
   final double size;
 
-  /// Ring stroke width
-  final double strokeWidth;
-
-  /// Progress ring color
-  final Color progressColor;
-
-  /// Background ring color
-  final Color backgroundColor;
-
-  /// Whether to auto-start the timer
+  /// Whether to auto-start
   final bool autoStart;
 
-  /// Callback when timer completes (countdown mode)
+  /// Callback when timer completes
   final VoidCallback? onComplete;
 
-  /// Callback for each tick with remaining/elapsed seconds
+  /// Callback for each tick
   final ValueChanged<int>? onTick;
 
-  /// Whether to show control buttons
-  final bool showControls;
-
-  /// Custom center widget (overrides default time display)
-  final Widget? centerWidget;
-
-  /// Label text below the timer
-  final String? label;
+  /// Callback when user rotates the knob to change duration
+  final ValueChanged<int>? onDurationChanged;
 
   const CircularTimer({
     super.key,
     this.durationSeconds = 60,
     this.mode = TimerMode.countdown,
     this.size = 280,
-    this.strokeWidth = 8,
-    this.progressColor = const Color(0xFFFF6B35),
-    this.backgroundColor = const Color(0xFF2D3E50),
     this.autoStart = false,
     this.onComplete,
     this.onTick,
-    this.showControls = true,
-    this.centerWidget,
-    this.label,
+    this.onDurationChanged,
+    // Ignoring unused params from previous version for API compatibility
+    double strokeWidth = 0,
+    Color? progressColor,
+    Color? backgroundColor,
+    bool showControls = true,
+    Widget? centerWidget,
+    String? label,
   });
 
   @override
   State<CircularTimer> createState() => CircularTimerState();
 }
 
-class CircularTimerState extends State<CircularTimer>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
+class CircularTimerState extends State<CircularTimer> with SingleTickerProviderStateMixin {
+  late int _currentSeconds;
   Timer? _timer;
-  int _elapsedSeconds = 0;
   bool _isRunning = false;
-  bool _isPaused = false;
+  double _rotationAngle = 0.0;
+  
+  // For interaction
+  Offset? _dragStart;
+  double _startRotation = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: Duration(seconds: widget.durationSeconds),
-    );
-
+    _currentSeconds = widget.durationSeconds;
     if (widget.autoStart) {
       start();
     }
   }
 
   @override
+  void didUpdateWidget(CircularTimer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.durationSeconds != oldWidget.durationSeconds && !_isRunning) {
+      setState(() {
+        _currentSeconds = widget.durationSeconds;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
-    _animationController.dispose();
     super.dispose();
   }
 
-  /// Start the timer
   void start() {
-    if (_isRunning && !_isPaused) return;
-
-    setState(() {
-      _isRunning = true;
-      _isPaused = false;
-    });
-
-    if (widget.mode == TimerMode.countdown) {
-      _animationController.forward(from: _animationController.value);
-    }
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        _elapsedSeconds++;
-      });
-
-      widget.onTick?.call(_currentDisplaySeconds);
-
-      if (widget.mode == TimerMode.countdown &&
-          _elapsedSeconds >= widget.durationSeconds) {
-        _complete();
+    if (_isRunning) return;
+    setState(() => _isRunning = true);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (widget.mode == TimerMode.countdown) {
+        if (_currentSeconds > 0) {
+          setState(() => _currentSeconds--);
+          widget.onTick?.call(_currentSeconds);
+          // Auto-rotate knob slightly as it ticks? Optional.
+        } else {
+          _complete();
+        }
+      } else {
+        setState(() => _currentSeconds++);
+        widget.onTick?.call(_currentSeconds);
       }
     });
-
-    HapticFeedback.lightImpact();
   }
 
-  /// Pause the timer
   void pause() {
-    if (!_isRunning || _isPaused) return;
-
     _timer?.cancel();
-    _animationController.stop();
-
-    setState(() {
-      _isPaused = true;
-    });
-
-    HapticFeedback.lightImpact();
+    setState(() => _isRunning = false);
   }
 
-  /// Resume from pause
-  void resume() {
-    if (!_isPaused) return;
-    start();
-  }
-
-  /// Reset the timer
   void reset() {
-    _timer?.cancel();
-    _animationController.reset();
-
+    pause();
     setState(() {
-      _elapsedSeconds = 0;
-      _isRunning = false;
-      _isPaused = false;
+      _currentSeconds = widget.durationSeconds;
     });
-
-    HapticFeedback.mediumImpact();
   }
 
   void _complete() {
-    _timer?.cancel();
-    setState(() {
-      _isRunning = false;
-    });
+    pause();
     HapticFeedback.heavyImpact();
     widget.onComplete?.call();
   }
 
-  int get _currentDisplaySeconds {
-    if (widget.mode == TimerMode.countdown) {
-      return (widget.durationSeconds - _elapsedSeconds).clamp(0, widget.durationSeconds);
-    }
-    return _elapsedSeconds;
+  void _handlePanStart(DragStartDetails details) {
+    if (_isRunning) return; // Lock rotation while running
+    _dragStart = details.localPosition;
+    _startRotation = _rotationAngle;
+    HapticFeedback.selectionClick();
   }
 
-  double get _progress {
-    if (widget.mode == TimerMode.countdown) {
-      return _elapsedSeconds / widget.durationSeconds;
-    }
-    // For count-up, progress wraps every minute
-    return (_elapsedSeconds % 60) / 60;
-  }
+  void _handlePanUpdate(DragUpdateDetails details) {
+    if (_isRunning) return;
 
-  String _formatTime(int totalSeconds) {
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
+    final center = Offset(widget.size / 2, widget.size / 2);
+    final currentPos = details.localPosition;
+    
+    // Calculate angle change
+    final angle1 = (math.atan2(_dragStart!.dy - center.dy, _dragStart!.dx - center.dx));
+    final angle2 = (math.atan2(currentPos.dy - center.dy, currentPos.dx - center.dx));
+    final delta = angle2 - angle1;
 
-    if (hours > 0) {
-      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    setState(() {
+      _rotationAngle = _startRotation + delta;
+      
+      // Map rotation to time change (1 full rotation = 60 minutes?)
+      // Sensitivity: 1 degree ~ 10 seconds
+      final secondsChange = (delta * (60 * 5) / (2 * math.pi)).round(); 
+      if (secondsChange.abs() > 0) {
+        _currentSeconds = (_currentSeconds + secondsChange).clamp(0, 3600); // Max 60m
+        widget.onDurationChanged?.call(_currentSeconds);
+        // Reset start for incremental updates
+        _dragStart = currentPos;
+        _startRotation = _rotationAngle;
+        
+        if (secondsChange.abs() > 10) HapticFeedback.lightImpact(); // Feedback on change
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Timer Circle
-        SizedBox(
-          width: widget.size,
-          height: widget.size,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Progress Ring
-              CustomPaint(
-                size: Size(widget.size, widget.size),
-                painter: _CircularProgressPainter(
-                  progress: _progress,
-                  progressColor: widget.progressColor,
-                  backgroundColor: widget.backgroundColor,
-                  strokeWidth: widget.strokeWidth,
-                ),
-              ),
+    return GestureDetector(
+      onPanStart: _handlePanStart,
+      onPanUpdate: _handlePanUpdate,
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // 1. The Metallic Knurled Ring (Base)
+            CustomPaint(
+              size: Size(widget.size, widget.size),
+              painter: _KnurledRingPainter(),
+            ),
 
-              // Center Content
-              widget.centerWidget ??
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _formatTime(_currentDisplaySeconds),
-                        style: GoogleFonts.inter(
-                          fontSize: widget.size * 0.18,
-                          fontWeight: FontWeight.w300,
-                          color: Colors.white,
-                          fontFeatures: [const FontFeature.tabularFigures()],
-                        ),
-                      ),
-                      if (widget.label != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.label!,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
+            // 2. The Inner Black Body
+            Container(
+              width: widget.size * 0.88,
+              height: widget.size * 0.88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF1C1C1E),
+                // Outer shadow for depth effect (since inset isn't supported)
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 10,
+                    offset: const Offset(2, 2),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    blurRadius: 5,
+                    offset: const Offset(-1, -1),
+                  ),
+                ],
+              ),
+            ),
+            
+            // 3. Digital Display
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'M',
+                  style: GoogleFonts.inter(fontSize: 14, color: Colors.white54, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '${(_currentSeconds ~/ 60).toString().padLeft(2, '0')}:${(_currentSeconds % 60).toString().padLeft(2, '0')}',
+                  style: GoogleFonts.shareTechMono( // Digital clock font look
+                    fontSize: widget.size * 0.25,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(color: Colors.white.withValues(alpha: 0.8), blurRadius: 10), // Glow
                     ],
                   ),
-            ],
-          ),
-        ),
+                ),
+              ],
+            ),
 
-        // Controls
-        if (widget.showControls) ...[
-          const SizedBox(height: 32),
-          _buildControls(),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildControls() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Reset Button
-        _buildControlButton(
-          icon: Icons.refresh,
-          onTap: reset,
-          isSecondary: true,
-        ),
-        const SizedBox(width: 24),
-
-        // Play/Pause Button
-        _buildControlButton(
-          icon: _isRunning && !_isPaused ? Icons.pause : Icons.play_arrow,
-          onTap: () {
-            if (_isRunning && !_isPaused) {
-              pause();
-            } else if (_isPaused) {
-              resume();
-            } else {
-              start();
-            }
-          },
-          isLarge: true,
-        ),
-        const SizedBox(width: 24),
-
-        // Stop Button
-        _buildControlButton(
-          icon: Icons.stop,
-          onTap: () {
-            reset();
-            widget.onComplete?.call();
-          },
-          isSecondary: true,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildControlButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    bool isLarge = false,
-    bool isSecondary = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: isLarge ? 72 : 48,
-        height: isLarge ? 72 : 48,
-        decoration: BoxDecoration(
-          color: isLarge ? widget.progressColor : Colors.transparent,
-          shape: BoxShape.circle,
-          border: isSecondary
-              ? Border.all(color: widget.progressColor.withValues(alpha: 0.5), width: 2)
-              : null,
-          boxShadow: isLarge
-              ? [
-                  BoxShadow(
-                    color: widget.progressColor.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+            // 4. Glass Reflection Overlay (Glossy Dome)
+            IgnorePointer(
+              child: Container(
+                width: widget.size * 0.88,
+                height: widget.size * 0.88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.15),
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.white.withValues(alpha: 0.05),
+                    ],
+                    stops: const [0.0, 0.4, 0.6, 1.0],
                   ),
-                ]
-              : null,
-        ),
-        child: Icon(
-          icon,
-          color: isLarge ? Colors.white : widget.progressColor,
-          size: isLarge ? 36 : 24,
+                ),
+              ),
+            ),
+            
+            // 5. Shine/Glare spot
+            IgnorePointer(
+              child: Positioned(
+                top: widget.size * 0.2,
+                right: widget.size * 0.25,
+                child: Container(
+                  width: widget.size * 0.3,
+                  height: widget.size * 0.15,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.all(Radius.elliptical(widget.size*0.3, widget.size*0.15)),
+                  ),
+                  transform: Matrix4.rotationZ(-0.5),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _CircularProgressPainter extends CustomPainter {
-  final double progress;
-  final Color progressColor;
-  final Color backgroundColor;
-  final double strokeWidth;
-
-  _CircularProgressPainter({
-    required this.progress,
-    required this.progressColor,
-    required this.backgroundColor,
-    required this.strokeWidth,
-  });
-
+class _KnurledRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2;
+    final radius = size.width / 2;
+    
+    // Main metallic body gradient
+    final paint = Paint()
+      ..shader = const SweepGradient(
+        colors: [
+          Color(0xFFE0E0E0), // Light Silver
+          Color(0xFF9E9E9E), // Darker Grey
+          Color(0xFFF5F5F5), // Highlight
+          Color(0xFF9E9E9E),
+          Color(0xFFE0E0E0),
+        ],
+        stops: [0.0, 0.25, 0.5, 0.75, 1.0],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
 
-    // Background ring
-    final bgPaint = Paint()
-      ..color = backgroundColor
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, paint);
 
-    canvas.drawCircle(center, radius, bgPaint);
+    // Draw Knurled Texture (Tick marks on the edge)
+    final tickPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.square;
+    
+    final highlightPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.6)
+      ..strokeWidth = 1;
 
-    // Progress arc
-    final progressPaint = Paint()
-      ..color = progressColor
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    // Draw 120 knurled ridges
+    const count = 120;
+    for (int i = 0; i < count; i++) {
+      final angle = (i * 2 * math.pi) / count;
+      
+      // Outer and inner points for the ridge
+      final outerX = center.dx + radius * math.cos(angle);
+      final outerY = center.dy + radius * math.sin(angle);
+      
+      final innerX = center.dx + (radius - 12) * math.cos(angle); // 12px deep
+      final innerY = center.dy + (radius - 12) * math.sin(angle);
 
-    final sweepAngle = 2 * math.pi * progress;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2, // Start from top
-      sweepAngle,
-      false,
-      progressPaint,
-    );
-
-    // Glow effect at the end of progress
-    if (progress > 0) {
-      final glowPaint = Paint()
-        ..color = progressColor.withValues(alpha: 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
-      final endAngle = -math.pi / 2 + sweepAngle;
-      final endPoint = Offset(
-        center.dx + radius * math.cos(endAngle),
-        center.dy + radius * math.sin(endAngle),
-      );
-
-      canvas.drawCircle(endPoint, strokeWidth / 2 + 4, glowPaint);
+      // Draw shadow side
+      canvas.drawLine(Offset(innerX, innerY), Offset(outerX, outerY), tickPaint);
+      
+      // Draw highlight side slightly offset for 3D effect
+      final offsetAngle = angle + 0.01;
+      final hOuterX = center.dx + radius * math.cos(offsetAngle);
+      final hOuterY = center.dy + radius * math.sin(offsetAngle);
+      final hInnerX = center.dx + (radius - 12) * math.cos(offsetAngle);
+      final hInnerY = center.dy + (radius - 12) * math.sin(offsetAngle);
+      
+      canvas.drawLine(Offset(hInnerX, hInnerY), Offset(hOuterX, hOuterY), highlightPaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _CircularProgressPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.progressColor != progressColor;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

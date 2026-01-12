@@ -37,8 +37,8 @@ class FloatingHeroCard extends StatelessWidget {
     this.bottomPanelPadding,
     this.bottomPanelShowHandle = true,
     this.bottomPanelPulseEnabled = false,
-    this.bottomPanelPulseDuration = const Duration(milliseconds: 2800),
-    this.bottomPanelPulseAmplitude = 6,
+    this.bottomPanelPulseDuration = ThemeConstants.zenBreathCycle,
+    this.bottomPanelPulseAmplitude = ThemeConstants.zenBreathAmplitude,
     this.bottomPanelProgressChanged,
   });
 
@@ -91,7 +91,7 @@ class FloatingHeroCard extends StatelessWidget {
             height: draggableBottomPanel ? null : bottomPanelHeight,
             child: Opacity(
               opacity: cardOpacity,
-                  child: draggableBottomPanel
+              child: draggableBottomPanel
                   ? DraggableBottomPanel(
                       minHeight: minPanelHeight,
                       maxHeight: resolvedMaxHeight,
@@ -159,28 +159,25 @@ class _BreathingCardState extends State<BreathingCard>
   late AnimationController _controller;
   late Animation<double> _breathAnimation;
 
-  // Zen breathing: 4s inhale + 6s exhale = 10s cycle
-  static const Duration _breathCycle = Duration(seconds: 10);
-
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: _breathCycle,
+      duration: ThemeConstants.zenBreathCycle,
     );
 
-    // 4s inhale, 6s exhale: slow and meditative.
+    // Zen breathing: 4s inhale, 6s exhale (coherent breathing for HRV)
     _breathAnimation = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween<double>(begin: 0, end: 1)
             .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 40,
+        weight: ThemeConstants.zenInhaleWeight,
       ),
       TweenSequenceItem(
         tween: Tween<double>(begin: 1, end: 0)
             .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 60,
+        weight: ThemeConstants.zenExhaleWeight,
       ),
     ]).animate(_controller);
 

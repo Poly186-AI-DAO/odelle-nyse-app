@@ -8,11 +8,12 @@ import '../constants/theme_constants.dart';
 import '../database/app_database.dart';
 import '../models/mantra.dart';
 import '../utils/logger.dart';
+import '../widgets/atoms/odelle_button.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/organisms/mind/mantra_card.dart';
 
 /// A beautiful infinite carousel screen for mantras and affirmations
-/// 
+///
 /// Features:
 /// - Infinite scrolling in both directions
 /// - 3D card perspective animations
@@ -119,19 +120,19 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
     try {
       final db = AppDatabase.instance;
       final mantras = await db.getMantras(activeOnly: true);
-      
+
       if (mounted) {
         setState(() {
           _mantras = mantras;
           _isLoading = false;
         });
-        
+
         // Start auto-advance after loading
         if (_mantras.isNotEmpty) {
           _autoAdvanceController.forward();
         }
       }
-      
+
       Logger.debug('Loaded ${mantras.length} mantras', tag: _tag);
     } catch (e) {
       Logger.error('Failed to load mantras: $e', tag: _tag);
@@ -234,13 +235,14 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
         children: [
           if (widget.showBackButton)
             IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+              icon: const Icon(Icons.arrow_back_ios,
+                  color: Colors.white, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),
           Expanded(
             child: Column(
-              crossAxisAlignment: widget.showBackButton 
-                  ? CrossAxisAlignment.start 
+              crossAxisAlignment: widget.showBackButton
+                  ? CrossAxisAlignment.start
                   : CrossAxisAlignment.center,
               children: [
                 Text(
@@ -267,7 +269,9 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
           // Auto-advance toggle
           IconButton(
             icon: Icon(
-              _isAutoAdvancing ? Icons.pause_circle_outline : Icons.play_circle_outline,
+              _isAutoAdvancing
+                  ? Icons.pause_circle_outline
+                  : Icons.play_circle_outline,
               color: Colors.white.withValues(alpha: 0.8),
               size: 28,
             ),
@@ -280,7 +284,8 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                 }
               });
             },
-            tooltip: _isAutoAdvancing ? 'Pause auto-advance' : 'Resume auto-advance',
+            tooltip:
+                _isAutoAdvancing ? 'Pause auto-advance' : 'Resume auto-advance',
           ),
         ],
       ),
@@ -313,7 +318,8 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? Colors.white.withValues(alpha: 0.2)
@@ -347,7 +353,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
 
   Widget _buildCarousel() {
     final mantras = _filteredMantras;
-    
+
     return GestureDetector(
       // Pause auto-advance on touch
       onPanDown: (_) => _pauseAutoAdvance(),
@@ -364,10 +370,10 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
           // Infinite loop through mantras
           final mantraIndex = index % mantras.length;
           final mantra = mantras[mantraIndex];
-          
+
           // Calculate scroll offset for animations (-1 to 1)
           final offset = (_currentPage - index).clamp(-1.0, 1.0);
-          
+
           return MantraCard(
             mantra: mantra,
             scrollOffset: offset,
@@ -484,9 +490,9 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
             children: [
               // Progress dots
               if (_filteredMantras.isNotEmpty) _buildProgressDots(),
-              
+
               const Spacer(),
-              
+
               // Action buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -518,12 +524,12 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
   Widget _buildProgressDots() {
     final mantras = _filteredMantras;
     final currentIndex = _virtualPage % mantras.length;
-    
+
     // Show max 7 dots with ellipsis behavior
     const maxDots = 7;
     final showEllipsis = mantras.length > maxDots;
     final dotsToShow = showEllipsis ? maxDots : mantras.length;
-    
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(dotsToShow, (index) {
@@ -537,9 +543,9 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
         } else {
           dotIndex = index;
         }
-        
+
         final isActive = dotIndex == currentIndex;
-        
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -595,7 +601,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
   void _showAddMantraDialog() {
     final textController = TextEditingController();
     String selectedCategory = 'morning';
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -632,7 +638,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       ),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     Text(
                       'Add New Mantra',
                       style: GoogleFonts.playfairDisplay(
@@ -642,7 +648,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       ),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Text input
                     TextField(
                       controller: textController,
@@ -666,7 +672,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Category selector
                     Text(
                       'Category',
@@ -680,8 +686,14 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: ['morning', 'focus', 'motivation', 'meditation', 'stress', 'evening']
-                          .map((cat) {
+                      children: [
+                        'morning',
+                        'focus',
+                        'motivation',
+                        'meditation',
+                        'stress',
+                        'evening'
+                      ].map((cat) {
                         final isSelected = selectedCategory == cat;
                         return GestureDetector(
                           onTap: () {
@@ -716,45 +728,28 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
                       }).toList(),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Save button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (textController.text.trim().isEmpty) return;
-                          
-                          final mantra = Mantra(
-                            text: textController.text.trim(),
-                            category: selectedCategory,
-                            isActive: true,
-                          );
-                          
-                          await AppDatabase.instance.insertMantra(mantra);
-                          await _loadMantras();
-                          
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
-                          
-                          HapticFeedback.mediumImpact();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ThemeConstants.deepNavy,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Save Mantra',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                    OdelleButtonFullWidth.dark(
+                      text: 'Save Mantra',
+                      onPressed: () async {
+                        if (textController.text.trim().isEmpty) return;
+
+                        final mantra = Mantra(
+                          text: textController.text.trim(),
+                          category: selectedCategory,
+                          isActive: true,
+                        );
+
+                        await AppDatabase.instance.insertMantra(mantra);
+                        await _loadMantras();
+
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+
+                        HapticFeedback.mediumImpact();
+                      },
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -769,26 +764,26 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
 
   void _shuffleToRandom() {
     if (_filteredMantras.isEmpty) return;
-    
+
     final random = math.Random();
     final randomOffset = random.nextInt(_filteredMantras.length);
-    
+
     _pageController.animateToPage(
       _virtualPage + randomOffset,
       duration: const Duration(milliseconds: 800),
       curve: Curves.easeInOutCubic,
     );
     _virtualPage += randomOffset;
-    
+
     HapticFeedback.mediumImpact();
   }
 
   void _speakCurrentMantra() {
     if (_filteredMantras.isEmpty) return;
-    
+
     final currentIndex = _virtualPage % _filteredMantras.length;
     final mantra = _filteredMantras[currentIndex];
-    
+
     // TODO: Integrate with TTS service (ElevenLabs)
     // For now, just show a snackbar
     ScaffoldMessenger.of(context).showSnackBar(
@@ -805,7 +800,7 @@ class _MantraScreenState extends ConsumerState<MantraScreen>
         duration: const Duration(seconds: 2),
       ),
     );
-    
+
     HapticFeedback.selectionClick();
   }
 }

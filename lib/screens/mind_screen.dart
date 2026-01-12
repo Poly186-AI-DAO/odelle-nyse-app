@@ -117,18 +117,15 @@ class _MindScreenState extends ConsumerState<MindScreen> {
       bottomPanel: _buildBottomPanelContent(),
       child: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            const SizedBox(height: 70),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _buildHeroContent(),
-                ),
-              ),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              const SizedBox(height: 80), // Space for nav bar
+              // Hero content at top, not centered
+              _buildHeroContent(),
+            ],
+          ),
         ),
       ),
     );
@@ -149,20 +146,26 @@ class _MindScreenState extends ConsumerState<MindScreen> {
 
     final astrology =
         Map<String, String>.from(_identityData!['astrology'] ?? {});
-    
+
     // Archetypes can be a Map {ego, soul, self} or a List - handle both
     final archetypesRaw = _identityData!['archetypes'];
     List<String> archetypes = [];
     if (archetypesRaw is Map) {
       // Extract archetype values (ego, soul, self) from the map
       final archetypeMap = Map<String, dynamic>.from(archetypesRaw);
-      if (archetypeMap['ego'] != null) archetypes.add(archetypeMap['ego'].toString());
-      if (archetypeMap['soul'] != null) archetypes.add(archetypeMap['soul'].toString());
-      if (archetypeMap['self'] != null) archetypes.add(archetypeMap['self'].toString());
+      if (archetypeMap['ego'] != null) {
+        archetypes.add(archetypeMap['ego'].toString());
+      }
+      if (archetypeMap['soul'] != null) {
+        archetypes.add(archetypeMap['soul'].toString());
+      }
+      if (archetypeMap['self'] != null) {
+        archetypes.add(archetypeMap['self'].toString());
+      }
     } else if (archetypesRaw is List) {
       archetypes = List<String>.from(archetypesRaw);
     }
-    
+
     final numerology =
         Map<String, dynamic>.from(_identityData!['numerology'] ?? {});
     final lifePath = (numerology['lifePath'] as num?)?.toInt();
@@ -326,13 +329,10 @@ class _MindScreenState extends ConsumerState<MindScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // HealthKit Quick Stats - floating style at top of panel
+        // HealthKit Quick Stats
         if (_healthKitAvailable) ...[
-          Transform.translate(
-            offset: const Offset(0, -20),
-            child: _buildHealthKitMindStats(),
-          ),
-          const SizedBox(height: 8),
+          _buildHealthKitMindStats(),
+          const SizedBox(height: 20),
         ],
 
         // Schedule / Week Day Picker
@@ -370,26 +370,26 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           children: [
             Expanded(
                 child: _buildProtocolButton(
-                    'Mantras', Icons.auto_awesome, ThemeConstants.polyMint400, () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const MantraScreen(),
-                        ),
-                      );
-                    })),
+                    'Mantras', Icons.auto_awesome, ThemeConstants.polyMint400,
+                    () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const MantraScreen(),
+                ),
+              );
+            })),
             const SizedBox(width: 12),
             Expanded(
-                child: _buildProtocolButton(
-                    'Meditate', Icons.self_improvement, ThemeConstants.polyPurple300, () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const MeditationScreen(),
-                        ),
-                      );
-                    })),
+                child: _buildProtocolButton('Meditate', Icons.self_improvement,
+                    ThemeConstants.polyPurple300, () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const MeditationScreen(),
+                ),
+              );
+            })),
           ],
         ),
-
       ],
     );
   }
@@ -443,8 +443,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
       final awakeMinutes = sleep.awake?.inMinutes;
       final deepMinutes = sleep.deepSleep?.inMinutes;
       final hasDeepData = deepMinutes != null && totalMinutes > 0;
-      final deepPercentage =
-          hasDeepData ? deepMinutes / totalMinutes : 0.0;
+      final deepPercentage = hasDeepData ? deepMinutes / totalMinutes : 0.0;
       final deepLabel = hasDeepData ? null : 'Deep Sleep: --';
 
       return SleepCard(
@@ -468,8 +467,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           : ((_sleepLog!['duration_minutes'] ?? 0) as num).toInt();
       final deepMinutes = (_sleepLog!['deep_sleep_minutes'] as num?)?.toInt();
       final hasDeepData = deepMinutes != null && durationMin > 0;
-      final deepPercentage =
-          hasDeepData ? deepMinutes / durationMin : 0.0;
+      final deepPercentage = hasDeepData ? deepMinutes / durationMin : 0.0;
       final deepLabel = hasDeepData ? null : 'Deep Sleep: --';
       return SleepCard(
         totalSleep: '${durationMin ~/ 60}h ${durationMin % 60}m',
@@ -487,45 +485,79 @@ class _MindScreenState extends ConsumerState<MindScreen> {
 
   /// Build HealthKit mind-related stats row
   Widget _buildHealthKitMindStats() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ThemeConstants.glassBackgroundWeak,
-        borderRadius: ThemeConstants.borderRadius,
-        border: Border.all(color: ThemeConstants.glassBorderWeak),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildMindStat(
-              '🧘', '${_mindfulMinutes?.inMinutes ?? 0}', 'mindful min'),
-          _buildMindStat('❤️', '${_restingHeartRate ?? '--'}', 'resting HR'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMindStat(String emoji, String value, String label) {
-    return Column(
+    return Row(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 20)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: ThemeConstants.textOnLight,
+        Expanded(
+          child: _buildMindStatCard(
+            Icons.self_improvement,
+            ThemeConstants.polyMint400,
+            '${_mindfulMinutes?.inMinutes ?? 0}',
+            'mindful min',
           ),
         ),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            color: ThemeConstants.textSecondary,
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildMindStatCard(
+            Icons.favorite,
+            const Color(0xFFEF4444),
+            '${_restingHeartRate ?? '--'}',
+            'resting HR',
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMindStatCard(
+      IconData icon, Color color, String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ThemeConstants.glassBorderWeak),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeConstants.textOnLight,
+                ),
+              ),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: ThemeConstants.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

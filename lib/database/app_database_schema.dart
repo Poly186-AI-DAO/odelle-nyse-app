@@ -35,6 +35,10 @@ mixin AppDatabaseSchema {
       await _createTrainingTables(db);
       await _createIndexes(db);
     }
+    if (oldVersion < 7) {
+      await _addGenerationQueueColumns(db);
+      await _createGenerationQueueIndexes(db);
+    }
   }
 
   /// Drop legacy content tables no longer in use
@@ -326,6 +330,9 @@ mixin AppDatabaseSchema {
         priority INTEGER DEFAULT 0,
         input_data TEXT,
         output_data TEXT,
+        content_date TEXT,
+        image_path TEXT,
+        audio_path TEXT,
         error TEXT,
         attempts INTEGER DEFAULT 0,
         max_attempts INTEGER DEFAULT 3,
@@ -360,8 +367,38 @@ mixin AppDatabaseSchema {
         'CREATE INDEX IF NOT EXISTS idx_smart_reminders_enabled ON smart_reminders(is_enabled)');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_generation_queue_status ON generation_queue(status)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_generation_queue_type_date ON generation_queue(type, content_date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_generation_queue_date ON generation_queue(content_date)');
 
     Logger.info('Training tables created successfully', tag: AppDatabase._tag);
+  }
+
+  Future<void> _addGenerationQueueColumns(Database db) async {
+    Logger.info('Ensuring generation_queue columns exist', tag: AppDatabase._tag);
+
+    const columns = [
+      'content_date TEXT',
+      'image_path TEXT',
+      'audio_path TEXT',
+    ];
+
+    for (final column in columns) {
+      try {
+        await db.execute('ALTER TABLE generation_queue ADD COLUMN $column');
+      } catch (e) {
+        Logger.debug('Generation queue column exists or failed: $column',
+            tag: AppDatabase._tag, data: {'error': e.toString()});
+      }
+    }
+  }
+
+  Future<void> _createGenerationQueueIndexes(Database db) async {
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_generation_queue_type_date ON generation_queue(type, content_date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_generation_queue_date ON generation_queue(content_date)');
   }
 
   Future<void> _createCoreTables(Database db) async {

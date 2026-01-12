@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/azure_ai_config.dart';
 import '../config/elevenlabs_config.dart';
+import '../database/app_database.dart';
 import '../models/tracking/meditation_log.dart';
 import '../utils/logger.dart';
 import 'azure_agent_service.dart';
@@ -39,6 +40,7 @@ class DailyContentService {
   final AzureAgentService _agentService;
   final AzureImageService _imageService;
   final WeatherService _weatherService;
+  final AppDatabase _database;
   final http.Client _client;
   bool _isInitialized = false;
 
@@ -49,11 +51,13 @@ class DailyContentService {
   DailyContentService({
     required AzureAgentService agentService,
     required AzureImageService imageService,
+    required AppDatabase database,
     WeatherService? weatherService,
     http.Client? client,
   })  : _agentService = agentService,
         _imageService = imageService,
         _weatherService = weatherService ?? WeatherService(),
+        _database = database,
         _client = client ?? http.Client();
 
   /// Initialize service and load seed data
@@ -241,7 +245,40 @@ class DailyContentService {
       final audioPath =
           await _saveLocalFile('meditation_$today.mp3', audioBytes);
 
-      // 5. Mark as generated
+      // 5. Persist generation metadata (date-linked assets)
+      final createdAt = DateTime.now().toIso8601String();
+      try {
+        final db = await _database.database;
+        await db.insert('generation_queue', {
+          'type': 'meditation',
+          'status': 'completed',
+          'priority': 0,
+          'input_data': jsonEncode({
+            'mood': mood,
+            'focus': focus,
+            'weather': weather,
+          }),
+          'output_data': jsonEncode({
+            'script': script,
+            'imagePath': imagePath,
+            'audioPath': audioPath,
+          }),
+          'content_date': today,
+          'image_path': imagePath,
+          'audio_path': audioPath,
+          'created_at': createdAt,
+          'completed_at': createdAt,
+        });
+        Logger.info('Saved daily meditation metadata', tag: _tag, data: {
+          'contentDate': today,
+          'imagePath': imagePath,
+          'audioPath': audioPath,
+        });
+      } catch (e) {
+        Logger.warning('Failed to persist meditation metadata: $e', tag: _tag);
+      }
+
+      // 6. Mark as generated
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_lastGeneratedKey, today);
 

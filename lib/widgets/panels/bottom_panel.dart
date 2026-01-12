@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/theme_constants.dart';
 
 /// White bottom panel with rounded top corners
 /// Primary content container for dashboard cards
@@ -94,8 +95,8 @@ class DraggableBottomPanel extends StatefulWidget {
     this.useSafeArea = true,
     this.scrollPhysics = const BouncingScrollPhysics(),
     this.pulseEnabled = false,
-    this.pulseDuration = const Duration(milliseconds: 2800),
-    this.pulseAmplitude = 6,
+    this.pulseDuration = ThemeConstants.zenBreathCycle,
+    this.pulseAmplitude = ThemeConstants.zenBreathAmplitude,
     this.onProgressChanged,
   });
 
@@ -131,8 +132,7 @@ class _DraggableBottomPanelState extends State<DraggableBottomPanel>
     }
     if (oldWidget.minHeight != widget.minHeight ||
         oldWidget.maxHeight != widget.maxHeight) {
-      _currentHeight =
-          _currentHeight.clamp(widget.minHeight, widget.maxHeight);
+      _currentHeight = _currentHeight.clamp(widget.minHeight, widget.maxHeight);
       _emitProgress();
     }
   }

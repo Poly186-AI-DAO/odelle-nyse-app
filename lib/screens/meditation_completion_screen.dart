@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/theme_constants.dart';
 import '../models/tracking/meditation_log.dart';
+import '../widgets/atoms/odelle_button.dart';
 
 class MeditationCompletionScreen extends StatefulWidget {
   final String sessionTitle;
@@ -62,7 +63,8 @@ class _MeditationCompletionScreenState
     await Future.delayed(const Duration(milliseconds: 800));
 
     if (mounted) {
-      Navigator.of(context).popUntil((route) => route.settings.name == null && route.isFirst == false);
+      Navigator.of(context).popUntil(
+          (route) => route.settings.name == null && route.isFirst == false);
       Navigator.of(context).pop();
     }
   }
@@ -102,7 +104,7 @@ class _MeditationCompletionScreenState
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               Text(
                 'Session Complete',
                 style: GoogleFonts.inter(
@@ -158,13 +160,18 @@ class _MeditationCompletionScreenState
                     selectedColor: ThemeConstants.polyPurple200,
                     labelStyle: GoogleFonts.inter(
                       fontSize: 14,
-                      color: isSelected ? ThemeConstants.deepNavy : ThemeConstants.textSecondary,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected
+                          ? ThemeConstants.deepNavy
+                          : ThemeConstants.textSecondary,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                       side: BorderSide(
-                        color: isSelected ? ThemeConstants.polyPurple300 : ThemeConstants.glassBorderWeak,
+                        color: isSelected
+                            ? ThemeConstants.polyPurple300
+                            : ThemeConstants.glassBorderWeak,
                       ),
                     ),
                   );
@@ -203,11 +210,13 @@ class _MeditationCompletionScreenState
                   hintStyle: GoogleFonts.inter(color: ThemeConstants.textMuted),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: ThemeConstants.glassBorderWeak),
+                    borderSide:
+                        BorderSide(color: ThemeConstants.glassBorderWeak),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: ThemeConstants.glassBorderWeak),
+                    borderSide:
+                        BorderSide(color: ThemeConstants.glassBorderWeak),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -221,31 +230,11 @@ class _MeditationCompletionScreenState
               const SizedBox(height: 48),
 
               // Done Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _saveAndExit,
-                  icon: _isSaving 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.home, color: Colors.white),
-                  label: Text(
-                    _isSaving ? 'Saving...' : 'Return Home',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ThemeConstants.deepNavy,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    disabledBackgroundColor: ThemeConstants.deepNavy.withValues(alpha: 0.7),
-                  ),
-                ),
+              OdelleButtonFullWidth.dark(
+                text: _isSaving ? 'Saving...' : 'Return Home',
+                icon: _isSaving ? null : Icons.home,
+                isLoading: _isSaving,
+                onPressed: _isSaving ? null : _saveAndExit,
               ),
             ],
           ),

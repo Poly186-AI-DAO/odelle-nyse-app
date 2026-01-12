@@ -76,10 +76,12 @@ final dailyContentServiceProvider = Provider<DailyContentService>((ref) {
   final agentService = ref.watch(azureAgentServiceProvider);
   final imageService = ref.watch(imageServiceProvider);
   final weatherService = ref.watch(weatherServiceProvider);
+  final database = ref.watch(databaseProvider);
 
   final service = DailyContentService(
     agentService: agentService,
     imageService: imageService,
+    database: database,
     weatherService: weatherService,
   );
 

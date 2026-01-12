@@ -35,37 +35,35 @@ class MantraCard extends StatefulWidget {
   State<MantraCard> createState() => _MantraCardState();
 }
 
-class _MantraCardState extends State<MantraCard>
-    with TickerProviderStateMixin {
+class _MantraCardState extends State<MantraCard> with TickerProviderStateMixin {
   late AnimationController _breathController;
   late AnimationController _shimmerController;
   late Animation<double> _breathAnimation;
   late Animation<double> _shimmerAnimation;
 
-  // Zen breathing: 4s inhale, 6s exhale = 10s cycle
-  static const Duration _breathCycle = Duration(seconds: 10);
   static const Duration _shimmerCycle = Duration(seconds: 3);
 
   @override
   void initState() {
     super.initState();
-    
-    // Breathing animation
+
+    // Breathing animation - uses zen rhythm from ThemeConstants
     _breathController = AnimationController(
       vsync: this,
-      duration: _breathCycle,
+      duration: ThemeConstants.zenBreathCycle,
     );
 
+    // Zen breathing: 4s inhale, 6s exhale (coherent breathing for HRV)
     _breathAnimation = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween<double>(begin: 0, end: 1)
             .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 40, // 4s inhale
+        weight: ThemeConstants.zenInhaleWeight,
       ),
       TweenSequenceItem(
         tween: Tween<double>(begin: 1, end: 0)
             .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 60, // 6s exhale
+        weight: ThemeConstants.zenExhaleWeight,
       ),
     ]).animate(_breathController);
 
@@ -144,16 +142,16 @@ class _MantraCardState extends State<MantraCard>
       builder: (context, child) {
         final breath = _breathAnimation.value;
         final shimmer = _shimmerAnimation.value;
-        
+
         // 3D perspective based on scroll offset
         final rotateY = widget.scrollOffset * 0.15; // Subtle rotation
         final scale = 1.0 - (widget.scrollOffset.abs() * 0.08);
         final translateX = widget.scrollOffset * 20;
-        
+
         // Breathing effects
         final glowIntensity = lerpDouble(0.3, 0.6, breath) ?? 0.3;
         final borderGlow = lerpDouble(0.1, 0.25, breath) ?? 0.1;
-        
+
         return Transform.translate(
           offset: Offset(translateX, 0),
           child: Transform.scale(
@@ -167,13 +165,15 @@ class _MantraCardState extends State<MantraCard>
                 onTap: widget.onTap,
                 onDoubleTap: widget.onDoubleTap,
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       // Main breathing shadow
                       BoxShadow(
-                        color: _getCategoryColor().withValues(alpha: glowIntensity * 0.4),
+                        color: _getCategoryColor()
+                            .withValues(alpha: glowIntensity * 0.4),
                         blurRadius: 30 + (breath * 15),
                         spreadRadius: breath * 8,
                         offset: const Offset(0, 12),
@@ -243,7 +243,7 @@ class _MantraCardState extends State<MantraCard>
                                 ),
                               ),
                             ),
-                            
+
                             // Main content
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,7 +251,8 @@ class _MantraCardState extends State<MantraCard>
                               children: [
                                 // Header: Category + Index
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     // Category badge
                                     _buildCategoryBadge(),
@@ -259,12 +260,13 @@ class _MantraCardState extends State<MantraCard>
                                     _buildIndexIndicator(),
                                   ],
                                 ),
-                                
+
                                 const SizedBox(height: 32),
-                                
+
                                 // Mantra text with parallax
                                 Transform.translate(
-                                  offset: Offset(widget.scrollOffset * -10, 0), // Parallax
+                                  offset: Offset(
+                                      widget.scrollOffset * -10, 0), // Parallax
                                   child: Text(
                                     '"${widget.mantra.text}"',
                                     style: GoogleFonts.playfairDisplay(
@@ -275,7 +277,8 @@ class _MantraCardState extends State<MantraCard>
                                       letterSpacing: 0.3,
                                       shadows: [
                                         Shadow(
-                                          color: Colors.black.withValues(alpha: 0.3),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.3),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -284,12 +287,13 @@ class _MantraCardState extends State<MantraCard>
                                     textAlign: TextAlign.left,
                                   ),
                                 ),
-                                
+
                                 const SizedBox(height: 32),
-                                
+
                                 // Bottom row: Swipe hint + breathing indicator
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     // Swipe hint
                                     Row(
@@ -297,14 +301,16 @@ class _MantraCardState extends State<MantraCard>
                                         Icon(
                                           Icons.swipe_rounded,
                                           size: 16,
-                                          color: Colors.white.withValues(alpha: 0.4),
+                                          color: Colors.white
+                                              .withValues(alpha: 0.4),
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
                                           'Swipe to explore',
                                           style: GoogleFonts.inter(
                                             fontSize: 12,
-                                            color: Colors.white.withValues(alpha: 0.4),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.4),
                                             letterSpacing: 0.5,
                                           ),
                                         ),
@@ -417,7 +423,7 @@ class _MantraCardState extends State<MantraCard>
         final stagger = (breath + (i * 0.33)) % 1.0;
         final size = 6.0 + (stagger * 4);
         final opacity = 0.3 + (stagger * 0.5);
-        
+
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3),
           child: Container(
