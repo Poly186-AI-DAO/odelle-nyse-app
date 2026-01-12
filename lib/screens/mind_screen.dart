@@ -344,33 +344,47 @@ class _MindScreenState extends ConsumerState<MindScreen> {
     // Prioritize HealthKit data
     if (_healthKitSleep != null) {
       final sleep = _healthKitSleep!;
-      final hours = sleep.totalDuration.inHours;
-      final minutes = sleep.totalDuration.inMinutes % 60;
-      final awakeMinutes = sleep.awake?.inMinutes ?? 0;
+      final totalMinutes = sleep.totalDuration.inMinutes;
+      final hours = totalMinutes ~/ 60;
+      final minutes = totalMinutes % 60;
+      final awakeMinutes = sleep.awake?.inMinutes;
+      final deepMinutes = sleep.deepSleep?.inMinutes;
+      final hasDeepData = deepMinutes != null && totalMinutes > 0;
       final deepPercentage =
-          sleep.deepSleep != null && sleep.totalDuration.inMinutes > 0
-              ? sleep.deepSleep!.inMinutes / sleep.totalDuration.inMinutes
-              : 0.20;
+          hasDeepData ? deepMinutes / totalMinutes : 0.0;
+      final deepLabel = hasDeepData ? null : 'Deep Sleep: --';
 
       return SleepCard(
         totalSleep: '${hours}h ${minutes}m',
         sleepScore: sleep.qualityScore,
         timeAsleep: '${hours}h ${minutes}m',
-        timeAwake: '${awakeMinutes}m',
+        timeAwake: awakeMinutes != null ? '${awakeMinutes}m' : '--',
         deepSleepPercentage: deepPercentage,
+        deepSleepLabel: deepLabel,
       );
     }
 
     // Fallback to JSON data
     if (_sleepLog != null) {
-      final durationMin =
-          ((_sleepLog!['duration_minutes'] ?? 450) as num).toInt();
+      final startTime =
+          DateTime.tryParse((_sleepLog!['start_time'] ?? '') as String);
+      final endTime =
+          DateTime.tryParse((_sleepLog!['end_time'] ?? '') as String);
+      final durationMin = startTime != null && endTime != null
+          ? endTime.difference(startTime).inMinutes
+          : ((_sleepLog!['duration_minutes'] ?? 0) as num).toInt();
+      final deepMinutes = (_sleepLog!['deep_sleep_minutes'] as num?)?.toInt();
+      final hasDeepData = deepMinutes != null && durationMin > 0;
+      final deepPercentage =
+          hasDeepData ? deepMinutes / durationMin : 0.0;
+      final deepLabel = hasDeepData ? null : 'Deep Sleep: --';
       return SleepCard(
         totalSleep: '${durationMin ~/ 60}h ${durationMin % 60}m',
         sleepScore: ((_sleepLog!['quality_score'] ?? 85) as num).toInt(),
         timeAsleep: '${durationMin ~/ 60}h ${durationMin % 60}m',
-        timeAwake: '45m',
-        deepSleepPercentage: 0.25,
+        timeAwake: '--',
+        deepSleepPercentage: deepPercentage,
+        deepSleepLabel: deepLabel,
       );
     }
 

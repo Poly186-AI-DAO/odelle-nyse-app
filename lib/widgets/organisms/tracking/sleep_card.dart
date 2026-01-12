@@ -8,6 +8,7 @@ class SleepCard extends StatelessWidget {
   final String timeAsleep;
   final String timeAwake;
   final double deepSleepPercentage; // 0.0 - 1.0 (for mini bar)
+  final String? deepSleepLabel;
 
   const SleepCard({
     super.key,
@@ -16,13 +17,22 @@ class SleepCard extends StatelessWidget {
     required this.timeAsleep,
     required this.timeAwake,
     this.deepSleepPercentage = 0.2, // Default 20%
+    this.deepSleepLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     Color scoreColor = ThemeConstants.accentGreen;
-    if (sleepScore < 60) scoreColor = ThemeConstants.uiError;
-    else if (sleepScore < 80) scoreColor = ThemeConstants.uiWarning;
+    if (sleepScore < 60) {
+      scoreColor = ThemeConstants.uiError;
+    } else if (sleepScore < 80) {
+      scoreColor = ThemeConstants.uiWarning;
+    }
+
+    final normalizedDeep = deepSleepPercentage.clamp(0.0, 1.0);
+    final deepFlex = (normalizedDeep * 100).round();
+    final deepText = deepSleepLabel ??
+        '${(normalizedDeep * 100).toInt()}% Deep Sleep';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -93,18 +103,38 @@ class SleepCard extends StatelessWidget {
           // Mini sleep bar visualization
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: Row(
-              children: [
-                Expanded(flex: (deepSleepPercentage * 100).toInt(), child: Container(height: 8, color: const Color(0xFF4A4E8C))), // Deep
-                Expanded(flex: 100 - (deepSleepPercentage * 100).toInt(), child: Container(height: 8, color: const Color(0xFF7C8CFF))), // Light
-              ],
-            ),
+            child: deepFlex <= 0
+                ? Container(height: 8, color: const Color(0xFF7C8CFF))
+                : deepFlex >= 100
+                    ? Container(height: 8, color: const Color(0xFF4A4E8C))
+                    : Row(
+                        children: [
+                          Expanded(
+                            flex: deepFlex,
+                            child: Container(
+                              height: 8,
+                              color: const Color(0xFF4A4E8C),
+                            ),
+                          ), // Deep
+                          Expanded(
+                            flex: 100 - deepFlex,
+                            child: Container(
+                              height: 8,
+                              color: const Color(0xFF7C8CFF),
+                            ),
+                          ), // Light
+                        ],
+                      ),
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${(deepSleepPercentage * 100).toInt()}% Deep Sleep', style: ThemeConstants.captionStyle.copyWith(color: Colors.white38, fontSize: 10)),
+              Text(
+                deepText,
+                style: ThemeConstants.captionStyle
+                    .copyWith(color: Colors.white38, fontSize: 10),
+              ),
               Text('Awake: $timeAwake', style: ThemeConstants.captionStyle.copyWith(color: Colors.white54, fontSize: 12)),
             ],
           ),

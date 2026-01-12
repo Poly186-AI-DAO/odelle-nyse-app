@@ -1,18 +1,20 @@
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
 /// Comprehensive test for Azure AI Services
-/// Run with: dart run test/azure_agent_test.dart
+/// Run with: dart run test/new_azure_agent_test.dart
 void main() async {
-  print('╔════════════════════════════════════════════════════════════════╗');
-  print('║          AZURE AI SERVICES - COMPREHENSIVE TEST                ║');
-  print('╚════════════════════════════════════════════════════════════════╝\n');
+  print('================================================================');
+  print('          AZURE AI SERVICES - COMPREHENSIVE TEST                ');
+  print('================================================================\n');
 
   // Read .env file
   final envFile = File('.env');
   if (!envFile.existsSync()) {
-    print('❌ ERROR: .env file not found');
+    print('ERROR: .env file not found');
     exit(1);
   }
 
@@ -36,83 +38,42 @@ void main() async {
   // Chat API config
   final chatApiKey = env['AZURE_AI_FOUNDRY_KEY'] ?? '';
   final chatEndpoint = env['AZURE_AI_FOUNDRY_ENDPOINT'] ?? '';
+  // Use GPT-5 Nano for local tool calling
+  final nanoDeployment = env['AZURE_GPT_5_NANO_DEPLOYMENT'] ?? 'gpt-5-nano';
 
-  // Image API config (FLUX.2-pro)
-  final imageApiKey = env['FLUX_2_PRO_KEY'] ?? chatApiKey;
-  final imageEndpoint = env['FLUX_2_PRO_AZURE_URL'] ?? '';
-  final imageModel = env['FLUX_2_PRO_DEPLOYMENT'] ?? 'FLUX.2-pro';
-
-  print('📋 Configuration:');
+  print('Configuration:');
   print('   Chat Endpoint: $chatEndpoint');
   print(
       '   Chat API Key: ${chatApiKey.isNotEmpty ? "${chatApiKey.substring(0, 8)}..." : "MISSING"}');
-  print('   Image Endpoint: $imageEndpoint');
-  print('   Image Model: $imageModel');
+  print('   Nano Deployment: $nanoDeployment');
   print('');
 
   if (chatApiKey.isEmpty || chatEndpoint.isEmpty) {
-    print('❌ ERROR: Missing chat API key or endpoint in .env');
+    print('ERROR: Missing chat API key or endpoint in .env');
     exit(1);
   }
 
   int passed = 0;
   int failed = 0;
 
-  // Test 1: Simple chat with GPT-5.2-chat
-  print('┌─────────────────────────────────────────────────────────────────┐');
-  print('│ Test 1: Simple Chat Completion (GPT-5.2-chat)                  │');
-  print('└─────────────────────────────────────────────────────────────────┘');
-  if (await testSimpleChat(chatEndpoint, chatApiKey, 'gpt-5.2-chat')) {
-    passed++;
-  } else {
-    failed++;
-  }
-
-  // Test 2: Tool calling with GPT-5.2-chat
-  print(
-      '\n┌─────────────────────────────────────────────────────────────────┐');
-  print('│ Test 2: Tool/Function Calling (GPT-5.2-chat)                   │');
-  print('└─────────────────────────────────────────────────────────────────┘');
-  if (await testToolCalling(chatEndpoint, chatApiKey, 'gpt-5.2-chat')) {
-    passed++;
-  } else {
-    failed++;
-  }
-
-  // Test 3: Agent loop with tool execution
-  print(
-      '\n┌─────────────────────────────────────────────────────────────────┐');
-  print('│ Test 3: Agent Loop with Tool Execution                         │');
-  print('└─────────────────────────────────────────────────────────────────┘');
-  if (await testAgentLoop(chatEndpoint, chatApiKey, 'gpt-5.2-chat')) {
-    passed++;
-  } else {
-    failed++;
-  }
-
-  // Test 4: Image generation with FLUX.2-pro
-  print(
-      '\n┌─────────────────────────────────────────────────────────────────┐');
-  print('│ Test 4: Image Generation (FLUX.2-pro)                          │');
-  print('└─────────────────────────────────────────────────────────────────┘');
-  if (imageEndpoint.isEmpty) {
-    print('⏭️  SKIPPED: FLUX_2_PRO_AZURE_URL not configured');
-  } else if (await testImageGeneration(
-      imageEndpoint, imageApiKey, imageModel)) {
+  // Test: Tool calling with GPT-5 Nano
+  print('\n----------------------------------------------------------------');
+  print(' Test: Tool/Function Calling (GPT-5 Nano)                       ');
+  print('----------------------------------------------------------------');
+  // Pass nanoDeployment to the test function
+  if (await testToolCalling(chatEndpoint, chatApiKey, nanoDeployment)) {
     passed++;
   } else {
     failed++;
   }
 
   // Summary
-  print('\n╔════════════════════════════════════════════════════════════════╗');
-  print('║                        TEST SUMMARY                            ║');
-  print('╠════════════════════════════════════════════════════════════════╣');
-  print(
-      '║  ✅ Passed: $passed                                                     ║');
-  print(
-      '║  ❌ Failed: $failed                                                     ║');
-  print('╚════════════════════════════════════════════════════════════════╝');
+  print('\n================================================================');
+  print('                        TEST SUMMARY                            ');
+  print('================================================================');
+  print('  Passed: $passed');
+  print('  Failed: $failed');
+  print('================================================================');
 
   exit(failed > 0 ? 1 : 0);
 }
@@ -144,17 +105,17 @@ Future<bool> testSimpleChat(
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final message = json['choices'][0]['message']['content'] as String?;
       final tokens = json['usage']['total_tokens'] as int?;
-      print('   ✅ SUCCESS');
-      print('   Response: "${message ?? "(empty)}"');
+      print('   SUCCESS');
+      print('   Response: ${message ?? "(empty)"}');
       print('   Tokens used: $tokens');
       return true;
     } else {
-      print('   ❌ FAILED: ${response.statusCode}');
+      print('   FAILED: ${response.statusCode}');
       print('   ${response.body}');
       return false;
     }
   } catch (e) {
-    print('   ❌ ERROR: $e');
+    print('   ERROR: $e');
     return false;
   }
 }
@@ -206,22 +167,22 @@ Future<bool> testToolCalling(
         final call = toolCalls[0];
         final funcName = call['function']['name'];
         final args = call['function']['arguments'];
-        print('   ✅ SUCCESS - Model requested tool call');
+        print('   SUCCESS - Model requested tool call');
         print('   Tool: $funcName');
         print('   Arguments: $args');
         return true;
       } else {
-        print('   ⚠️  Model responded without tool call');
+        print('   WARNING: Model responded without tool call');
         print('   Content: ${message['content']}');
         return false;
       }
     } else {
-      print('   ❌ FAILED: ${response.statusCode}');
+      print('   FAILED: ${response.statusCode}');
       print('   ${response.body}');
       return false;
     }
   } catch (e) {
-    print('   ❌ ERROR: $e');
+    print('   ERROR: $e');
     return false;
   }
 }
@@ -286,7 +247,8 @@ Future<bool> testAgentLoop(
       case 'log_workout':
         return jsonEncode({
           'success': true,
-          'message': 'Logged ${args['type']} workout for ${args['duration_minutes']} minutes',
+          'message':
+              'Logged ${args['type']} workout for ${args['duration_minutes']} minutes',
           'workout_id': 'wkt_12345',
         });
       case 'get_workout_stats':
@@ -308,11 +270,13 @@ Future<bool> testAgentLoop(
   var messages = <Map<String, dynamic>>[
     {
       'role': 'system',
-      'content': 'You are a fitness assistant. Use the available tools to help users track their workouts.'
+      'content':
+          'You are a fitness assistant. Use the available tools to help users track their workouts.'
     },
     {
       'role': 'user',
-      'content': 'I just did a 30 minute run and burned about 300 calories. Log it for me.'
+      'content':
+          'I just did a 30 minute run and burned about 300 calories. Log it for me.'
     },
   ];
 
@@ -329,32 +293,34 @@ Future<bool> testAgentLoop(
     );
 
     if (response.statusCode != 200) {
-      print('   ❌ FAILED: ${response.statusCode}');
+      print('   FAILED: ${response.statusCode}');
       return false;
     }
 
     var json = jsonDecode(response.body) as Map<String, dynamic>;
-    var assistantMessage = json['choices'][0]['message'] as Map<String, dynamic>;
+    var assistantMessage =
+        json['choices'][0]['message'] as Map<String, dynamic>;
     var toolCalls = assistantMessage['tool_calls'] as List?;
 
     if (toolCalls == null || toolCalls.isEmpty) {
-      print('   ⚠️  No tool calls made');
+      print('   WARNING: No tool calls made');
       print('   Response: ${assistantMessage['content']}');
       return false;
     }
 
-    print('   → Model called tool: ${toolCalls[0]['function']['name']}');
+    print('   -> Model called tool: ${toolCalls[0]['function']['name']}');
 
     // Add assistant message and tool results to history
     messages.add(assistantMessage);
 
     for (final call in toolCalls) {
       final toolName = call['function']['name'] as String;
-      final toolArgs = jsonDecode(call['function']['arguments'] as String) as Map<String, dynamic>;
+      final toolArgs = jsonDecode(call['function']['arguments'] as String)
+          as Map<String, dynamic>;
       final toolResult = executeToolCall(toolName, toolArgs);
 
-      print('   → Executed: $toolName(${jsonEncode(toolArgs)})');
-      print('   → Result: $toolResult');
+      print('   -> Executed: $toolName(${jsonEncode(toolArgs)})');
+      print('   -> Result: $toolResult');
 
       messages.add({
         'role': 'tool',
@@ -375,18 +341,18 @@ Future<bool> testAgentLoop(
     );
 
     if (response.statusCode != 200) {
-      print('   ❌ FAILED on follow-up: ${response.statusCode}');
+      print('   FAILED on follow-up: ${response.statusCode}');
       return false;
     }
 
     json = jsonDecode(response.body) as Map<String, dynamic>;
     final finalMessage = json['choices'][0]['message']['content'] as String?;
 
-    print('   ✅ SUCCESS - Agent loop completed');
-    print('   Final response: "${finalMessage ?? "(empty)}"');
+    print('   SUCCESS - Agent loop completed');
+    print('   Final response: ${finalMessage ?? "(empty)"}');
     return true;
   } catch (e) {
-    print('   ❌ ERROR: $e');
+    print('   ERROR: $e');
     return false;
   }
 }
@@ -395,13 +361,14 @@ Future<bool> testAgentLoop(
 Future<bool> testImageGeneration(
     String endpoint, String apiKey, String model) async {
   // Build URL with api-version query param
-  final baseUrl = endpoint.endsWith('/') 
-      ? endpoint.substring(0, endpoint.length - 1) 
+  final baseUrl = endpoint.endsWith('/')
+      ? endpoint.substring(0, endpoint.length - 1)
       : endpoint;
   final uri = Uri.parse('$baseUrl?api-version=preview');
 
   final body = {
-    'prompt': 'A beautiful sunset over mountains with vibrant orange and purple colors, photorealistic, 8k quality',
+    'prompt':
+        'A beautiful sunset over mountains with vibrant orange and purple colors, photorealistic, 8k quality',
     'model': model.toLowerCase(),
     'n': 1,
     'size': '1024x1024',
@@ -425,7 +392,7 @@ Future<bool> testImageGeneration(
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
-      
+
       // Try to find image data in response
       String? base64Data;
       if (json.containsKey('data') && (json['data'] as List).isNotEmpty) {
@@ -433,11 +400,11 @@ Future<bool> testImageGeneration(
         base64Data = imageData['b64_json'] as String? ??
             imageData['base64'] as String? ??
             imageData['image'] as String?;
-        
+
         if (base64Data != null) {
           // Calculate size
           final sizeKb = (base64Data.length * 0.75 / 1024).round();
-          print('   ✅ SUCCESS - Image generated');
+          print('   SUCCESS - Image generated');
           print('   Image size: ~${sizeKb}KB');
           print('   Response keys: ${imageData.keys.toList()}');
           return true;
@@ -445,21 +412,21 @@ Future<bool> testImageGeneration(
       } else if (json.containsKey('image')) {
         base64Data = json['image'] as String;
         final sizeKb = (base64Data.length * 0.75 / 1024).round();
-        print('   ✅ SUCCESS - Image generated (direct format)');
+        print('   SUCCESS - Image generated (direct format)');
         print('   Image size: ~${sizeKb}KB');
         return true;
       }
-      
-      print('   ❌ No image data in response');
+
+      print('   No image data in response');
       print('   Response keys: ${json.keys.toList()}');
       return false;
     } else {
-      print('   ❌ FAILED: ${response.statusCode}');
+      print('   FAILED: ${response.statusCode}');
       print('   ${response.body}');
       return false;
     }
   } catch (e) {
-    print('   ❌ ERROR: $e');
+    print('   ERROR: $e');
     return false;
   }
 }
