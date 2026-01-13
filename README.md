@@ -1,7 +1,7 @@
 # Odelle Nyse (ON) 
 ## Your Digital Twin for Self-Actualization
 
-> *"I want to recalibrate and update my source code. I wanna update my system prompt."*
+> *"Your Soul Bonds Now with Health and Wealth"*
 
 ---
 
@@ -9,9 +9,9 @@
 
 **5 seconds**: "A digital twin that helps me become the best version of myself."
 
-**10 seconds**: "Odelle is my digital twin — the clearest, wisest version of me — helping me optimize body, mind, and spirit through data-driven behavioral change."
+**10 seconds**: "Odelle is my digital twin — the clearest, wisest version of me — helping me optimize across all 5 pillars of human flourishing."
 
-**30 seconds**: "Odelle isn't an AI assistant. It's a digital twin — a reflection of my own potential that knows my goals, tracks my patterns, and holds me accountable to who I'm becoming. Combining voice journaling, CBT reframing, and protocol tracking across body/mind/spirit, it helps me understand myself, change my behavior, and become who I'm meant to be. Not through external motivation, but by reflecting my own wisdom back to me."
+**30 seconds**: "Odelle isn't an AI assistant. It's a digital twin — a reflection of my own potential that knows my goals, tracks my patterns, and holds me accountable to who I'm becoming. Covering Soul, Bonds, Health, and Wealth, Odelle lives in the Now — the present moment where you interact with your digital self. It helps me understand myself, change my behavior, and become who I'm meant to be. Not through external motivation, but by reflecting my own wisdom back to me."
 
 ---
 
@@ -29,11 +29,19 @@ Odelle knows:
 - Your values and mantras
 - Your protocols — the daily practices that move you forward
 
-### The Trifecta Protocol
+### The 5 Pillars
 
-- **🏋️ BODY**: Gym, nutrition, sleep, physical optimization
-- **🧠 MIND**: Focus, goals, cognitive sharpness, CBT reframing
-- **🧘 SPIRIT**: Meditation, mantras, presence, Zen
+> *"Your Soul Bonds Now with Health and Wealth"*
+
+| Pillar | Domain | Focus |
+|--------|--------|-------|
+| **🧘 Soul** | Wisdom | Identity, meditation, mantras, cosmic stats, self-reflection |
+| **💜 Bonds** | Relationships | Contacts, interactions, connection, staying in touch |
+| **🎙️ Now** | Presence | Odelle (your digital twin), voice journaling, AI conversation |
+| **💪 Health** | Body | Meals, workouts, supplements, sleep, HealthKit integration |
+| **💰 Wealth** | Finance | Bills, subscriptions, income, budgeting |
+
+Odelle lives in the **Now** pillar — the present moment where you interact with your digital twin. It observes your Soul, Bonds, Health, and Wealth, then reflects wisdom back to you.
 
 ### The Thesis
 

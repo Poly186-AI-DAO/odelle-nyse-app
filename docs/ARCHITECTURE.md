@@ -73,6 +73,8 @@ We migrated from `provider` to `riverpod` for these reasons:
 
 ## File Structure
 
+> *"Your Soul Bonds Now with Health and Wealth"*
+
 ```
 lib/
 ├── main.dart                      # App entry, ProviderScope wrapper
@@ -82,7 +84,11 @@ lib/
 │   ├── service_providers.dart     # Service instances
 │   ├── repository_providers.dart  # Repository instances
 │   └── viewmodels/               # Feature ViewModels
-│       ├── body_viewmodel.dart
+│       ├── soul_viewmodel.dart    # Identity, sleep, meditation
+│       ├── bonds_viewmodel.dart   # Contacts, interactions
+│       ├── now_viewmodel.dart     # Voice/AI conversation
+│       ├── health_viewmodel.dart  # Meals, workouts, supplements
+│       ├── wealth_viewmodel.dart  # Bills, subscriptions, income
 │       ├── dose_viewmodel.dart
 │       ├── workout_viewmodel.dart
 │       └── ...
@@ -91,29 +97,39 @@ lib/
 │   ├── dose_repository.dart
 │   ├── workout_repository.dart
 │   ├── meal_repository.dart
-│   ├── habit_repository.dart
+│   ├── contact_repository.dart    # [NEW] Bonds
+│   ├── bill_repository.dart       # [NEW] Wealth
+│   ├── subscription_repository.dart # [NEW] Wealth
 │   └── ...
 │
-├── services/                      # External services (unchanged)
+├── services/                      # External services
 │   ├── azure_speech_service.dart
 │   ├── backend_api_service.dart
 │   ├── google_auth_service.dart
 │   └── poly_auth_service.dart
 │
 ├── models/                        # Data models (see DATA_MODELS.md)
-│   ├── tracking/
-│   ├── content/
-│   ├── health/
+│   ├── tracking/                  # Health domain (meals, workouts, supps)
+│   ├── wealth/                    # [NEW] Finance domain
+│   │   ├── bill.dart
+│   │   ├── subscription.dart
+│   │   └── income.dart
+│   ├── relationships/             # [NEW] Bonds domain
+│   │   ├── contact.dart
+│   │   └── interaction.dart
+│   ├── content/                   # Learning content
 │   └── ...
 │
 ├── database/                      # SQLite database
 │   └── app_database.dart
 │
-├── screens/                       # UI screens (ConsumerWidget)
-│   ├── home_screen.dart
-│   ├── body_screen.dart
-│   ├── voice_screen.dart
-│   └── mind_screen.dart
+├── screens/                       # UI screens (5 Pillars)
+│   ├── home_screen.dart           # PageView with 5 pillars
+│   ├── soul_screen.dart           # Pillar 0: Identity, meditation, mantras
+│   ├── bonds_screen.dart          # Pillar 1: Relationships, contacts
+│   ├── now_screen.dart            # Pillar 2: Voice AI, digital twin (CENTER)
+│   ├── health_screen.dart         # Pillar 3: Body tracking
+│   └── wealth_screen.dart         # Pillar 4: Finance
 │
 ├── widgets/                       # Reusable widgets
 │   └── ...

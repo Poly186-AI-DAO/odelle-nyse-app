@@ -7,19 +7,19 @@ import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/voice/voice_waveform_animated.dart';
 
-/// Voice Screen - Display-only view
+/// Now Screen - Display-only view (formerly VoiceScreen)
 /// Implements the "Hero Card" two-tone design
 /// Shows AI responses prominently, user transcription fades after 3s
-class VoiceScreen extends ConsumerStatefulWidget {
+class NowScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
 
-  const VoiceScreen({super.key, this.panelVisibility = 1.0});
+  const NowScreen({super.key, this.panelVisibility = 1.0});
 
   @override
-  ConsumerState<VoiceScreen> createState() => _VoiceScreenState();
+  ConsumerState<NowScreen> createState() => _NowScreenState();
 }
 
-class _VoiceScreenState extends ConsumerState<VoiceScreen>
+class _NowScreenState extends ConsumerState<NowScreen>
     with SingleTickerProviderStateMixin {
   // User transcription fade timer
   Timer? _fadeTimer;

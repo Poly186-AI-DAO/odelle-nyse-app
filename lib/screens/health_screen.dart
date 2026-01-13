@@ -10,16 +10,16 @@ import '../widgets/dashboard/body_stats_card.dart';
 import '../providers/viewmodels/viewmodels.dart';
 import 'meal_plan_screen.dart';
 
-class BodyScreen extends ConsumerStatefulWidget {
+class HealthScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
 
-  const BodyScreen({super.key, this.panelVisibility = 1.0});
+  const HealthScreen({super.key, this.panelVisibility = 1.0});
 
   @override
-  ConsumerState<BodyScreen> createState() => _BodyScreenState();
+  ConsumerState<HealthScreen> createState() => _HealthScreenState();
 }
 
-class _BodyScreenState extends ConsumerState<BodyScreen> {
+class _HealthScreenState extends ConsumerState<HealthScreen> {
   @override
   void initState() {
     super.initState();

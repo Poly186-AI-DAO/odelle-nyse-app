@@ -13,6 +13,8 @@ import '../models/habits/habit.dart';
 import '../models/habits/habit_log.dart';
 import '../models/mood/mood_entry.dart';
 import '../models/gamification/streak.dart';
+import '../models/wealth/wealth.dart';
+import '../models/relationships/relationships.dart';
 import '../utils/logger.dart';
 
 part 'app_database_schema.dart';
@@ -29,6 +31,11 @@ part 'app_database_habits.dart';
 part 'app_database_habit_logs.dart';
 part 'app_database_mood_entries.dart';
 part 'app_database_streaks.dart';
+part 'app_database_bills.dart';
+part 'app_database_subscriptions.dart';
+part 'app_database_incomes.dart';
+part 'app_database_contacts.dart';
+part 'app_database_interactions.dart';
 part 'app_database_utils.dart';
 
 abstract class AppDatabaseBase {
@@ -54,10 +61,15 @@ class AppDatabase extends AppDatabaseBase
         HabitLogCrud,
         MoodEntryCrud,
         StreakCrud,
+        BillCrud,
+        SubscriptionCrud,
+        IncomeCrud,
+        ContactCrud,
+        InteractionCrud,
         AppDatabaseUtils {
   static const String _tag = 'AppDatabase';
   static const String _databaseName = 'odelle_nyse.db';
-  static const int _databaseVersion = 7; // v7: generation_queue content_date + asset paths
+  static const int _databaseVersion = 8; // v8: Wealth + Bonds pillars
 
   static Database? _database;
   static final AppDatabase instance = AppDatabase._internal();

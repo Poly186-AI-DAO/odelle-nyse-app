@@ -1,26 +1,27 @@
 # Navigation Flow & User Journeys
 
+> *"Your Soul Bonds Now with Health and Wealth"*
+
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           HOME SCREEN                                    │
-│                     (Infinite Horizontal Pager)                         │
-├────────────────┬────────────────────────┬───────────────────────────────┤
-│                │                        │                               │
-│   BODY (←)     │      VOICE (Center)    │        MIND (→)              │
-│   Pillar 0     │      Pillar 1 (Home)   │        Pillar 2              │
-│                │                        │                               │
-│  ┌──────────┐  │    ┌──────────────┐    │   ┌──────────────┐           │
-│  │Hero Card │  │    │  Hero Card   │    │   │  Hero Card   │           │
-│  │(Calories)│  │    │  (Greeting)  │    │   │  (Identity)  │           │
-│  └──────────┘  │    └──────────────┘    │   └──────────────┘           │
-│  ┌──────────┐  │    ┌──────────────┐    │   ┌──────────────┐           │
-│  │ Bottom   │  │    │Light Silver  │    │   │   Bottom     │           │
-│  │ Panel    │  │    │ Background   │    │   │   Panel      │           │
-│  └──────────┘  │    └──────────────┘    │   └──────────────┘           │
-│                │                        │                               │
-└────────────────┴────────────────────────┴───────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                              HOME SCREEN                                    │
+│                        (Infinite Horizontal Pager)                          │
+├──────────┬──────────┬──────────────┬──────────────┬───────────────────────┤
+│   SOUL   │  BONDS   │     NOW      │    HEALTH    │       WEALTH          │
+│ (Wisdom) │(Connect) │  (Digital    │   (Body)     │     (Finance)         │
+│ Pillar 0 │ Pillar 1 │  Twin) - 2   │   Pillar 3   │     Pillar 4          │
+├──────────┼──────────┼──────────────┼──────────────┼───────────────────────┤
+│  Hero:   │  Hero:   │    Hero:     │    Hero:     │       Hero:           │
+│ Identity │ Connect  │  Greeting/   │  Calories    │    Cash Flow          │
+│  Matrix  │ Reminder │  AI Response │   Summary    │     Summary           │
+├──────────┼──────────┼──────────────┼──────────────┼───────────────────────┤
+│  Panel:  │  Panel:  │              │    Panel:    │       Panel:          │
+│  Sleep   │ Contacts │   Voice FAB  │   Meals      │    Bills Due          │
+│ Mantras  │ Reach-   │  (No panel)  │  Workouts    │   Subscriptions       │
+│ Meditate │  outs    │              │   Supps      │      Income           │
+└──────────┴──────────┴──────────────┴──────────────┴───────────────────────┘
 ```
 
 ---
@@ -29,20 +30,69 @@
 
 | From | Swipe Left | Swipe Right |
 |------|------------|-------------|
-| Body | Voice | Body (loops) |
-| Voice | Mind | Body |
-| Mind | Mind (loops) | Voice |
+| Soul | Bonds | Soul (loops) |
+| Bonds | Now | Soul |
+| Now | Health | Bonds |
+| Health | Wealth | Now |
+| Wealth | Wealth (loops) | Health |
 
-**Entry Point**: App opens on **Voice** (Pillar 1, center).
+**Entry Point**: App opens on **Now** (Pillar 2, center) — where Odelle lives.
 
 ---
 
 ## Bottom Panel → Detail Screen Navigation
 
-### Body Pillar (Tracking)
+### Soul Pillar (Wisdom)
 
 ```
-Body Screen
+Soul Screen (formerly Mind)
+├── [Hero] Identity Matrix (Archetypes, Astrology, Life Path)
+│
+└── [Bottom Panel]
+    ├── SleepCard → [Tap] → Sleep Detail (TODO)
+    │
+    ├── OPEN PROTOCOLS
+    │   ├── Mantras → [Tap] → Mantra Screen
+    │   ├── Meditate → [Tap] → Meditation Screen
+    │   └── Breathe → [Tap] → Breathing Exercise (TODO)
+    │
+    └── CONTINUE LEARNING
+        └── ContentCard → [Tap] → Lesson Player (TODO)
+```
+
+### Bonds Pillar (Relationships)
+
+```
+Bonds Screen [NEW]
+├── [Hero] "Stay Connected" / Relationship Health Score
+│
+└── [Bottom Panel]
+    ├── PRIORITY CONTACTS
+    │   ├── ContactCard → [Tap] → Contact Detail
+    │   └── ...
+    │
+    ├── REACH OUT TO
+    │   └── Suggested contacts (overdue for connection)
+    │
+    └── RECENT INTERACTIONS
+        └── InteractionLog → [Tap] → Add/Edit Interaction
+```
+
+### Now Pillar (Digital Twin Center)
+
+```
+Now Screen (formerly Voice)
+├── [Hero Card] Greeting / AI Response / Recording State
+│
+└── [Light Background] Voice Button (FAB)
+    └── [Tap] → Connect/Disconnect to Azure Realtime
+    └── [Long Press] → Debug Dialog
+```
+
+### Health Pillar (Body)
+
+```
+Health Screen (formerly Body)
 ├── [Hero] Calorie Overview
 │
 └── [Bottom Panel] (Draggable, expandable)
@@ -60,32 +110,23 @@ Body Screen
         └── WorkoutCard → [Tap] → Workout Detail (TODO)
 ```
 
-### Voice Pillar (Conversation)
+### Wealth Pillar (Finance)
 
 ```
-Voice Screen
-├── [Hero Card] Greeting / AI Response / Recording State
-│
-└── [Light Background] Voice Button (FAB)
-    └── [Tap] → Connect/Disconnect to Azure Realtime
-    └── [Long Press] → Debug Dialog
-```
-
-### Mind Pillar (Self)
-
-```
-Mind Screen
-├── [Hero] Identity Matrix (Archetypes, Astrology, Life Path)
+Wealth Screen [NEW]
+├── [Hero] Monthly Cash Flow Summary
 │
 └── [Bottom Panel]
-    ├── SleepCard → [Tap] → Sleep Detail (TODO)
+    ├── BILLS DUE
+    │   ├── BillCard → [Tap] → Bill Detail
+    │   └── ...
     │
-    ├── OPEN PROTOCOLS
-    │   ├── Journal → [Tap] → Journal Screen (TODO)
-    │   └── Breathe → [Tap] → Breathing Exercise (TODO)
+    ├── SUBSCRIPTIONS
+    │   ├── SubscriptionCard → [Tap] → Subscription Detail
+    │   └── ...
     │
-    └── CONTINUE LEARNING
-        └── ContentCard → [Tap] → Lesson Player (TODO)
+    └── INCOME
+        └── IncomeCard → [Tap] → Income Detail
 ```
 
 ---
@@ -94,13 +135,18 @@ Mind Screen
 
 | Parent | Tap Target | Destination | Status |
 |--------|------------|-------------|--------|
-| Body | MealTimelineRow | MealDetailScreen | TODO |
-| Body | DoseCard | SupplementDetailScreen | TODO |
-| Body | WorkoutCard | WorkoutDetailScreen | TODO |
-| Mind | SleepCard | SleepDetailScreen | TODO |
-| Mind | Journal Button | JournalScreen | TODO |
-| Mind | Breathe Button | BreathingScreen | TODO |
-| Mind | ContentCard | LessonPlayerScreen | TODO |
+| Health | MealTimelineRow | MealDetailScreen | TODO |
+| Health | DoseCard | SupplementDetailScreen | TODO |
+| Health | WorkoutCard | WorkoutDetailScreen | TODO |
+| Soul | SleepCard | SleepDetailScreen | TODO |
+| Soul | Mantras Button | MantraScreen | ✅ |
+| Soul | Meditate Button | MeditationScreen | ✅ |
+| Soul | Breathe Button | BreathingScreen | TODO |
+| Soul | ContentCard | LessonPlayerScreen | TODO |
+| Bonds | ContactCard | ContactDetailScreen | TODO |
+| Bonds | InteractionLog | InteractionDetailScreen | TODO |
+| Wealth | BillCard | BillDetailScreen | TODO |
+| Wealth | SubscriptionCard | SubscriptionDetailScreen | TODO |
 
 ---
 
@@ -108,8 +154,8 @@ Mind Screen
 
 | Current Screen | Tap Action | Visual State |
 |----------------|------------|--------------|
-| Voice | Connect/Disconnect | Green ring (connected) |
-| Body/Mind | Start/Stop transcription | Blue glow (recording) |
+| Now | Connect/Disconnect | Green ring (connected) |
+| Soul/Bonds/Health/Wealth | Start/Stop transcription | Blue glow (recording) |
 | Any (locked) | Navigate to locked screen | Lock icon shown |
 
 ---

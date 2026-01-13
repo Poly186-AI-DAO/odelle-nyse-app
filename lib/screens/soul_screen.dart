@@ -10,16 +10,16 @@ import 'chat_screen.dart';
 import 'mantra_screen.dart';
 import 'meditation_screen.dart';
 
-class MindScreen extends ConsumerStatefulWidget {
+class SoulScreen extends ConsumerStatefulWidget {
   final double panelVisibility;
 
-  const MindScreen({super.key, this.panelVisibility = 1.0});
+  const SoulScreen({super.key, this.panelVisibility = 1.0});
 
   @override
-  ConsumerState<MindScreen> createState() => _MindScreenState();
+  ConsumerState<SoulScreen> createState() => _SoulScreenState();
 }
 
-class _MindScreenState extends ConsumerState<MindScreen> {
+class _SoulScreenState extends ConsumerState<SoulScreen> {
   @override
   void initState() {
     super.initState();

@@ -10,6 +10,7 @@ mixin AppDatabaseSchema {
     await _createPhase1Tables(db);
     await _createHealthTables(db);
     await _createTrainingTables(db);
+    await _createWealthBondsTables(db); // v8: Wealth + Bonds pillars
     await _createIndexes(db);
     await _seedMantras(db);
 
@@ -38,6 +39,10 @@ mixin AppDatabaseSchema {
     if (oldVersion < 7) {
       await _addGenerationQueueColumns(db);
       await _createGenerationQueueIndexes(db);
+    }
+    if (oldVersion < 8) {
+      await _createWealthBondsTables(db);
+      await _createIndexes(db);
     }
   }
 
@@ -373,6 +378,142 @@ mixin AppDatabaseSchema {
         'CREATE INDEX IF NOT EXISTS idx_generation_queue_date ON generation_queue(content_date)');
 
     Logger.info('Training tables created successfully', tag: AppDatabase._tag);
+  }
+
+  /// Create Wealth and Bonds pillar tables (v8)
+  Future<void> _createWealthBondsTables(Database db) async {
+    Logger.info('Creating Wealth and Bonds tables', tag: AppDatabase._tag);
+
+    // ===============================
+    // WEALTH PILLAR TABLES
+    // ===============================
+
+    // Bills - recurring expenses (rent, utilities, insurance)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'USD',
+        frequency TEXT NOT NULL,
+        due_day INTEGER,
+        next_due_date TEXT,
+        category TEXT,
+        autopay INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        notes TEXT,
+        payee TEXT,
+        account_number TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Subscriptions - SaaS and services (Netflix, Spotify, gym)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'USD',
+        frequency TEXT DEFAULT 'monthly',
+        start_date TEXT NOT NULL,
+        renewal_date TEXT,
+        cancellation_date TEXT,
+        category TEXT,
+        is_active INTEGER DEFAULT 1,
+        notes TEXT,
+        url TEXT,
+        logo_url TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Incomes - income sources (salary, freelance, investments)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS incomes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'USD',
+        frequency TEXT DEFAULT 'monthly',
+        type TEXT,
+        last_received TEXT,
+        next_expected TEXT,
+        is_recurring INTEGER DEFAULT 1,
+        is_active INTEGER DEFAULT 1,
+        notes TEXT,
+        employer TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // ===============================
+    // BONDS PILLAR TABLES
+    // ===============================
+
+    // Contacts - people in your life
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        nickname TEXT,
+        relationship TEXT DEFAULT 'friend',
+        priority INTEGER DEFAULT 3,
+        last_contact TEXT,
+        contact_frequency_days INTEGER DEFAULT 30,
+        notes TEXT,
+        phone TEXT,
+        email TEXT,
+        photo_url TEXT,
+        birthday TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Interactions - touchpoints with contacts
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS interactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        contact_id INTEGER NOT NULL,
+        timestamp TEXT NOT NULL,
+        type TEXT DEFAULT 'text',
+        notes TEXT,
+        quality INTEGER DEFAULT 3,
+        duration_minutes INTEGER,
+        location TEXT,
+        is_initiated_by_me INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (contact_id) REFERENCES contacts(id)
+      )
+    ''');
+
+    // Create indexes for Wealth tables
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_bills_due_date ON bills(next_due_date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_bills_active ON bills(is_active)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_subscriptions_active ON subscriptions(is_active)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_subscriptions_category ON subscriptions(category)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_incomes_active ON incomes(is_active)');
+
+    // Create indexes for Bonds tables
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_contacts_priority ON contacts(priority)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_contacts_last_contact ON contacts(last_contact)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_contacts_active ON contacts(is_active)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_interactions_contact ON interactions(contact_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_interactions_timestamp ON interactions(timestamp)');
+
+    Logger.info('Wealth and Bonds tables created successfully',
+        tag: AppDatabase._tag);
   }
 
   Future<void> _addGenerationQueueColumns(Database db) async {

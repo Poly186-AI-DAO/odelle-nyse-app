@@ -15,12 +15,15 @@ import '../utils/logger.dart';
 import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
 import '../widgets/voice/voice_button.dart';
-import 'body_screen.dart';
-import 'voice_screen.dart';
-import 'mind_screen.dart';
+import 'soul_screen.dart';
+import 'bonds_screen.dart';
+import 'now_screen.dart';
+import 'health_screen.dart';
+import 'wealth_screen.dart';
 
 /// Main home screen with horizontal pager navigation
-/// 3 Pillars: Body (left) | Voice (center/default) | Mind (right)
+/// 5 Pillars: Soul | Bonds | Now (center) | Health | Wealth
+/// "Your Soul Bonds Now with Health and Wealth"
 /// Voice button persists and controls mic stream
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -33,8 +36,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const String _tag = 'HomeScreen';
 
   late PageController _pageController;
-  int _currentPage = 1; // Current pillar index (0, 1, 2)
-  static const int _initialPageOffset = 3000; // Large multiple of 3
+  int _currentPage = 2; // Current pillar index - Now is center (index 2)
+  static const int _initialPageOffset = 5000; // Large multiple of 5
 
   // Voice control - mic stream managed locally, state via VoiceViewModel
   late AzureSpeechService _speechService;
@@ -42,21 +45,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Stream<Uint8List>? _micStream;
   bool _hasPermission = false;
 
-  // Pillar definitions
+  // 5 Pillar definitions: Soul | Bonds | Now | Health | Wealth
+  // "Your Soul Bonds Now with Health and Wealth"
   static const List<PillarItem> _pillars = [
     PillarItem(
-      assetIcon: 'assets/icons/body_powerlifting_icon.png',
-      iconScale: 1.5,
-      label: 'Body',
+      assetIcon: 'assets/icons/mind_meditate_icon.png',
+      label: 'Soul',
+    ),
+    PillarItem(
+      icon: Icons.people_outline,
+      activeIcon: Icons.people,
+      label: 'Bonds',
     ),
     PillarItem(
       icon: Icons.graphic_eq_outlined,
       activeIcon: Icons.graphic_eq,
-      label: 'Voice',
+      label: 'Now',
     ),
     PillarItem(
-      assetIcon: 'assets/icons/mind_meditate_icon.png',
-      label: 'Mind',
+      assetIcon: 'assets/icons/body_powerlifting_icon.png',
+      iconScale: 1.5,
+      label: 'Health',
+    ),
+    PillarItem(
+      icon: Icons.account_balance_wallet_outlined,
+      activeIcon: Icons.account_balance_wallet,
+      label: 'Wealth',
     ),
   ];
 
@@ -75,8 +89,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Start at a large page index that is "Voice" (index 1 % 3)
-    final initialPage = _initialPageOffset + 1;
+    // Start at a large page index that is "Now" (index 2 % 5)
+    final initialPage = _initialPageOffset + 2;
     _pageController = PageController(initialPage: initialPage);
     _scrollProgress = initialPage.toDouble();
     _pageController.addListener(_onScroll);
@@ -222,7 +236,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _onPageChanged(int page) {
-    setState(() => _currentPage = page % 3);
+    setState(() => _currentPage = page % 5);
     HapticFeedback.selectionClick();
   }
 
@@ -231,8 +245,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Find nearest page to animate to
     final int currentRawPage =
-        _pageController.page?.round() ?? _initialPageOffset + 1;
-    final int targetRawPage = currentRawPage + (index - (currentRawPage % 3));
+        _pageController.page?.round() ?? _initialPageOffset + 2;
+    final int targetRawPage = currentRawPage + (index - (currentRawPage % 5));
 
     _pageController.animateToPage(
       targetRawPage,
@@ -249,7 +263,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int? _activeSessionScreen;
 
   /// Get the appropriate mode for the current screen
-  VoiceLiveMode get _targetMode => _currentPage == 1
+  VoiceLiveMode get _targetMode => _currentPage == 2  // Now screen
       ? VoiceLiveMode.conversation
       : VoiceLiveMode.transcription;
 
@@ -268,11 +282,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     // Normal behavior: toggle based on current screen
-    if (_currentPage == 1) {
-      // Voice Screen: Toggle connection (conversation mode, always listening)
+    if (_currentPage == 2) {
+      // Now Screen: Toggle connection (conversation mode, always listening)
       await _toggleVoiceConnection();
     } else {
-      // Body/Mind: Toggle recording (transcription mode)
+      // Other pillars: Toggle recording (transcription mode)
       await _toggleTranscriptionRecording();
     }
   }
@@ -285,9 +299,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!_pageController.hasClients) return;
 
     final int currentRawPage =
-        _pageController.page?.round() ?? _initialPageOffset + 1;
+        _pageController.page?.round() ?? _initialPageOffset + 2;
     final int targetRawPage =
-        currentRawPage + (targetIndex - (currentRawPage % 3));
+        currentRawPage + (targetIndex - (currentRawPage % 5));
 
     HapticFeedback.mediumImpact();
     _pageController.animateToPage(
@@ -368,8 +382,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     await ref.read(voiceViewModelProvider.notifier).connect(mode: _targetMode);
 
-    // For Voice screen, start recording immediately after connecting
-    if (_currentPage == 1) {
+    // For Now screen, start recording immediately after connecting
+    if (_currentPage == 2) {
       await _startRecording();
     }
   }
@@ -566,8 +580,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               physics: const BouncingScrollPhysics(),
               itemCount: null, // Infinite
               itemBuilder: (context, index) {
-                // Modulo to cycle through 3 screens
-                final pageIndex = index % 3;
+                // Modulo to cycle through 5 pillars
+                final pageIndex = index % 5;
 
                 // Calculate visibility based on distance from current scroll position
                 final distance = (index - _scrollProgress).abs();
@@ -575,11 +589,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 switch (pageIndex) {
                   case 0:
-                    return BodyScreen(panelVisibility: visibility);
+                    return SoulScreen(panelVisibility: visibility);
                   case 1:
-                    return VoiceScreen(panelVisibility: visibility);
+                    return BondsScreen(panelVisibility: visibility);
                   case 2:
-                    return MindScreen(panelVisibility: visibility);
+                    return NowScreen(panelVisibility: visibility);
+                  case 3:
+                    return HealthScreen(panelVisibility: visibility);
+                  case 4:
+                    return WealthScreen(panelVisibility: visibility);
                   default:
                     return const SizedBox();
                 }
@@ -622,11 +640,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               : Icons
                   .graphic_eq, // Same icon for all screens, waveform animates
           // isActive: show waveform animation when:
-          // - Voice screen: when connected (always listening mode)
-          // - Body/Mind: when recording
-          isActive: _currentPage == 1
-              ? voiceState.isConnected // Voice: animate when connected
-              : voiceState.isRecording, // Body/Mind: animate when recording
+          // - Now screen: when connected (always listening mode)
+          // - Other pillars: when recording
+          isActive: _currentPage == 2
+              ? voiceState.isConnected // Now: animate when connected
+              : voiceState.isRecording, // Other pillars: animate when recording
           isConnected: voiceState.isConnected,
           isProcessing: voiceState.isConnecting,
           onTap: _onVoiceButtonTap,
