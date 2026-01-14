@@ -6,6 +6,8 @@ import '../repositories/mood_repository.dart';
 import '../repositories/streak_repository.dart';
 import '../repositories/meal_repository.dart';
 import '../repositories/workout_repository.dart';
+import '../repositories/wealth_repository.dart';
+import '../repositories/bonds_repository.dart';
 import 'service_providers.dart';
 
 /// Repository providers
@@ -43,3 +45,14 @@ final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return WorkoutRepository(db);
 });
+
+final wealthRepositoryProvider = Provider<WealthRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  return WealthRepository(db);
+});
+
+final bondsRepositoryProvider = Provider<BondsRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  return BondsRepository(db);
+});
+

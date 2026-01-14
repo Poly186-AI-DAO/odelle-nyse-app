@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/theme_constants.dart';
+import '../providers/viewmodels/bonds_viewmodel.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
 
@@ -21,6 +22,15 @@ class BondsScreen extends ConsumerStatefulWidget {
 class _BondsScreenState extends ConsumerState<BondsScreen> {
   // Panel progress for hero card animation
   double _panelProgress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load bonds data on init
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(bondsViewModelProvider.notifier).load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,33 +107,40 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
             borderRadius: ThemeConstants.borderRadiusXL,
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
-          child: Column(
-            children: [
-              // Connection stats
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Builder(
+            builder: (context) {
+              final bondsState = ref.watch(bondsViewModelProvider);
+              return Column(
                 children: [
-                  _buildStatColumn('0', 'Priority'),
-                  _buildStatColumn('0', 'Overdue'),
-                  _buildStatColumn('0', 'This Week'),
+                  // Connection stats
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildStatColumn('${bondsState.priorityContacts.length}', 'Priority'),
+                      _buildStatColumn('${bondsState.overdueContacts.length}', 'Overdue'),
+                      _buildStatColumn('${bondsState.interactionsThisWeek}', 'This Week'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                  const SizedBox(height: 16),
+                  // Status message
+                  Text(
+                    bondsState.totalContacts == 0
+                        ? 'Add contacts to track your relationships'
+                        : '${bondsState.totalContacts} contacts tracked',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.white60,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                height: 1,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-              const SizedBox(height: 16),
-              // Status message
-              Text(
-                'Add contacts to track your relationships',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: Colors.white60,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+              );
+            },
           ),
         ),
       ],

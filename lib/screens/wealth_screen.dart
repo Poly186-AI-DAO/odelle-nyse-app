@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/theme_constants.dart';
+import '../providers/viewmodels/wealth_viewmodel.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
 
@@ -21,6 +22,15 @@ class WealthScreen extends ConsumerStatefulWidget {
 class _WealthScreenState extends ConsumerState<WealthScreen> {
   // Panel progress for hero card animation
   double _panelProgress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load wealth data on init
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(wealthViewModelProvider.notifier).load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,51 +107,60 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
             borderRadius: ThemeConstants.borderRadiusXL,
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
-          child: Column(
-            children: [
-              // Income
-              _buildFlowRow(
-                'Income',
-                '\$0',
-                Colors.green,
-                Icons.arrow_downward,
-              ),
-              const SizedBox(height: 12),
-              // Expenses
-              _buildFlowRow(
-                'Expenses',
-                '\$0',
-                Colors.red.shade300,
-                Icons.arrow_upward,
-              ),
-              const SizedBox(height: 16),
-              Container(
-                height: 1,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-              const SizedBox(height: 16),
-              // Net
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Builder(
+            builder: (context) {
+              final wealthState = ref.watch(wealthViewModelProvider);
+              final income = wealthState.totalMonthlyIncome;
+              final expenses = wealthState.totalMonthlyExpenses;
+              final net = wealthState.netMonthlyCashFlow;
+              
+              return Column(
                 children: [
-                  Text(
-                    'Net Monthly',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: Colors.white70,
-                    ),
+                  // Income
+                  _buildFlowRow(
+                    'Income',
+                    '\$${income.toStringAsFixed(0)}',
+                    Colors.green,
+                    Icons.arrow_downward,
                   ),
-                  Text(
-                    '\$0',
-                    style: GoogleFonts.inter(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                  const SizedBox(height: 12),
+                  // Expenses
+                  _buildFlowRow(
+                    'Expenses',
+                    '\$${expenses.toStringAsFixed(0)}',
+                    Colors.red.shade300,
+                    Icons.arrow_upward,
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                  const SizedBox(height: 16),
+                  // Net
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Net Monthly',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      Text(
+                        '\$${net.toStringAsFixed(0)}',
+                        style: GoogleFonts.inter(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: net >= 0 ? Colors.green.shade300 : Colors.red.shade300,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
       ],

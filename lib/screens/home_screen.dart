@@ -53,8 +53,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       label: 'Soul',
     ),
     PillarItem(
-      icon: Icons.people_outline,
-      activeIcon: Icons.people,
+      assetIcon: 'assets/icons/bonds_icon.png',
       label: 'Bonds',
     ),
     PillarItem(
@@ -68,8 +67,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       label: 'Health',
     ),
     PillarItem(
-      icon: Icons.account_balance_wallet_outlined,
-      activeIcon: Icons.account_balance_wallet,
+      assetIcon: 'assets/icons/wealth_icon.png',
       label: 'Wealth',
     ),
   ];

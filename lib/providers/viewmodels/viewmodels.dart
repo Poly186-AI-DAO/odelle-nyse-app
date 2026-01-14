@@ -10,3 +10,5 @@ export 'voice_viewmodel.dart';
 export 'body_viewmodel.dart';
 export 'mind_viewmodel.dart';
 export 'chat_viewmodel.dart';
+export 'wealth_viewmodel.dart';
+export 'bonds_viewmodel.dart';

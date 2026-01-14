@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-01-14
+
+### Added
+- **Wealth & Bonds Pillars**: Integrated Wealth and Bonds ViewModels and screens for the 5-pillar architecture.
+- **Provider Wiring**: Wired up Wealth and Bonds providers for dynamic data display.
+
 ## [1.3.0] - 2026-01-11
 
 ### Added
