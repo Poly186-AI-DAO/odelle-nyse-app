@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/agent_output.dart';
 import '../../services/agent_scheduler_service.dart';
+import '../../providers/service_providers.dart';
 
 /// Overlay widget that shows real-time agent status
 /// Displays in the corner of the screen when agents are active

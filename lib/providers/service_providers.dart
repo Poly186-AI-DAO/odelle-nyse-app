@@ -9,6 +9,8 @@ import '../services/user_context_service.dart';
 import '../services/voice_action_service.dart';
 import '../services/weather_service.dart';
 import '../services/sync_service.dart';
+import '../services/agent_scheduler_service.dart';
+import '../services/live_activity_service.dart';
 
 import '../services/health_kit_service.dart';
 import '../database/app_database.dart';
@@ -140,6 +142,46 @@ final voiceActionServiceProvider = Provider<VoiceActionService>((ref) {
 
 /// Firebase Sync Service - syncs local SQLite changes to Firestore
 /// Offline-first: queues changes locally and pushes when online
+/// Auto-syncs every 5 minutes
 final syncServiceProvider = Provider<SyncService>((ref) {
-  return SyncService();
+  final service = SyncService();
+  
+  // Auto-start periodic sync when provider is first accessed
+  service.startPeriodicSync();
+  
+  // Clean up when disposed
+  ref.onDispose(() {
+    service.stopPeriodicSync();
+  });
+  
+  return service;
+});
+
+/// Agent Scheduler Service - runs AI agents on intervals
+/// GPT-5 Nano: Every 5 minutes (fast processing)
+/// GPT-5 Chat: Every 30 minutes (supervisor, reviews Nano's work)
+final agentSchedulerProvider = Provider<AgentSchedulerService>((ref) {
+  final agentService = ref.watch(azureAgentServiceProvider);
+  final database = ref.watch(databaseProvider);
+
+  final scheduler = AgentSchedulerService(
+    agentService: agentService,
+    db: database,
+  );
+
+  // Auto-start the scheduler when provider is first accessed
+  scheduler.start();
+
+  // Clean up when disposed
+  ref.onDispose(() {
+    scheduler.dispose();
+  });
+
+  return scheduler;
+});
+
+/// iOS Live Activity Service - Dynamic Island and Lock Screen notifications
+/// Bridges Flutter to native iOS ActivityKit via MethodChannel
+final liveActivityServiceProvider = Provider<LiveActivityService>((ref) {
+  return LiveActivityService();
 });

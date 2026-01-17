@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../config/azure_ai_config.dart';
 import '../database/app_database.dart';
 import '../models/agent_output.dart';
@@ -278,9 +276,3 @@ class AgentStatus {
 
 enum AgentStatusType { idle, running, completed, error, stopped }
 
-/// Provider for AgentSchedulerService
-final agentSchedulerProvider = Provider<AgentSchedulerService>((ref) {
-  throw UnimplementedError(
-    'agentSchedulerProvider must be overridden in main.dart',
-  );
-});

@@ -41,10 +41,28 @@ mixin InteractionCrud on AppDatabaseBase {
   Future<List<Interaction>> getInteractions({
     int limit = 50,
     int offset = 0,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final db = await database;
+
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+
+    if (startDate != null) {
+      whereClause += 'timestamp >= ?';
+      whereArgs.add(startDate.toIso8601String());
+    }
+    if (endDate != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'timestamp <= ?';
+      whereArgs.add(endDate.toIso8601String());
+    }
+
     final maps = await db.query(
       'interactions',
+      where: whereClause.isNotEmpty ? whereClause : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
       orderBy: 'timestamp DESC',
       limit: limit,
       offset: offset,

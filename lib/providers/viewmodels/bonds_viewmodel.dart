@@ -10,6 +10,8 @@ class BondsState {
   final List<Contact> priorityContacts;
   final List<Contact> overdueContacts;
   final List<Interaction> recentInteractions;
+  final List<Interaction> dailyInteractions;
+  final DateTime selectedDate;
   final int totalContacts;
   final int interactionsThisWeek;
   final bool isLoading;
@@ -20,6 +22,8 @@ class BondsState {
     this.priorityContacts = const [],
     this.overdueContacts = const [],
     this.recentInteractions = const [],
+    this.dailyInteractions = const [],
+    required this.selectedDate,
     this.totalContacts = 0,
     this.interactionsThisWeek = 0,
     this.isLoading = false,
@@ -31,6 +35,8 @@ class BondsState {
     List<Contact>? priorityContacts,
     List<Contact>? overdueContacts,
     List<Interaction>? recentInteractions,
+    List<Interaction>? dailyInteractions,
+    DateTime? selectedDate,
     int? totalContacts,
     int? interactionsThisWeek,
     bool? isLoading,
@@ -41,6 +47,8 @@ class BondsState {
       priorityContacts: priorityContacts ?? this.priorityContacts,
       overdueContacts: overdueContacts ?? this.overdueContacts,
       recentInteractions: recentInteractions ?? this.recentInteractions,
+      dailyInteractions: dailyInteractions ?? this.dailyInteractions,
+      selectedDate: selectedDate ?? this.selectedDate,
       totalContacts: totalContacts ?? this.totalContacts,
       interactionsThisWeek: interactionsThisWeek ?? this.interactionsThisWeek,
       isLoading: isLoading ?? this.isLoading,
@@ -55,19 +63,37 @@ class BondsViewModel extends Notifier<BondsState> {
 
   @override
   BondsState build() {
-    return const BondsState();
+    final initialDate = DateTime.now();
+    Future.microtask(() => load(date: initialDate));
+    return BondsState(selectedDate: initialDate);
   }
 
   BondsRepository get _repository => ref.read(bondsRepositoryProvider);
 
+  Future<void> selectDate(DateTime date) async {
+    state = state.copyWith(selectedDate: date, isLoading: true);
+    await load(date: date);
+  }
+
   /// Load all bonds data.
-  Future<void> load() async {
+  Future<void> load({DateTime? date}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
+      final targetDate = date ?? state.selectedDate;
+      final startOfDay = DateTime(targetDate.year, targetDate.month, targetDate.day);
+      final endOfDay = DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59, 59);
+
       final contacts = await _repository.getContacts();
       final priorityContacts = await _repository.getPriorityContacts();
       final overdueContacts = await _repository.getOverdueContacts();
       final recentInteractions = await _repository.getRecentInteractions();
+      
+      // Fetch interactions for the specific date
+      final dailyInteractions = await _repository.getInteractions(
+        startDate: startOfDay,
+        endDate: endOfDay,
+      );
+
       final summary = await _repository.getSummary();
 
       state = state.copyWith(
@@ -75,12 +101,12 @@ class BondsViewModel extends Notifier<BondsState> {
         priorityContacts: priorityContacts,
         overdueContacts: overdueContacts,
         recentInteractions: recentInteractions,
+        dailyInteractions: dailyInteractions,
         totalContacts: summary.totalContacts,
         interactionsThisWeek: summary.interactionsThisWeek,
         isLoading: false,
       );
-      Logger.info('Loaded bonds data: ${contacts.length} contacts, '
-          '${overdueContacts.length} overdue, ${recentInteractions.length} interactions', 
+      Logger.info('Loaded bonds data: ${contacts.length} contacts, ${dailyInteractions.length} interactions today', 
           tag: _tag);
     } catch (e, stackTrace) {
       Logger.error('Failed to load bonds data',

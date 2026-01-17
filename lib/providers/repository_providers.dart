@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/user_profile_repository.dart';
+import '../repositories/journal_repository.dart';
 import '../repositories/dose_repository.dart';
 import '../repositories/habit_repository.dart';
 import '../repositories/mood_repository.dart';
@@ -14,6 +15,11 @@ import 'service_providers.dart';
 final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return UserProfileRepository(db);
+});
+
+final journalRepositoryProvider = Provider<JournalRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  return JournalRepository(db);
 });
 
 final doseRepositoryProvider = Provider<DoseRepository>((ref) {

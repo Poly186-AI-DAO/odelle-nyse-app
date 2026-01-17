@@ -53,8 +53,16 @@ class BondsRepository {
   // Interactions
   // ===================
 
-  Future<List<Interaction>> getInteractions({int limit = 50}) async {
-    return _db.getInteractions(limit: limit);
+  Future<List<Interaction>> getInteractions({
+    int limit = 50,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return _db.getInteractions(
+      limit: limit,
+      startDate: startDate,
+      endDate: endDate,
+    );
   }
 
   Future<List<Interaction>> getRecentInteractions({int days = 7}) async {

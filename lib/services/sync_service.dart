@@ -8,11 +8,13 @@ import '../utils/logger.dart';
 /// Monitors the local sync_queue and pushes changes to Firestore when online.
 class SyncService {
   static const String _tag = 'SyncService';
+  static const int syncIntervalMinutes = 5;
   
   final AppDatabase _database;
   final FirebaseFirestore _firestore;
   
   bool _isSyncing = false;
+  Timer? _syncTimer;
   final _syncingController = StreamController<bool>.broadcast();
   
   Stream<bool> get isSyncingStream => _syncingController.stream;
@@ -22,6 +24,32 @@ class SyncService {
     FirebaseFirestore? firestore,
   })  : _database = database ?? AppDatabase.instance,
         _firestore = firestore ?? FirebaseFirestore.instance;
+
+  /// Start periodic sync (every 5 minutes)
+  void startPeriodicSync() {
+    if (_syncTimer != null) {
+      Logger.warning('Periodic sync already running', tag: _tag);
+      return;
+    }
+    
+    Logger.info('Starting periodic sync every $syncIntervalMinutes minutes', tag: _tag);
+    
+    // Sync immediately first
+    syncPendingChanges();
+    
+    // Then sync periodically
+    _syncTimer = Timer.periodic(
+      Duration(minutes: syncIntervalMinutes),
+      (_) => syncPendingChanges(),
+    );
+  }
+  
+  /// Stop periodic sync
+  void stopPeriodicSync() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    Logger.info('Stopped periodic sync', tag: _tag);
+  }
 
   void _setSyncing(bool value) {
     _isSyncing = value;

@@ -6,6 +6,9 @@ import '../../models/character_stats.dart';
 import '../../services/health_kit_service.dart';
 import '../../utils/logger.dart';
 import '../service_providers.dart';
+import '../repository_providers.dart';
+import '../../models/journal_entry.dart';
+import '../../models/mood/mood_entry.dart';
 
 // State class for Mind Screen
 class MindState {
@@ -21,6 +24,8 @@ class MindState {
   final CharacterStats? characterStats;
   final Map<String, dynamic>? identityData; // For astrology/cosmic stats
   final Map<String, dynamic>? sleepLogFallback; // JSON fallback
+  final List<JournalEntry> journalEntries;
+  final List<MoodEntry> moodEntries;
   
   final bool isLoading;
   final String? error;
@@ -34,6 +39,8 @@ class MindState {
     this.characterStats,
     this.identityData,
     this.sleepLogFallback,
+    this.journalEntries = const [],
+    this.moodEntries = const [],
     this.isLoading = false,
     this.error,
   });
@@ -47,6 +54,8 @@ class MindState {
     CharacterStats? characterStats,
     Map<String, dynamic>? identityData,
     Map<String, dynamic>? sleepLogFallback,
+    List<JournalEntry>? journalEntries,
+    List<MoodEntry>? moodEntries,
     bool? isLoading,
     String? error,
   }) {
@@ -59,6 +68,8 @@ class MindState {
       characterStats: characterStats ?? this.characterStats,
       identityData: identityData ?? this.identityData,
       sleepLogFallback: sleepLogFallback ?? this.sleepLogFallback,
+      journalEntries: journalEntries ?? this.journalEntries,
+      moodEntries: moodEntries ?? this.moodEntries,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -91,7 +102,24 @@ class MindViewModel extends Notifier<MindState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      // 1. HealthKit Data
+      // 0. Setup Date Range
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+      // 1. Repositories
+      final journalRepo = ref.read(journalRepositoryProvider);
+      final moodRepo = ref.read(moodRepositoryProvider);
+
+      // 2. Fetch DB Data (Parallel)
+      final dbResults = await Future.wait([
+        journalRepo.getJournalEntries(startDate: startOfDay, endDate: endOfDay),
+        moodRepo.getMoodEntries(startDate: startOfDay, endDate: endOfDay),
+      ]);
+
+      final journalEntries = dbResults[0] as List<JournalEntry>;
+      final moodEntries = dbResults[1] as List<MoodEntry>;
+
+      // 3. HealthKit Data
       SleepData? sleepData;
       int? restingHR;
       Duration? mindfulMinutes;
@@ -109,7 +137,7 @@ class MindViewModel extends Notifier<MindState> {
         mindfulMinutes = results[2] as Duration?;
       }
 
-      // 2. Load JSON Data (Identity & Sleep Fallback)
+      // 4. Load JSON Data (Identity & Sleep Fallback)
       Map<String, dynamic>? identityData;
       Map<String, dynamic>? sleepLogFallback;
 
@@ -135,6 +163,8 @@ class MindViewModel extends Notifier<MindState> {
         mindfulMinutes: mindfulMinutes,
         identityData: identityData,
         sleepLogFallback: sleepLogFallback,
+        journalEntries: journalEntries,
+        moodEntries: moodEntries,
         isLoading: false,
       );
     } catch (e, stackTrace) {
