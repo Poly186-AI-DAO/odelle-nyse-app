@@ -8,6 +8,7 @@ import '../services/psychograph_service.dart';
 import '../services/user_context_service.dart';
 import '../services/voice_action_service.dart';
 import '../services/weather_service.dart';
+import '../services/sync_service.dart';
 
 import '../services/health_kit_service.dart';
 import '../database/app_database.dart';
@@ -135,4 +136,10 @@ final voiceActionServiceProvider = Provider<VoiceActionService>((ref) {
     userContextService: userContextService,
     database: database,
   );
+});
+
+/// Firebase Sync Service - syncs local SQLite changes to Firestore
+/// Offline-first: queues changes locally and pushes when online
+final syncServiceProvider = Provider<SyncService>((ref) {
+  return SyncService();
 });

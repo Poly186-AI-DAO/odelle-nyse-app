@@ -61,6 +61,10 @@ app.*.map.json
 *.certSigningRequest
 *.b64
 
+# Firebase config (sensitive - injected via CI/CD)
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+
 # Logs
 analyze_output.txt
 build_log.txt

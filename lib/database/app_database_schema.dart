@@ -11,6 +11,7 @@ mixin AppDatabaseSchema {
     await _createHealthTables(db);
     await _createTrainingTables(db);
     await _createWealthBondsTables(db); // v8: Wealth + Bonds pillars
+    await _createSyncTables(db); // v9: Firebase sync queue
     await _createIndexes(db);
     await _seedMantras(db);
 
@@ -42,6 +43,10 @@ mixin AppDatabaseSchema {
     }
     if (oldVersion < 8) {
       await _createWealthBondsTables(db);
+      await _createIndexes(db);
+    }
+    if (oldVersion < 9) {
+      await _createSyncTables(db);
       await _createIndexes(db);
     }
   }
@@ -780,5 +785,34 @@ mixin AppDatabaseSchema {
     }
     Logger.info('Seeded ${DefaultMantras.all.length} default mantras',
         tag: AppDatabase._tag);
+  }
+
+  /// Create Firebase sync queue table (v9)
+  Future<void> _createSyncTables(Database db) async {
+    Logger.info('Creating sync queue table', tag: AppDatabase._tag);
+
+    // Sync queue - tracks local changes to push to Firebase
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_name TEXT NOT NULL,
+        row_id INTEGER NOT NULL,
+        operation TEXT NOT NULL,
+        data TEXT,
+        created_at TEXT NOT NULL,
+        synced_at TEXT,
+        status TEXT DEFAULT 'pending',
+        error TEXT,
+        attempts INTEGER DEFAULT 0
+      )
+    ''');
+
+    // Create indexes for sync queue
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name)');
+
+    Logger.info('Sync queue table created successfully', tag: AppDatabase._tag);
   }
 }

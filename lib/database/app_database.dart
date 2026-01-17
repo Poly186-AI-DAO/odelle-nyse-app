@@ -69,7 +69,7 @@ class AppDatabase extends AppDatabaseBase
         AppDatabaseUtils {
   static const String _tag = 'AppDatabase';
   static const String _databaseName = 'odelle_nyse.db';
-  static const int _databaseVersion = 8; // v8: Wealth + Bonds pillars
+  static const int _databaseVersion = 9; // v9: Firebase sync queue
 
   static Database? _database;
   static final AppDatabase instance = AppDatabase._internal();
