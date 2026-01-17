@@ -9,6 +9,14 @@ mixin StreakCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('streaks', streak.toMap());
     Logger.info('Inserted streak: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'streaks',
+      rowId: id,
+      operation: 'INSERT',
+      data: streak.toMap(),
+    );
+    
     return id;
   }
 
@@ -54,20 +62,41 @@ mixin StreakCrud on AppDatabaseBase {
 
   Future<int> updateStreak(Streak streak) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'streaks',
       streak.toMap(),
       where: 'id = ?',
       whereArgs: [streak.id],
     );
+    
+    if (count > 0 && streak.id != null) {
+      await queueSync(
+        tableName: 'streaks',
+        rowId: streak.id!,
+        operation: 'UPDATE',
+        data: streak.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteStreak(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'streaks',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'streaks',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

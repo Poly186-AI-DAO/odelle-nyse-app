@@ -9,6 +9,14 @@ mixin ContactCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('contacts', contact.toMap());
     Logger.info('Inserted contact: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'contacts',
+      rowId: id,
+      operation: 'INSERT',
+      data: contact.toMap(),
+    );
+    
     return id;
   }
 
@@ -103,30 +111,62 @@ mixin ContactCrud on AppDatabaseBase {
 
   Future<int> updateContact(Contact contact) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'contacts',
       contact.toMap(),
       where: 'id = ?',
       whereArgs: [contact.id],
     );
+    
+    if (count > 0 && contact.id != null) {
+      await queueSync(
+        tableName: 'contacts',
+        rowId: contact.id!,
+        operation: 'UPDATE',
+        data: contact.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> updateContactLastContact(int id, DateTime lastContact) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'contacts',
       {'last_contact': lastContact.toIso8601String()},
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'contacts',
+        rowId: id,
+        operation: 'UPDATE',
+        data: {'last_contact': lastContact.toIso8601String()},
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteContact(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'contacts',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'contacts',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

@@ -9,6 +9,14 @@ mixin WorkoutLogCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('workout_logs', log.toMap());
     Logger.info('Inserted workout log: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'workout_logs',
+      rowId: id,
+      operation: 'INSERT',
+      data: log.toMap(),
+    );
+    
     return id;
   }
 
@@ -60,20 +68,41 @@ mixin WorkoutLogCrud on AppDatabaseBase {
 
   Future<int> updateWorkoutLog(WorkoutLog log) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'workout_logs',
       log.toMap(),
       where: 'id = ?',
       whereArgs: [log.id],
     );
+    
+    if (count > 0 && log.id != null) {
+      await queueSync(
+        tableName: 'workout_logs',
+        rowId: log.id!,
+        operation: 'UPDATE',
+        data: log.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteWorkoutLog(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'workout_logs',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'workout_logs',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

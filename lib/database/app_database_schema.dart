@@ -12,6 +12,7 @@ mixin AppDatabaseSchema {
     await _createTrainingTables(db);
     await _createWealthBondsTables(db); // v8: Wealth + Bonds pillars
     await _createSyncTables(db); // v9: Firebase sync queue
+    await _createAgentTables(db); // v10: Agent outputs
     await _createIndexes(db);
     await _seedMantras(db);
 
@@ -47,6 +48,10 @@ mixin AppDatabaseSchema {
     }
     if (oldVersion < 9) {
       await _createSyncTables(db);
+      await _createIndexes(db);
+    }
+    if (oldVersion < 10) {
+      await _createAgentTables(db);
       await _createIndexes(db);
     }
   }
@@ -814,5 +819,34 @@ mixin AppDatabaseSchema {
         'CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name)');
 
     Logger.info('Sync queue table created successfully', tag: AppDatabase._tag);
+  }
+
+  /// Create agent outputs table (v10)
+  Future<void> _createAgentTables(Database db) async {
+    Logger.info('Creating agent outputs table', tag: AppDatabase._tag);
+
+    // Agent outputs - stores results from AI agent cycles
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS agent_outputs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_type TEXT NOT NULL,
+        prompt TEXT NOT NULL,
+        response TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        reviewed INTEGER DEFAULT 0,
+        reviewed_by TEXT,
+        review_notes TEXT
+      )
+    ''');
+
+    // Create indexes for agent outputs
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_agent_outputs_type ON agent_outputs(agent_type)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_agent_outputs_created ON agent_outputs(created_at)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_agent_outputs_reviewed ON agent_outputs(reviewed)');
+
+    Logger.info('Agent outputs table created successfully', tag: AppDatabase._tag);
   }
 }

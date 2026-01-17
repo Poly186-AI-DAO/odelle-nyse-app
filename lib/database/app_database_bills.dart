@@ -9,6 +9,14 @@ mixin BillCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('bills', bill.toMap());
     Logger.info('Inserted bill: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'bills',
+      rowId: id,
+      operation: 'INSERT',
+      data: bill.toMap(),
+    );
+    
     return id;
   }
 
@@ -57,21 +65,42 @@ mixin BillCrud on AppDatabaseBase {
 
   Future<int> updateBill(Bill bill) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'bills',
       bill.toMap(),
       where: 'id = ?',
       whereArgs: [bill.id],
     );
+    
+    if (count > 0 && bill.id != null) {
+      await queueSync(
+        tableName: 'bills',
+        rowId: bill.id!,
+        operation: 'UPDATE',
+        data: bill.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteBill(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'bills',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'bills',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 
   /// Calculate total monthly bill expenses

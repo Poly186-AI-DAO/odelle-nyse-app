@@ -16,6 +16,23 @@ mixin InteractionCrud on AppDatabaseBase {
       where: 'id = ?',
       whereArgs: [interaction.contactId],
     );
+    
+    // Queue sync for the interaction
+    await queueSync(
+      tableName: 'interactions',
+      rowId: id,
+      operation: 'INSERT',
+      data: interaction.toMap(),
+    );
+    
+    // Queue sync for the contact update (implicitly handled by updateContactLastContact but here it's direct raw update)
+    // We should queue this update too.
+    await queueSync(
+      tableName: 'contacts',
+      rowId: interaction.contactId,
+      operation: 'UPDATE',
+      data: {'last_contact': interaction.timestamp.toIso8601String()},
+    );
 
     Logger.info('Inserted interaction: $id', tag: AppDatabase._tag);
     return id;
@@ -73,21 +90,42 @@ mixin InteractionCrud on AppDatabaseBase {
 
   Future<int> updateInteraction(Interaction interaction) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'interactions',
       interaction.toMap(),
       where: 'id = ?',
       whereArgs: [interaction.id],
     );
+    
+    if (count > 0 && interaction.id != null) {
+      await queueSync(
+        tableName: 'interactions',
+        rowId: interaction.id!,
+        operation: 'UPDATE',
+        data: interaction.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteInteraction(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'interactions',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'interactions',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 
   /// Get interaction count for a contact

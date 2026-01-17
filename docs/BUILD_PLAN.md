@@ -357,8 +357,9 @@ By end of stream, the app should:
 2. **Add push notifications** for protocol reminders
 3. **Implement local LLM** for CBT prompts
 4. **Build meditation playlist** integration
-5. **Design proper ON logo/icon**
-6. **Set up TestFlight** for ON app
+5. **[NEW] YouTube Offline Caching** - Cache meditation/music playlists for offline playback
+6. **Design proper ON logo/icon**
+7. **Set up TestFlight** for ON app
 
 ---
 

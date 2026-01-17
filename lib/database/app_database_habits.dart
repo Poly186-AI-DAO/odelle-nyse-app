@@ -9,6 +9,14 @@ mixin HabitCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('habits', habit.toMap());
     Logger.info('Inserted habit: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'habits',
+      rowId: id,
+      operation: 'INSERT',
+      data: habit.toMap(),
+    );
+    
     return id;
   }
 
@@ -57,20 +65,41 @@ mixin HabitCrud on AppDatabaseBase {
 
   Future<int> updateHabit(Habit habit) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'habits',
       habit.toMap(),
       where: 'id = ?',
       whereArgs: [habit.id],
     );
+    
+    if (count > 0 && habit.id != null) {
+      await queueSync(
+        tableName: 'habits',
+        rowId: habit.id!,
+        operation: 'UPDATE',
+        data: habit.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteHabit(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'habits',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'habits',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

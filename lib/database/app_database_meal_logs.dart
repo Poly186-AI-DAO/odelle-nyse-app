@@ -9,6 +9,14 @@ mixin MealLogCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('meal_logs', log.toMap());
     Logger.info('Inserted meal log: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'meal_logs',
+      rowId: id,
+      operation: 'INSERT',
+      data: log.toMap(),
+    );
+    
     return id;
   }
 
@@ -59,20 +67,41 @@ mixin MealLogCrud on AppDatabaseBase {
 
   Future<int> updateMealLog(MealLog log) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'meal_logs',
       log.toMap(),
       where: 'id = ?',
       whereArgs: [log.id],
     );
+    
+    if (count > 0 && log.id != null) {
+      await queueSync(
+        tableName: 'meal_logs',
+        rowId: log.id!,
+        operation: 'UPDATE',
+        data: log.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteMealLog(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'meal_logs',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'meal_logs',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

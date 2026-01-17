@@ -15,6 +15,7 @@ import '../utils/logger.dart';
 import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
 import '../widgets/voice/voice_button.dart';
+import '../widgets/molecules/sync_indicator.dart';
 import 'soul_screen.dart';
 import 'bonds_screen.dart';
 import 'now_screen.dart';
@@ -129,6 +130,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           duration: const Duration(seconds: 3),
         ),
       );
+    }
+    
+    // Trigger initial sync
+    if (mounted) {
+      ref.read(syncServiceProvider).syncPendingChanges();
     }
   }
 
@@ -620,6 +626,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               ),
+            ),
+            
+            // Sync Indicator (Top Right)
+            const Positioned(
+              top: 0,
+              right: 0,
+              child: SyncIndicator(),
             ),
           ],
         ),

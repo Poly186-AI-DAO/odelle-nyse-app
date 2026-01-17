@@ -9,6 +9,14 @@ mixin SubscriptionCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('subscriptions', subscription.toMap());
     Logger.info('Inserted subscription: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'subscriptions',
+      rowId: id,
+      operation: 'INSERT',
+      data: subscription.toMap(),
+    );
+    
     return id;
   }
 
@@ -57,21 +65,42 @@ mixin SubscriptionCrud on AppDatabaseBase {
 
   Future<int> updateSubscription(Subscription subscription) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'subscriptions',
       subscription.toMap(),
       where: 'id = ?',
       whereArgs: [subscription.id],
     );
+    
+    if (count > 0 && subscription.id != null) {
+      await queueSync(
+        tableName: 'subscriptions',
+        rowId: subscription.id!,
+        operation: 'UPDATE',
+        data: subscription.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteSubscription(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'subscriptions',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'subscriptions',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 
   /// Calculate total monthly subscription cost

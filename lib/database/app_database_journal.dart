@@ -9,6 +9,14 @@ mixin JournalEntryCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('journal_entries', entry.toMap());
     Logger.info('Inserted journal entry: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'journal_entries',
+      rowId: id,
+      operation: 'INSERT',
+      data: entry.toMap(),
+    );
+    
     return id;
   }
 
@@ -58,20 +66,41 @@ mixin JournalEntryCrud on AppDatabaseBase {
 
   Future<int> updateJournalEntry(JournalEntry entry) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'journal_entries',
       entry.toMap(),
       where: 'id = ?',
       whereArgs: [entry.id],
     );
+    
+    if (count > 0 && entry.id != null) {
+      await queueSync(
+        tableName: 'journal_entries',
+        rowId: entry.id!,
+        operation: 'UPDATE',
+        data: entry.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteJournalEntry(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'journal_entries',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'journal_entries',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

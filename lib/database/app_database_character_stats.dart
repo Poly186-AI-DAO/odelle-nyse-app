@@ -17,14 +17,33 @@ mixin CharacterStatsCrud on AppDatabaseBase {
     );
 
     if (existing.isNotEmpty) {
-      return await db.update(
+      final count = await db.update(
         'character_stats',
         stats.toMap(),
         where: 'date = ?',
         whereArgs: [dateStr],
       );
+      
+      // We don't have a reliable single int ID for stats (composite key on date)
+      // but we can use a hash or just 0 if we handle it specially on the backend.
+      // For now, let's assume we can map it.
+      // Actually, sync_queue expects row_id.
+      // We need to fetch the rowID or rethink this for non-integer PKs.
+      // Character stats has an 'id' integer PK? Let's check schema.
+      // If schema has auto-increment ID, we should use it.
+      
+      // Querying ID to queue sync
+      final idResult = await db.query('character_stats', columns: ['id'], where: 'date = ?', whereArgs: [dateStr]);
+      if (idResult.isNotEmpty) {
+        final id = idResult.first['id'] as int;
+        await queueSync(tableName: 'character_stats', rowId: id, operation: 'UPDATE', data: stats.toMap());
+      }
+      
+      return count;
     } else {
-      return await db.insert('character_stats', stats.toMap());
+      final id = await db.insert('character_stats', stats.toMap());
+      await queueSync(tableName: 'character_stats', rowId: id, operation: 'INSERT', data: stats.toMap());
+      return id;
     }
   }
 

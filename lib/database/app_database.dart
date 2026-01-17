@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/journal_entry.dart';
@@ -15,6 +16,7 @@ import '../models/mood/mood_entry.dart';
 import '../models/gamification/streak.dart';
 import '../models/wealth/wealth.dart';
 import '../models/relationships/relationships.dart';
+import '../models/agent_output.dart';
 import '../utils/logger.dart';
 
 part 'app_database_schema.dart';
@@ -37,10 +39,21 @@ part 'app_database_incomes.dart';
 part 'app_database_contacts.dart';
 part 'app_database_interactions.dart';
 part 'app_database_utils.dart';
+part 'app_database_sync.dart';
+part 'app_database_agent_outputs.dart';
+
 
 abstract class AppDatabaseBase {
   Future<Database> get database;
   Future<List<ProtocolEntry>> getTodayProtocolEntries();
+  
+  // Sync queue helper (implemented by SyncQueueCrud)
+  Future<void> queueSync({
+    required String tableName,
+    required int rowId,
+    required String operation,
+    Map<String, dynamic>? data,
+  });
 }
 
 /// Local SQLite database for Odelle Nyse
@@ -66,10 +79,12 @@ class AppDatabase extends AppDatabaseBase
         IncomeCrud,
         ContactCrud,
         InteractionCrud,
+        SyncQueueCrud,
+        AgentOutputCrud,
         AppDatabaseUtils {
   static const String _tag = 'AppDatabase';
   static const String _databaseName = 'odelle_nyse.db';
-  static const int _databaseVersion = 9; // v9: Firebase sync queue
+  static const int _databaseVersion = 10; // v10: Agent outputs
 
   static Database? _database;
   static final AppDatabase instance = AppDatabase._internal();

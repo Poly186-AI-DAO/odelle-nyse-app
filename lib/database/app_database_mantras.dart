@@ -7,7 +7,16 @@ mixin MantraCrud on AppDatabaseBase {
 
   Future<int> insertMantra(Mantra mantra) async {
     final db = await database;
-    return await db.insert('mantras', mantra.toMap());
+    final id = await db.insert('mantras', mantra.toMap());
+    
+    await queueSync(
+      tableName: 'mantras',
+      rowId: id,
+      operation: 'INSERT',
+      data: mantra.toMap(),
+    );
+    
+    return id;
   }
 
   Future<List<Mantra>> getMantras({bool activeOnly = true}) async {
@@ -30,20 +39,41 @@ mixin MantraCrud on AppDatabaseBase {
 
   Future<int> updateMantra(Mantra mantra) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'mantras',
       mantra.toMap(),
       where: 'id = ?',
       whereArgs: [mantra.id],
     );
+    
+    if (count > 0 && mantra.id != null) {
+      await queueSync(
+        tableName: 'mantras',
+        rowId: mantra.id!,
+        operation: 'UPDATE',
+        data: mantra.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteMantra(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'mantras',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'mantras',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

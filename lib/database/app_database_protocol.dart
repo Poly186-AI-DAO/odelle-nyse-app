@@ -10,6 +10,14 @@ mixin ProtocolEntryCrud on AppDatabaseBase {
     final id = await db.insert('protocol_entries', entry.toMap());
     Logger.info('Inserted protocol entry: ${entry.type.displayName}',
         tag: AppDatabase._tag);
+        
+    await queueSync(
+      tableName: 'protocol_entries',
+      rowId: id,
+      operation: 'INSERT',
+      data: entry.toMap(),
+    );
+    
     return id;
   }
 
@@ -63,10 +71,20 @@ mixin ProtocolEntryCrud on AppDatabaseBase {
 
   Future<int> deleteProtocolEntry(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'protocol_entries',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'protocol_entries',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

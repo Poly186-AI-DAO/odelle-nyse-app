@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../database/app_database.dart';
@@ -12,12 +13,20 @@ class SyncService {
   final FirebaseFirestore _firestore;
   
   bool _isSyncing = false;
+  final _syncingController = StreamController<bool>.broadcast();
+  
+  Stream<bool> get isSyncingStream => _syncingController.stream;
   
   SyncService({
     AppDatabase? database,
     FirebaseFirestore? firestore,
   })  : _database = database ?? AppDatabase.instance,
         _firestore = firestore ?? FirebaseFirestore.instance;
+
+  void _setSyncing(bool value) {
+    _isSyncing = value;
+    _syncingController.add(value);
+  }
 
   /// Queue a local change for sync
   Future<void> queueChange({
@@ -46,7 +55,8 @@ class SyncService {
       return;
     }
     
-    _isSyncing = true;
+    
+    _setSyncing(true);
     Logger.info('Starting sync of pending changes', tag: _tag);
     
     try {
@@ -74,7 +84,7 @@ class SyncService {
     } catch (e) {
       Logger.error('Sync failed: $e', tag: _tag);
     } finally {
-      _isSyncing = false;
+      _setSyncing(false);
     }
   }
 

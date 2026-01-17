@@ -9,6 +9,14 @@ mixin IncomeCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('incomes', income.toMap());
     Logger.info('Inserted income: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'incomes',
+      rowId: id,
+      operation: 'INSERT',
+      data: income.toMap(),
+    );
+    
     return id;
   }
 
@@ -55,21 +63,42 @@ mixin IncomeCrud on AppDatabaseBase {
 
   Future<int> updateIncome(Income income) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'incomes',
       income.toMap(),
       where: 'id = ?',
       whereArgs: [income.id],
     );
+    
+    if (count > 0 && income.id != null) {
+      await queueSync(
+        tableName: 'incomes',
+        rowId: income.id!,
+        operation: 'UPDATE',
+        data: income.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteIncome(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'incomes',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'incomes',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 
   /// Calculate total monthly income

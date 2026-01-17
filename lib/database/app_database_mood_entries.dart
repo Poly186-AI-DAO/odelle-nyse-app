@@ -9,6 +9,14 @@ mixin MoodEntryCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('mood_entries', entry.toMap());
     Logger.info('Inserted mood entry: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'mood_entries',
+      rowId: id,
+      operation: 'INSERT',
+      data: entry.toMap(),
+    );
+    
     return id;
   }
 
@@ -64,20 +72,41 @@ mixin MoodEntryCrud on AppDatabaseBase {
 
   Future<int> updateMoodEntry(MoodEntry entry) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'mood_entries',
       entry.toMap(),
       where: 'id = ?',
       whereArgs: [entry.id],
     );
+    
+    if (count > 0 && entry.id != null) {
+      await queueSync(
+        tableName: 'mood_entries',
+        rowId: entry.id!,
+        operation: 'UPDATE',
+        data: entry.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteMoodEntry(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'mood_entries',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'mood_entries',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }

@@ -9,6 +9,14 @@ mixin SupplementCrud on AppDatabaseBase {
     final db = await database;
     final id = await db.insert('supplements', supplement.toMap());
     Logger.info('Inserted supplement: $id', tag: AppDatabase._tag);
+    
+    await queueSync(
+      tableName: 'supplements',
+      rowId: id,
+      operation: 'INSERT',
+      data: supplement.toMap(),
+    );
+    
     return id;
   }
 
@@ -45,20 +53,41 @@ mixin SupplementCrud on AppDatabaseBase {
 
   Future<int> updateSupplement(Supplement supplement) async {
     final db = await database;
-    return await db.update(
+    final count = await db.update(
       'supplements',
       supplement.toMap(),
       where: 'id = ?',
       whereArgs: [supplement.id],
     );
+    
+    if (count > 0 && supplement.id != null) {
+      await queueSync(
+        tableName: 'supplements',
+        rowId: supplement.id!,
+        operation: 'UPDATE',
+        data: supplement.toMap(),
+      );
+    }
+    
+    return count;
   }
 
   Future<int> deleteSupplement(int id) async {
     final db = await database;
-    return await db.delete(
+    final count = await db.delete(
       'supplements',
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (count > 0) {
+      await queueSync(
+        tableName: 'supplements',
+        rowId: id,
+        operation: 'DELETE',
+      );
+    }
+    
+    return count;
   }
 }
