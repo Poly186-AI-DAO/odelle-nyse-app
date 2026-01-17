@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -5,20 +6,61 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'constants/app_routes.dart';
 import 'constants/theme_constants.dart';
 import 'screens/home_screen.dart';
+import 'utils/logger.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
-  await Firebase.initializeApp();
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    try {
+      await dotenv.load();
+    } catch (e) {
+      Logger.warning('Failed to load .env file: $e');
+    }
 
-  // All services are now initialized via Riverpod providers
-  // See lib/providers/service_providers.dart
+    try {
+      await Firebase.initializeApp();
+    } catch (e) {
+      Logger.error('Failed to initialize Firebase: $e');
+      runApp(ErrorApp(message: 'Firebase Init Failed: $e'));
+      return;
+    }
 
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+    // All services are now initialized via Riverpod providers
+    // See lib/providers/service_providers.dart
+
+    runApp(
+      const ProviderScope(
+        child: MyApp(),
+      ),
+    );
+  }, (error, stack) {
+    Logger.error('Unhandled error in main', error: error, stackTrace: stack);
+  });
+}
+
+class ErrorApp extends StatelessWidget {
+  final String message;
+  const ErrorApp({super.key, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.red.shade900,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              'Startup Error:\n$message',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {

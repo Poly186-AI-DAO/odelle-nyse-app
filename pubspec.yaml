@@ -1,7 +1,7 @@
 name: odelle_nyse
 description: Odelle Nyse (ON) - Self-Actualization Operating System
 publish_to: 'none'
-version: 1.9.0+18
+version: 1.9.1+19
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

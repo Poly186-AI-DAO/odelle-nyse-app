@@ -16,6 +16,7 @@ import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
 import '../widgets/voice/voice_button.dart';
 import '../widgets/molecules/sync_indicator.dart';
+import '../widgets/molecules/agent_status_overlay.dart';
 import 'soul_screen.dart';
 import 'bonds_screen.dart';
 import 'now_screen.dart';
@@ -633,6 +634,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               top: 0,
               right: 0,
               child: SyncIndicator(),
+            ),
+
+            // Agent Status Overlay (Top Right, below Sync Indicator)
+            const Positioned(
+              top: 100,
+              right: 16,
+              child: AgentStatusOverlay(),
             ),
           ],
         ),
