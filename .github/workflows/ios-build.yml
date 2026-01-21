@@ -8,10 +8,13 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-latest
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -61,11 +64,14 @@ jobs:
   deploy-testflight:
     name: Deploy to TestFlight
     needs: build-ios
-    runs-on: macos-latest
+    runs-on: macos-26
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
