@@ -38,6 +38,10 @@ jobs:
           echo "WEATHER_BUNDLE_ID=com.poly186.odelle" >> .env
           echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}" >> .env
 
+      - name: Create GoogleService-Info.plist
+        run: |
+          echo "${{ secrets.IOS_GOOGLE_SERVICE_PLIST_BASE64 }}" | base64 --decode > ios/Runner/GoogleService-Info.plist
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -87,6 +91,10 @@ jobs:
           echo "WEATHER_PRIVATE_KEY=${{ secrets.WEATHER_PRIVATE_KEY }}" >> .env
           echo "WEATHER_BUNDLE_ID=com.poly186.odelle" >> .env
           echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}" >> .env
+
+      - name: Create GoogleService-Info.plist
+        run: |
+          echo "${{ secrets.IOS_GOOGLE_SERVICE_PLIST_BASE64 }}" | base64 --decode > ios/Runner/GoogleService-Info.plist
 
       - name: Install dependencies
         run: flutter pub get
