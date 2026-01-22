@@ -7,6 +7,7 @@ import 'package:mic_stream/mic_stream.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/journal_entry.dart';
 import '../providers/service_providers.dart';
+import '../providers/viewmodels/viewmodels.dart';
 import '../providers/viewmodels/voice_viewmodel.dart';
 import '../providers/voice_trigger_provider.dart';
 import '../services/azure_speech_service.dart';
@@ -112,6 +113,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _bootstrapStarted = true;
 
     Logger.info('Starting bootstrap...', tag: _tag);
+
+    // Ensure daily content generation starts on app open.
+    ref.read(dailyContentViewModelProvider.notifier);
 
     // Trigger the bootstrap by reading the FutureProvider
     // The result will be available via ref.watch(bootstrapResultProvider)

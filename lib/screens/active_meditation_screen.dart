@@ -1,38 +1,75 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:just_audio/just_audio.dart';
 import '../constants/theme_constants.dart';
 import '../models/tracking/meditation_log.dart';
-import '../widgets/effects/breathing_card.dart';
+import '../utils/logger.dart';
 import 'meditation_completion_screen.dart';
 
+/// Active Meditation Screen - Two-tone hero card design
+/// Top: LLM-generated image with timer overlay
+/// Bottom: Playback controls + waveform
 class ActiveMeditationScreen extends StatefulWidget {
   final String title;
   final int durationSeconds;
   final MeditationType type;
+  final String? audioPath;
+  final String? imagePath;
 
   const ActiveMeditationScreen({
     super.key,
     required this.title,
     required this.durationSeconds,
     required this.type,
+    this.audioPath,
+    this.imagePath,
   });
 
   @override
   State<ActiveMeditationScreen> createState() => _ActiveMeditationScreenState();
 }
 
-class _ActiveMeditationScreenState extends State<ActiveMeditationScreen> {
+class _ActiveMeditationScreenState extends State<ActiveMeditationScreen>
+    with SingleTickerProviderStateMixin {
   late Timer _timer;
   late int _remainingSeconds;
   bool _isPlaying = true;
   bool _isMuted = false;
+  late final AudioPlayer _audioPlayer;
+  bool _audioReady = false;
+  late AnimationController _waveformController;
 
   @override
   void initState() {
     super.initState();
+    _audioPlayer = AudioPlayer();
     _remainingSeconds = widget.durationSeconds;
+    _waveformController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
     _startTimer();
+    _prepareAudio();
+  }
+
+  Future<void> _prepareAudio() async {
+    final path = widget.audioPath;
+    if (path == null || path.isEmpty) return;
+
+    try {
+      await _audioPlayer.setFilePath(path);
+      _audioReady = true;
+      await _audioPlayer.setVolume(_isMuted ? 0.0 : 1.0);
+      if (_isPlaying) {
+        await _audioPlayer.play();
+      }
+    } catch (e) {
+      Logger.warning('Failed to load meditation audio: $e',
+          tag: 'ActiveMeditation');
+    }
   }
 
   void _startTimer() {
@@ -51,6 +88,9 @@ class _ActiveMeditationScreenState extends State<ActiveMeditationScreen> {
 
   void _finishSession() {
     _timer.cancel();
+    if (_audioReady) {
+      _audioPlayer.stop();
+    }
     // Navigate to completion screen
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
@@ -58,8 +98,8 @@ class _ActiveMeditationScreenState extends State<ActiveMeditationScreen> {
           sessionTitle: widget.title,
           durationMinutes: (widget.durationSeconds / 60).round(),
           type: widget.type,
-          startTime:
-              DateTime.now().subtract(Duration(seconds: widget.durationSeconds)),
+          startTime: DateTime.now()
+              .subtract(Duration(seconds: widget.durationSeconds)),
         ),
       ),
     );
@@ -69,22 +109,39 @@ class _ActiveMeditationScreenState extends State<ActiveMeditationScreen> {
     setState(() {
       _isPlaying = !_isPlaying;
     });
+
+    if (_audioReady) {
+      if (_isPlaying) {
+        _audioPlayer.play();
+      } else {
+        _audioPlayer.pause();
+      }
+    }
   }
 
   void _toggleMute() {
     setState(() {
       _isMuted = !_isMuted;
     });
+
+    if (_audioReady) {
+      _audioPlayer.setVolume(_isMuted ? 0.0 : 1.0);
+    }
   }
 
   void _endSessionEarly() {
     _timer.cancel();
+    if (_audioReady) {
+      _audioPlayer.stop();
+    }
     Navigator.of(context).pop();
   }
 
   @override
   void dispose() {
     _timer.cancel();
+    _waveformController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -96,167 +153,241 @@ class _ActiveMeditationScreenState extends State<ActiveMeditationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final bottomPanelHeight = screenHeight * 0.35;
+
     return Scaffold(
-      backgroundColor: ThemeConstants.panelWhite,
-      body: SafeArea(
-        child: Column(
+      backgroundColor: ThemeConstants.deepNavy,
+      body: Stack(
+        children: [
+          // Top Section: Image with timer overlay
+          Positioned(
+            top: 0,
+            left: 8,
+            right: 8,
+            bottom: bottomPanelHeight - 32,
+            child: _buildHeroImage(),
+          ),
+
+          // Bottom Panel: Controls
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: bottomPanelHeight,
+            child: _buildBottomPanel(),
+          ),
+
+          // Close button overlay
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            child: _buildCloseButton(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroImage() {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(48),
+        color: ThemeConstants.darkTeal,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(48),
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            // Top Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
+            // Background image or gradient
+            if (widget.imagePath != null && widget.imagePath!.isNotEmpty)
+              Image.file(
+                File(widget.imagePath!),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildDefaultBackground(),
+              )
+            else
+              _buildDefaultBackground(),
+
+            // Gradient overlay for readability
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.3),
+                    Colors.black.withValues(alpha: 0.6),
+                  ],
+                ),
+              ),
+            ),
+
+            // Timer and title
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.close, color: ThemeConstants.textSecondary),
-                    onPressed: _endSessionEarly,
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Meditation Session',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: ThemeConstants.textSecondary,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(width: 48), // Balance for close button
+                  const SizedBox(height: 24),
+                  Text(
+                    _formatTime(_remainingSeconds),
+                    style: GoogleFonts.inter(
+                      fontSize: 72,
+                      fontWeight: FontWeight.w200,
+                      color: Colors.white,
+                      fontFeatures: [const FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isPlaying ? 'Breathe' : 'Paused',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white70,
+                    ),
+                  ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 48),
-
-            // Title
-            Text(
-              widget.title,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: ThemeConstants.textOnLight,
-              ),
-            ),
-
-            const Spacer(),
-
-            // Breathing Card Visualization
-            Center(
-              child: SizedBox(
-                width: 300,
-                height: 300,
-                child: BreathingCard(
-                  borderRadius: 150, // Circular
-                  animate: _isPlaying,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _formatTime(_remainingSeconds),
-                          style: GoogleFonts.inter(
-                            fontSize: 48,
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white,
-                            fontFeatures: [const FontFeature.tabularFigures()],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.type == MeditationType.breathing
-                              ? 'Inhale slowly' // Placeholder logic
-                              : 'Breathe',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const Spacer(),
-
-            // Waveform visual placeholder
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: SizedBox(
-                height: 40,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: List.generate(
-                    20,
-                    (index) => Container(
-                      width: 4,
-                      height: 10 + (index % 5) * 6.0,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      decoration: BoxDecoration(
-                        color: ThemeConstants.polyPurple200.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 48),
-
-            // Controls
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildControlButton(
-                  icon: _isMuted ? Icons.volume_off : Icons.volume_up,
-                  onPressed: _toggleMute,
-                  isSecondary: true,
-                ),
-                const SizedBox(width: 32),
-                _buildControlButton(
-                  icon: _isPlaying ? Icons.pause : Icons.play_arrow,
-                  onPressed: _togglePlayPause,
-                  isLarge: true,
-                  isSecondary: false,
-                ),
-                const SizedBox(width: 32),
-                _buildControlButton(
-                  icon: Icons.skip_next,
-                  onPressed: _finishSession, // For testing/skipping
-                  isSecondary: true,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 48),
-
-            // Instructional text
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                'Inhale slowly through your nose, filling your lungs completely with fresh energy',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: ThemeConstants.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDefaultBackground() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ThemeConstants.darkTeal,
+            ThemeConstants.steelBlue,
+            ThemeConstants.deepNavy,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomPanel() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x15000000),
+            blurRadius: 20,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Column(
+            children: [
+              // Waveform visualization
+              _buildWaveform(),
+              const Spacer(),
+
+              // Playback controls
+              _buildControls(),
+              const SizedBox(height: 16),
+
+              // Session info
+              Text(
+                widget.type.displayName,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: ThemeConstants.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWaveform() {
+    return AnimatedBuilder(
+      animation: _waveformController,
+      builder: (context, child) {
+        return SizedBox(
+          height: 48,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: List.generate(32, (index) {
+              final phase =
+                  (_waveformController.value * 2 * pi) + (index * 0.3);
+              final height = _isPlaying
+                  ? 12 + (16 * (0.5 + 0.5 * sin(phase)).abs())
+                  : 12.0;
+              return Container(
+                width: 3,
+                height: height,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: ThemeConstants.steelBlue.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildControls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Mute button
+        _buildControlButton(
+          icon: _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+          onPressed: _toggleMute,
+          isSecondary: true,
+        ),
+        const SizedBox(width: 40),
+
+        // Play/Pause button
+        _buildControlButton(
+          icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          onPressed: _togglePlayPause,
+          isLarge: true,
+        ),
+        const SizedBox(width: 40),
+
+        // Skip button
+        _buildControlButton(
+          icon: Icons.skip_next_rounded,
+          onPressed: _finishSession,
+          isSecondary: true,
+        ),
+      ],
     );
   }
 
@@ -269,26 +400,49 @@ class _ActiveMeditationScreenState extends State<ActiveMeditationScreen> {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: isLarge ? 80 : 48,
-        height: isLarge ? 80 : 48,
+        width: isLarge ? 72 : 48,
+        height: isLarge ? 72 : 48,
         decoration: BoxDecoration(
-          color: isLarge ? ThemeConstants.polyPurple300 : Colors.transparent,
+          color: isLarge ? ThemeConstants.deepNavy : Colors.transparent,
           shape: BoxShape.circle,
-          border: isSecondary ? Border.all(color: ThemeConstants.polyPurple200) : null,
+          border: isSecondary
+              ? Border.all(
+                  color: ThemeConstants.steelBlue.withValues(alpha: 0.3),
+                  width: 1.5)
+              : null,
           boxShadow: isLarge
               ? [
                   BoxShadow(
-                    color: ThemeConstants.polyPurple300.withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    color: ThemeConstants.deepNavy.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   )
                 ]
               : null,
         ),
         child: Icon(
           icon,
-          color: isLarge ? Colors.white : ThemeConstants.polyPurple300,
-          size: isLarge ? 40 : 24,
+          color: isLarge ? Colors.white : ThemeConstants.steelBlue,
+          size: isLarge ? 36 : 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCloseButton() {
+    return GestureDetector(
+      onTap: _endSessionEarly,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.close_rounded,
+          color: Colors.white,
+          size: 24,
         ),
       ),
     );

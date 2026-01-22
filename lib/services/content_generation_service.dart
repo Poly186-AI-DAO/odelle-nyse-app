@@ -178,7 +178,8 @@ class ContentGenerationService {
     // Wait for all parallel tasks
     await Future.wait(futures);
 
-    Logger.info('Initial generation complete', tag: _tag, data: _resultMap(results));
+    Logger.info('Initial generation complete',
+        tag: _tag, data: _resultMap(results));
     return results;
   }
 
@@ -382,6 +383,7 @@ Make them powerful, personal, and actionable.
         systemPrompt:
             'Generate mantras in valid JSON array format only. No markdown.',
         maxTokens: 2000,
+        responseFormat: 'json',
       );
 
       final mantras = jsonDecode(response) as List;
@@ -453,6 +455,7 @@ Return JSON array with:
         prompt: prompt,
         systemPrompt: 'Generate exercises in valid JSON array format only.',
         maxTokens: 3000,
+        responseFormat: 'json',
       );
 
       final exercises = jsonDecode(response) as List;
@@ -563,6 +566,7 @@ Include RPE guidelines for main lifts.
         prompt: prompt,
         systemPrompt: 'Generate workout plans in valid JSON format only.',
         maxTokens: 1500,
+        responseFormat: 'json',
       );
 
       final workout = jsonDecode(response) as Map<String, dynamic>;
@@ -631,6 +635,7 @@ Return JSON:
         prompt: prompt,
         systemPrompt: 'Generate meditation scripts in valid JSON format only.',
         maxTokens: 2000,
+        responseFormat: 'json',
       );
 
       final meditation = jsonDecode(response) as Map<String, dynamic>;
@@ -750,6 +755,7 @@ Return JSON:
         prompt: prompt,
         systemPrompt: 'Generate meal suggestions in valid JSON format only.',
         maxTokens: 600,
+        responseFormat: 'json',
       );
 
       final meal = jsonDecode(response) as Map<String, dynamic>;

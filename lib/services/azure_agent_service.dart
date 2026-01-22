@@ -277,6 +277,77 @@ class ChatCompletionResponse {
   }
 }
 
+/// Streaming event types
+enum StreamEventType {
+  /// Content chunk (regular output)
+  content,
+
+  /// Reasoning/thinking content
+  thinking,
+
+  /// Stream finished
+  done,
+
+  /// Usage statistics
+  usage,
+
+  /// Error occurred
+  error,
+}
+
+/// A streaming event from chat completions
+class StreamEvent {
+  final StreamEventType type;
+  final String? content;
+  final String? finishReason;
+  final int? promptTokens;
+  final int? completionTokens;
+  final int? totalTokens;
+  final String? error;
+
+  const StreamEvent({
+    required this.type,
+    this.content,
+    this.finishReason,
+    this.promptTokens,
+    this.completionTokens,
+    this.totalTokens,
+    this.error,
+  });
+
+  factory StreamEvent.content(String content) => StreamEvent(
+        type: StreamEventType.content,
+        content: content,
+      );
+
+  factory StreamEvent.thinking(String content) => StreamEvent(
+        type: StreamEventType.thinking,
+        content: content,
+      );
+
+  factory StreamEvent.done(String? finishReason) => StreamEvent(
+        type: StreamEventType.done,
+        finishReason: finishReason,
+      );
+
+  factory StreamEvent.usage({
+    required int promptTokens,
+    required int completionTokens,
+    required int totalTokens,
+  }) =>
+      StreamEvent(
+        type: StreamEventType.usage,
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
+        totalTokens: totalTokens,
+      );
+
+  factory StreamEvent.error(String message) => StreamEvent(
+        type: StreamEventType.error,
+        error: message,
+      );
+}
+
 /// Callback type for executing tool calls
 typedef ToolExecutor = Future<String> Function(
     String name, Map<String, dynamic>? args);
@@ -500,12 +571,14 @@ class AzureAgentService {
 
   /// Quick helper for simple one-shot completions (no tools)
   /// Uses the faster/cheaper nano model by default
+  /// Set [responseFormat] to 'json' to force JSON output (no markdown wrapping)
   Future<String> complete({
     required String prompt,
     String? systemPrompt,
     AzureAIDeployment deployment = AzureAIDeployment.gpt5Nano,
     double? temperature,
     int? maxTokens,
+    String? responseFormat,
   }) async {
     final messages = <ChatMessage>[
       if (systemPrompt != null) ChatMessage.system(systemPrompt),
@@ -517,9 +590,177 @@ class AzureAgentService {
       deployment: deployment,
       temperature: temperature,
       maxTokens: maxTokens,
+      responseFormat: responseFormat,
     );
 
     return response.message.content ?? '';
+  }
+
+  /// Helper to extract JSON from LLM responses that may be wrapped in markdown
+  /// Use this for older models or when response_format isn't available
+  static String extractJson(String response) {
+    var clean = response.trim();
+    // Strip markdown code fences if present
+    if (clean.startsWith('```')) {
+      clean = clean
+          .replaceAll(RegExp(r'^```\w*\n?'), '')
+          .replaceAll(RegExp(r'\n?```$'), '');
+    }
+    return clean.trim();
+  }
+
+  /// Stream chat completions with real-time token output
+  /// [messages] - Conversation history
+  /// [deployment] - Which model to use
+  /// [reasoningEffort] - Reasoning effort level (for reasoning models)
+  /// Returns a Stream of StreamEvent objects
+  Stream<StreamEvent> chatStream({
+    required List<ChatMessage> messages,
+    AzureAIDeployment deployment = AzureAIDeployment.gpt5Chat,
+    String? reasoningEffort,
+  }) async* {
+    if (!_isInitialized) {
+      yield StreamEvent.error('AzureAgentService not initialized');
+      return;
+    }
+
+    final uri = AzureAIConfig.buildChatCompletionsUri(
+      endpoint: _endpoint,
+      deployment: deployment,
+    );
+
+    final body = <String, dynamic>{
+      'messages': messages.map((m) => m.toJson()).toList(),
+      'stream': true,
+      'stream_options': {'include_usage': true},
+    };
+
+    // Add reasoning effort if specified
+    if (reasoningEffort != null) {
+      body['reasoning_effort'] = reasoningEffort;
+    }
+
+    Logger.info(
+      'Starting streaming chat request to ${deployment.deploymentName}',
+      tag: _tag,
+      data: {'messageCount': messages.length},
+    );
+
+    bool isThinking = false;
+
+    try {
+      final request = http.Request('POST', uri);
+      request.headers['Content-Type'] = 'application/json';
+      request.headers['api-key'] = _apiKey;
+      request.headers['Accept'] = 'text/event-stream';
+      request.body = jsonEncode(body);
+
+      final streamedResponse = await _client.send(request);
+
+      if (streamedResponse.statusCode != 200) {
+        final body = await streamedResponse.stream.bytesToString();
+        Logger.error(
+          'Streaming chat request failed',
+          tag: _tag,
+          data: {'status': streamedResponse.statusCode, 'body': body},
+        );
+        yield StreamEvent.error(
+          'Chat request failed: ${streamedResponse.statusCode}',
+        );
+        return;
+      }
+
+      // Process SSE stream
+      await for (final chunk
+          in streamedResponse.stream.transform(utf8.decoder)) {
+        // SSE sends data as "data: {...}\n\n" or "data: [DONE]\n\n"
+        for (final line in chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+
+          final data = line.substring(6).trim();
+          if (data.isEmpty) continue;
+          if (data == '[DONE]') {
+            yield StreamEvent.done(null);
+            return;
+          }
+
+          try {
+            final json = jsonDecode(data) as Map<String, dynamic>;
+
+            // Check for usage stats (final chunk)
+            if (json['usage'] != null) {
+              final usage = json['usage'] as Map<String, dynamic>;
+              yield StreamEvent.usage(
+                promptTokens: usage['prompt_tokens'] as int? ?? 0,
+                completionTokens: usage['completion_tokens'] as int? ?? 0,
+                totalTokens: usage['total_tokens'] as int? ?? 0,
+              );
+              continue;
+            }
+
+            // Process choices
+            final choices = json['choices'] as List?;
+            if (choices == null || choices.isEmpty) continue;
+
+            final choice = choices.first as Map<String, dynamic>;
+            final delta = choice['delta'] as Map<String, dynamic>?;
+            final finishReason = choice['finish_reason'] as String?;
+
+            if (finishReason != null) {
+              yield StreamEvent.done(finishReason);
+              continue;
+            }
+
+            if (delta == null) continue;
+
+            // Check for reasoning content (thinking tokens)
+            final reasoningContent = delta['reasoning_content'] as String?;
+            if (reasoningContent != null && reasoningContent.isNotEmpty) {
+              yield StreamEvent.thinking(reasoningContent);
+              continue;
+            }
+
+            // Check for regular content
+            final content = delta['content'] as String?;
+            if (content != null && content.isNotEmpty) {
+              // Handle <think>...</think> tags for models that use them
+              if (content.contains('<think>')) {
+                isThinking = true;
+                final afterTag = content.split('<think>').last;
+                if (afterTag.isNotEmpty) {
+                  yield StreamEvent.thinking(afterTag);
+                }
+                continue;
+              }
+              if (content.contains('</think>')) {
+                isThinking = false;
+                final afterTag = content.split('</think>').last;
+                if (afterTag.isNotEmpty) {
+                  yield StreamEvent.content(afterTag);
+                }
+                continue;
+              }
+
+              if (isThinking) {
+                yield StreamEvent.thinking(content);
+              } else {
+                yield StreamEvent.content(content);
+              }
+            }
+          } catch (e) {
+            // Skip malformed JSON chunks
+            Logger.debug('Skipping malformed SSE chunk: $e', tag: _tag);
+          }
+        }
+      }
+
+      yield StreamEvent.done(null);
+    } catch (e, stackTrace) {
+      Logger.error('Streaming chat error: $e', tag: _tag, data: {
+        'stackTrace': stackTrace.toString(),
+      });
+      yield StreamEvent.error(e.toString());
+    }
   }
 
   /// Dispose resources

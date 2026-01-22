@@ -1,45 +1,30 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/theme_constants.dart';
-import '../models/tracking/meditation_log.dart';
+import '../providers/viewmodels/viewmodels.dart';
 import '../widgets/atoms/odelle_button.dart';
 import 'meditation_detail_screen.dart';
 
-class MeditationScreen extends StatefulWidget {
+class MeditationScreen extends ConsumerStatefulWidget {
   const MeditationScreen({super.key});
 
   @override
-  State<MeditationScreen> createState() => _MeditationScreenState();
+  ConsumerState<MeditationScreen> createState() => _MeditationScreenState();
 }
 
-class _MeditationScreenState extends State<MeditationScreen> {
-  // Mock data for suggestions
-  final List<Map<String, dynamic>> _suggestions = [
-    {
-      'title': 'Gentle Grounding',
-      'duration': 10,
-      'type': MeditationType.mindfulness,
-      'tags': ['Calm', 'Breath', 'Presence'],
-      'image': 'assets/images/meditation_grounding.png', // Placeholder
-    },
-    {
-      'title': 'Sleep Preparation',
-      'duration': 15,
-      'type': MeditationType.bodyScan,
-      'tags': ['Sleep', 'Relax', 'Body Scan'],
-      'image': 'assets/images/meditation_sleep.png', // Placeholder
-    },
-    {
-      'title': 'Morning Energy',
-      'duration': 5,
-      'type': MeditationType.breathing,
-      'tags': ['Energy', 'Focus', 'Morning'],
-      'image': 'assets/images/meditation_morning.png', // Placeholder
-    },
-  ];
-
+class _MeditationScreenState extends ConsumerState<MeditationScreen> {
   @override
   Widget build(BuildContext context) {
+    final dailyState = ref.watch(dailyContentViewModelProvider);
+    final meditations = dailyState.meditations;
+    final featured = meditations.isNotEmpty ? meditations.first : null;
+    final suggestions = meditations.length > 1
+        ? meditations.sublist(1)
+        : const <DailyMeditation>[];
+
     return Scaffold(
       backgroundColor: ThemeConstants.panelWhite,
       appBar: AppBar(
@@ -85,7 +70,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildFeaturedCard(),
+            if (featured != null)
+              _buildFeaturedCard(featured)
+            else
+              _buildEmptyCard('Today\'s meditation is still generating...'),
             const SizedBox(height: 32),
 
             // Suggestions List
@@ -97,7 +85,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            ..._suggestions.map((data) => _buildSuggestionCard(data)),
+            if (suggestions.isEmpty)
+              _buildEmptyCard('Meditation suggestions are on the way.')
+            else
+              ...suggestions.map((data) => _buildSuggestionCard(data)),
           ],
         ),
       ),
@@ -165,8 +156,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
     );
   }
 
-  Widget _buildFeaturedCard() {
-    final data = _suggestions[0];
+  Widget _buildFeaturedCard(DailyMeditation data) {
     return GestureDetector(
       onTap: () => _navigateToDetail(data),
       child: Container(
@@ -190,7 +180,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  data['title'],
+                  data.title,
                   style: GoogleFonts.inter(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -198,7 +188,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
                   ),
                 ),
                 Text(
-                  '${data['duration']} mins',
+                  '${data.durationMinutes} mins',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -209,7 +199,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Release the weight of the day and settle into peaceful stillness. A gentle guided journey to help you transition into rest.',
+              data.description,
               style: GoogleFonts.inter(
                 fontSize: 14,
                 color: ThemeConstants.textSecondary,
@@ -219,24 +209,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
             const SizedBox(height: 20),
             Wrap(
               spacing: 8,
-              children: (data['tags'] as List).map<Widget>((tag) {
-                return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    tag,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: ThemeConstants.textSecondary,
-                    ),
-                  ),
-                );
-              }).toList(),
+              children: [
+                _buildTag(data.type),
+                _buildTag('${data.durationMinutes} min'),
+              ],
             ),
             const SizedBox(height: 24),
             OdelleButtonFullWidth.primary(
@@ -249,7 +225,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
     );
   }
 
-  Widget _buildSuggestionCard(Map<String, dynamic> data) {
+  Widget _buildSuggestionCard(DailyMeditation data) {
     return GestureDetector(
       onTap: () => _navigateToDetail(data),
       child: Container(
@@ -269,10 +245,9 @@ class _MeditationScreenState extends State<MeditationScreen> {
                 color: ThemeConstants.polyMint400.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.self_improvement,
-                color: ThemeConstants.polyMint400,
-                size: 32,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _buildThumbnail(data.imagePath),
               ),
             ),
             const SizedBox(width: 16),
@@ -281,7 +256,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    data['title'],
+                    data.title,
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -290,7 +265,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${data['duration']} mins • ${(data['type'] as MeditationType).displayName}',
+                    '${data.durationMinutes} mins • ${data.meditationType.displayName}',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: ThemeConstants.textSecondary,
@@ -309,13 +284,69 @@ class _MeditationScreenState extends State<MeditationScreen> {
     );
   }
 
-  void _navigateToDetail(Map<String, dynamic> data) {
+  void _navigateToDetail(DailyMeditation data) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => MeditationDetailScreen(
-          title: data['title'],
-          duration: data['duration'],
-          type: data['type'],
+          title: data.title,
+          duration: data.durationMinutes,
+          type: data.meditationType,
+          audioPath: data.audioPath,
+          imagePath: data.imagePath,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: ThemeConstants.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnail(String? imagePath) {
+    if (imagePath != null && File(imagePath).existsSync()) {
+      return Image.file(
+        File(imagePath),
+        fit: BoxFit.cover,
+      );
+    }
+
+    return Center(
+      child: Icon(
+        Icons.self_improvement,
+        color: ThemeConstants.polyMint400,
+        size: 28,
+      ),
+    );
+  }
+
+  Widget _buildEmptyCard(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: ThemeConstants.glassBorderWeak),
+      ),
+      child: Text(
+        message,
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          color: ThemeConstants.textSecondary,
         ),
       ),
     );

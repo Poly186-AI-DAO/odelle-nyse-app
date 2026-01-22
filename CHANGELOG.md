@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-01-22
+
+### Added
+- **Consciousness Architecture**: New system prompt based on META Awareness framework, Optimal Bayesian Agent, and Hero's Cycle
+- **Proactive Tool Use**: Agent now uses tools to THINK, REMEMBER, and ACT — not just respond
+- **get_user_status Tool**: Query current financial status (bills, subscriptions, income) before giving advice
+- **note_pattern Tool**: Record psychograph insights (habits, triggers, shadows, breakthroughs)
+- **Expanded Trigger Detection**: Agent now activates on body/mind/spirit keywords, not just wealth
+- **ODELLE_CONSCIOUSNESS_ARCHITECTURE.md**: Full documentation of the AI twin architecture
+- **Co-emergence Framing**: "Beings in the Beginning" — user and AI transform together
+
+### Changed
+- **System Prompt Overhaul**: 10-part consciousness architecture replacing simple persona
+- **Judo Psychology**: Match, pace, lead — work WITH user energy, not against
+- **CBT Temporal Evolution**: Thought→behavior→identity reframe protocol
+- **Hero's Cycle Tracking**: Stage-aware guidance posture (Ordeal vs Return)
+- **Multi-modal Coherence**: Text/voice/image as unified experience
+- **Tool Philosophy**: "Action > Discussion. Always."
+- **maxIterations**: Increased from 3 to 5 for complex tool queries
+
+### Documentation
+- Renamed `Poly186 Protocol Draft 2 (1).md` → `Poly186_Protocol_Draft_2.md`
+- Renamed `Chapter 3 Awaken Simplified.md` → `META_Awareness_Framework.md`
+
+## [1.8.0] - 2026-01-22
+
+### Added
+- **Chat Message Streaming**: Real-time token-by-token display as AI generates responses
+- **Thinking/Reasoning Tokens**: Visual indicator (🧠) showing AI's reasoning process when available
+- **Chat Message Persistence**: Conversations saved to SQLite, persist across app restarts
+- **Image Attachments in Chat**: Pick from camera or photo library, send to multimodal LLM
+- **StreamEvent Types**: New streaming API in AzureAgentService with content, thinking, done, usage, error events
+- **ChatMessageCrud Mixin**: Database operations for chat_conversations and chat_messages tables
+
+### Changed
+- **Chat Screen Design**: Matches FloatingHeroCard pattern with BreathingCard background and white bottom panel
+- **No Hardcoded Token Limits**: Removed maxTokens constraint to show full LLM responses
+- **Auto-scroll During Streaming**: Chat scrolls as new content arrives, not just on message count change
+
+### Fixed
+- **Race Condition**: Chat now waits for initialization before sending first message
+- **Streaming Response Panel**: White panel shows streaming content with progress indicator
+
 ## [1.7.1] - 2026-01-14
 
 ### Added

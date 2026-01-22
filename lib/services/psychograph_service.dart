@@ -200,6 +200,7 @@ Respond with ONLY a JSON object:
         deployment: AzureAIDeployment.gpt5Nano, // Processing (JSON parsing)
         temperature: 0.3,
         maxTokens: 1000, // Nano needs min 1000
+        responseFormat: 'json',
       );
 
       final result = jsonDecode(response) as Map<String, dynamic>;
@@ -288,6 +289,7 @@ Respond with JSON array:
         deployment: AzureAIDeployment.gpt5Chat, // Quality for user content
         temperature: 0.6,
         maxTokens: 800, // Multiple insights
+        responseFormat: 'json',
       );
 
       final insightsList = jsonDecode(response) as List;
@@ -302,8 +304,14 @@ Respond with JSON array:
 
   /// Extract archetypes from loaded data
   List<String> _extractArchetypes() {
-    if (_characterStats?['archetypes'] != null) {
-      return List<String>.from(_characterStats!['archetypes']);
+    final archetypes = _characterStats?['archetypes'];
+    if (archetypes != null) {
+      // Handle both Map and List formats
+      if (archetypes is Map) {
+        return List<String>.from(archetypes.values);
+      } else if (archetypes is Iterable) {
+        return List<String>.from(archetypes);
+      }
     }
     // Default from Princeps_Prime
     return ['Hero', 'Creator', 'Magician'];

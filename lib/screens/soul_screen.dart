@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,10 +7,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../constants/theme_constants.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
+import '../providers/service_providers.dart';
 import '../providers/viewmodels/viewmodels.dart';
+import '../services/psychograph_service.dart';
 
 import 'chat_screen.dart';
-import 'mantra_screen.dart';
+import 'meditation_detail_screen.dart';
 import 'meditation_screen.dart';
 
 class SoulScreen extends ConsumerStatefulWidget {
@@ -21,6 +25,9 @@ class SoulScreen extends ConsumerStatefulWidget {
 }
 
 class _SoulScreenState extends ConsumerState<SoulScreen> {
+  final PageController _mantraController =
+      PageController(viewportFraction: 0.9);
+
   @override
   void initState() {
     super.initState();
@@ -31,9 +38,18 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
   }
 
   @override
+  void dispose() {
+    _mantraController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = ref.watch(mindViewModelProvider);
     final viewModel = ref.read(mindViewModelProvider.notifier);
+    final dailyState = ref.watch(dailyContentViewModelProvider);
+    final psychographState = ref.watch(psychographStateStreamProvider);
+    final prophecyState = ref.watch(dailyProphecyProvider);
 
     final screenHeight = MediaQuery.of(context).size.height;
     final safeTop = MediaQuery.of(context).padding.top;
@@ -66,7 +82,14 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
       bottomPanelProgressChanged: (progress) {
         viewModel.setPanelProgress(progress);
       },
-      bottomPanel: _buildBottomPanelContent(context, state, viewModel),
+      bottomPanel: _buildBottomPanelContent(
+        context,
+        state,
+        viewModel,
+        dailyState,
+        psychographState,
+        prophecyState,
+      ),
       child: SafeArea(
         bottom: false,
         child: Stack(
@@ -370,15 +393,24 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
 
   /// Bottom panel content
   Widget _buildBottomPanelContent(
-      BuildContext context, MindState state, MindViewModel viewModel) {
+    BuildContext context,
+    MindState state,
+    MindViewModel viewModel,
+    DailyContentState dailyState,
+    AsyncValue<PsychographState> psychographState,
+    AsyncValue<String> prophecyState,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildHeaderRow(context, dailyState.isGenerating),
+        const SizedBox(height: 16),
+
         // HealthKit Quick Stats
         // Show if we have any data
         if (state.mindfulMinutes != null || state.restingHeartRate != null) ...[
           _buildHealthKitMindStats(state),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
         ],
 
         // Schedule / Week Day Picker
@@ -387,8 +419,15 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
           headerText: "Your day ahead",
           onDateSelected: (date) {
             viewModel.selectDate(date);
+            ref.read(dailyContentViewModelProvider.notifier).refreshForDate(date);
           },
         ),
+
+        const SizedBox(height: 16),
+
+        _buildSectionHeader('DAILY MANTRAS'),
+        const SizedBox(height: 12),
+        _buildMantraStacker(dailyState),
 
         const SizedBox(height: 20),
 
@@ -397,54 +436,518 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
 
         const SizedBox(height: 24),
 
-        // Protocols
-        _buildSectionHeader('OPEN PROTOCOLS'),
+        _buildSectionHeader('MEDITATION CARDS'),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-                child: _buildProtocolButton(
-                    'NTS', Icons.sticky_note_2_outlined, Colors.amber, () {
-              // Note to Self - digital twin reflection
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const ChatScreen(),
+        _buildMeditationCards(context, dailyState),
+
+        const SizedBox(height: 24),
+
+        _buildSectionHeader('INSIGHTS'),
+        const SizedBox(height: 12),
+        _buildInsightCards(psychographState),
+
+        const SizedBox(height: 24),
+
+        _buildSectionHeader('DAILY PROPHECY'),
+        const SizedBox(height: 12),
+        _buildProphecyCard(prophecyState),
+      ],
+    );
+  }
+
+  Widget _buildHeaderRow(BuildContext context, bool isGenerating) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Let\'s make progress today',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeConstants.textOnLight,
                 ),
-              );
-            })),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _buildProtocolButton(
-                    'Breathe', Icons.air, Colors.cyan, () {})),
-          ],
+              ),
+              if (isGenerating)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Generating your daily content...',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: ThemeConstants.textSecondary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(width: 12),
         Row(
           children: [
-            Expanded(
-                child: _buildProtocolButton(
-                    'Mantras', Icons.auto_awesome, ThemeConstants.polyMint400,
-                    () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const MantraScreen(),
-                ),
-              );
-            })),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _buildProtocolButton('Meditate', Icons.self_improvement,
-                    ThemeConstants.polyPurple300, () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const MeditationScreen(),
-                ),
-              );
-            })),
+            _buildHeaderAction(
+              icon: Icons.self_improvement,
+              label: 'Meditate',
+              color: ThemeConstants.polyPurple300,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const MeditationScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            _buildHeaderAction(
+              icon: Icons.chat_bubble_outline,
+              label: 'NTS',
+              color: ThemeConstants.accentBlue,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ChatScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            _buildHeaderAction(
+              icon: Icons.auto_fix_high,
+              label: 'Prophecy',
+              color: const Color(0xFFF59E0B),
+              onTap: _showProphecySheet,
+            ),
           ],
         ),
       ],
     );
+  }
+
+  Widget _buildHeaderAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconBadge(
+            icon: icon,
+            color: color,
+            size: 34,
+            iconSize: 18,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMantraStacker(DailyContentState dailyState) {
+    final mantras = dailyState.mantras;
+    if (mantras.isEmpty) {
+      return _buildEmptyPanelCard('Daily mantras are warming up...');
+    }
+
+    return SizedBox(
+      height: 140,
+      child: PageView.builder(
+        controller: _mantraController,
+        itemCount: mantras.length,
+        itemBuilder: (context, index) {
+          final text = mantras[index];
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      ThemeConstants.polyMint400.withValues(alpha: 0.12),
+                      ThemeConstants.polyPurple200.withValues(alpha: 0.08),
+                    ],
+                  ),
+                  border: Border.all(
+                      color: ThemeConstants.glassBorderWeak.withValues(alpha: 0.6)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.auto_awesome_outlined,
+                          size: 16,
+                          color: ThemeConstants.polyMint400,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'DAILY MANTRA',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.4,
+                            color: ThemeConstants.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: Text(
+                        '"$text"',
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: ThemeConstants.textOnLight,
+                          height: 1.3,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Swipe for more',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: ThemeConstants.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMeditationCards(
+    BuildContext context,
+    DailyContentState dailyState,
+  ) {
+    final meditations = dailyState.meditations;
+    if (meditations.isEmpty) {
+      return _buildEmptyPanelCard('Meditation cards are preparing...');
+    }
+
+    return SizedBox(
+      height: 220,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: meditations.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final meditation = meditations[index];
+          return _buildMeditationCard(context, meditation);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMeditationCard(
+    BuildContext context,
+    DailyMeditation meditation,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MeditationDetailScreen(
+              title: meditation.title,
+              duration: meditation.durationMinutes,
+              type: meditation.meditationType,
+              audioPath: meditation.audioPath,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 190,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: ThemeConstants.glassBorderWeak),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: _buildMeditationImage(meditation.imagePath),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      meditation.title,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: ThemeConstants.textOnLight,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${meditation.durationMinutes} min · ${meditation.type}',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: ThemeConstants.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      meditation.description,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: ThemeConstants.textSecondary,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeditationImage(String? imagePath) {
+    if (imagePath != null && File(imagePath).existsSync()) {
+      return Image.file(
+        File(imagePath),
+        fit: BoxFit.cover,
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ThemeConstants.polyPurple300.withValues(alpha: 0.6),
+            ThemeConstants.deepNavy,
+          ],
+        ),
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.self_improvement,
+          color: Colors.white70,
+          size: 32,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInsightCards(AsyncValue<PsychographState> psychographState) {
+    return psychographState.when(
+      loading: () => _buildEmptyPanelCard('Insights are loading...'),
+      error: (_, __) => _buildEmptyPanelCard('Insights unavailable right now.'),
+      data: (state) {
+        if (state.insights.isEmpty) {
+          return _buildEmptyPanelCard('Insights are calibrating...');
+        }
+
+        return SizedBox(
+          height: 160,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: state.insights.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              return _buildInsightCard(state.insights[index]);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInsightCard(PsychographInsight insight) {
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: ThemeConstants.glassBorderWeak),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: ThemeConstants.polyPurple200.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              insight.category.name.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+                color: ThemeConstants.polyPurple400,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            insight.title,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textOnLight,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            insight.body,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: ThemeConstants.textSecondary,
+              height: 1.3,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProphecyCard(AsyncValue<String> prophecyState) {
+    return prophecyState.when(
+      loading: () => _buildEmptyPanelCard('Prophecy is weaving...'),
+      error: (_, __) => _buildEmptyPanelCard('Prophecy unavailable right now.'),
+      data: (prophecy) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: ThemeConstants.glassBorderWeak),
+          ),
+          child: Text(
+            prophecy,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: ThemeConstants.textSecondary,
+              height: 1.5,
+            ),
+            maxLines: 6,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyPanelCard(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: ThemeConstants.glassBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ThemeConstants.glassBorderWeak),
+      ),
+      child: Text(
+        message,
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          color: ThemeConstants.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showProphecySheet() async {
+    try {
+      final prophecy = await ref.read(dailyProphecyProvider.future);
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Daily Prophecy',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConstants.textOnLight,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  prophecy,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: ThemeConstants.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (_) {
+      if (!mounted) return;
+    }
   }
 
   Widget _buildSectionHeader(String title) {
@@ -455,36 +958,6 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
         fontWeight: FontWeight.w600,
         color: ThemeConstants.textSecondary,
         letterSpacing: 1.5,
-      ),
-    );
-  }
-
-  Widget _buildProtocolButton(
-      String label, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: ThemeConstants.borderRadius,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: ThemeConstants.borderRadius,
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: ThemeConstants.textOnLight,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

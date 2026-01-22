@@ -303,6 +303,187 @@ class DailyContentService {
     }
   }
 
+  /// Generate multiple daily meditations (morning, focus, evening).
+  Future<List<Map<String, dynamic>>> generateDailyMeditations({
+    List<String>? types,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final weather = await _getWeatherContext();
+    final selectedTypes = types ?? const ['morning', 'focus', 'evening'];
+    final results = <Map<String, dynamic>>[];
+
+    for (final type in selectedTypes) {
+      final preset = _buildMeditationPreset(type);
+      try {
+        final script =
+            await _generateMeditationScript(preset.mood, preset.focus, weather);
+        final imagePrompt = await _generateImagePrompt(script, weather);
+
+        String? imagePath;
+        try {
+          final imageResult = await _imageService.generateImage(
+            prompt: imagePrompt,
+            size: ImageSize.portrait,
+          );
+          imagePath = await _saveLocalFile(
+            'meditation_${type}_$today.png',
+            imageResult.bytes,
+          );
+        } catch (e) {
+          Logger.warning('Failed to generate meditation image: $e', tag: _tag);
+        }
+
+        String? audioPath;
+        try {
+          final audioBytes = await _generateAudio(
+            text: script,
+            voiceType: VoiceType.meditation,
+          );
+          audioPath = await _saveLocalFile(
+            'meditation_${type}_$today.mp3',
+            audioBytes,
+          );
+        } catch (e) {
+          Logger.warning('Failed to generate meditation audio: $e', tag: _tag);
+        }
+
+        final description = _summarizeScript(script);
+        final createdAt = DateTime.now().toIso8601String();
+
+        final outputData = {
+          'title': preset.title,
+          'description': description,
+          'type': preset.type,
+          'duration_minutes': preset.durationMinutes,
+          'script': script,
+          'mood': preset.mood,
+          'focus': preset.focus,
+          'imagePath': imagePath,
+          'audioPath': audioPath,
+        };
+
+        final db = await _database.database;
+        await db.insert('generation_queue', {
+          'type': 'meditation',
+          'status': 'completed',
+          'priority': 0,
+          'input_data': jsonEncode({
+            'type': preset.type,
+            'mood': preset.mood,
+            'focus': preset.focus,
+            'weather': weather,
+          }),
+          'output_data': jsonEncode(outputData),
+          'content_date': today,
+          'image_path': imagePath,
+          'audio_path': audioPath,
+          'created_at': createdAt,
+          'completed_at': createdAt,
+        });
+
+        results.add(outputData);
+      } catch (e, stack) {
+        Logger.error('Failed to generate meditation: $e',
+            tag: _tag, error: e, stackTrace: stack);
+      }
+    }
+
+    return results;
+  }
+
+  /// Generate a daily set of mantras and store for today.
+  Future<List<String>> generateDailyMantras({
+    int count = 4,
+    String? mood,
+    String? focus,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final weather = await _getWeatherContext();
+    final seedMantras = _selectSessionMantras(mood, focus);
+    final arch = archetypes;
+
+    final prompt = '''
+Create $count original daily mantras.
+
+Context:
+- Weather: ${weather['emoji']} ${weather['condition']} (${weather['description']})
+- Archetypes: ${arch['ego']}, ${arch['soul']}, ${arch['self']}
+- Mood: ${mood ?? 'Open'}
+- Focus: ${focus ?? 'Presence and awareness'}
+
+Seed inspiration (do not repeat verbatim):
+${seedMantras.map((m) => '- "$m"').join('\n')}
+
+Requirements:
+- First person ("I am...", "I...")
+- 8-16 words each
+- Distinct from each other
+- Return ONLY a JSON array of strings
+''';
+
+    List<String> mantras = [];
+    try {
+      final response = await _agentService.complete(
+        prompt: prompt,
+        deployment: AzureAIDeployment.gpt5Chat,
+        temperature: 0.7,
+        maxTokens: 800,
+        responseFormat: 'json',
+      );
+
+      final decoded = jsonDecode(response) as List;
+      mantras = decoded.map((m) => m.toString()).toList();
+    } catch (e) {
+      Logger.warning('Mantra generation failed, using seed mantras: $e',
+          tag: _tag);
+      mantras = _selectSessionMantras(mood, focus);
+    }
+
+    if (mantras.isEmpty) {
+      mantras = _getDefaultMantras().take(count).toList();
+    }
+    if (mantras.length < count) {
+      final fallback = _getDefaultMantras();
+      var index = 0;
+      while (mantras.length < count && index < fallback.length) {
+        if (!mantras.contains(fallback[index])) {
+          mantras.add(fallback[index]);
+        }
+        index++;
+      }
+    }
+
+    final createdAt = DateTime.now().toIso8601String();
+    final db = await _database.database;
+    await db.insert('generation_queue', {
+      'type': 'mantras',
+      'status': 'completed',
+      'priority': 0,
+      'input_data': jsonEncode({
+        'mood': mood,
+        'focus': focus,
+        'weather': weather,
+      }),
+      'output_data': jsonEncode({'mantras': mantras}),
+      'content_date': today,
+      'created_at': createdAt,
+      'completed_at': createdAt,
+    });
+
+    return mantras;
+  }
+
+  /// Mark today's daily content as generated.
+  Future<void> markGeneratedToday() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    await prefs.setString(_lastGeneratedKey, today);
+  }
+
   /// Get weather context for personalization
   Future<Map<String, dynamic>> _getWeatherContext() async {
     try {
@@ -583,4 +764,63 @@ Return only the affirmation text.
 
   /// Get prime data
   Map<String, dynamic> get primeData => Map.unmodifiable(_primeData);
+
+  _MeditationPreset _buildMeditationPreset(String type) {
+    switch (type) {
+      case 'morning':
+        return const _MeditationPreset(
+          type: 'morning',
+          title: 'Morning Energy',
+          mood: 'energized',
+          focus: 'Set intentions and align your day with clarity.',
+          durationMinutes: 8,
+        );
+      case 'focus':
+        return const _MeditationPreset(
+          type: 'focus',
+          title: 'Focused Reset',
+          mood: 'centered',
+          focus: 'Clear mental fog and return to deep focus.',
+          durationMinutes: 6,
+        );
+      case 'evening':
+        return const _MeditationPreset(
+          type: 'evening',
+          title: 'Evening Release',
+          mood: 'calm',
+          focus: 'Release tension and prepare for restorative rest.',
+          durationMinutes: 12,
+        );
+      default:
+        return const _MeditationPreset(
+          type: 'general',
+          title: 'Daily Meditation',
+          mood: 'open',
+          focus: 'Return to presence and awareness.',
+          durationMinutes: 8,
+        );
+    }
+  }
+
+  String _summarizeScript(String script) {
+    final cleaned = script.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleaned.length <= 140) return cleaned;
+    return '${cleaned.substring(0, 140)}...';
+  }
+}
+
+class _MeditationPreset {
+  final String type;
+  final String title;
+  final String mood;
+  final String focus;
+  final int durationMinutes;
+
+  const _MeditationPreset({
+    required this.type,
+    required this.title,
+    required this.mood,
+    required this.focus,
+    required this.durationMinutes,
+  });
 }

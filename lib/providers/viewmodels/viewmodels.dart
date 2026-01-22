@@ -12,3 +12,4 @@ export 'mind_viewmodel.dart';
 export 'chat_viewmodel.dart';
 export 'wealth_viewmodel.dart';
 export 'bonds_viewmodel.dart';
+export 'daily_content_viewmodel.dart';

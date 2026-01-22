@@ -10,6 +10,7 @@ import '../database/app_database.dart';
 import '../models/tracking/dose_log.dart';
 import '../models/tracking/meal_log.dart';
 import '../models/tracking/supplement.dart';
+import '../models/wealth/wealth.dart';
 import '../utils/logger.dart';
 import 'azure_agent_service.dart';
 import 'user_context_service.dart';
@@ -66,11 +67,21 @@ If an image is provided, use it to identify foods or supplements and estimate qu
 
 Determine the user's intent. Respond with JSON only:
 {
-  "intent": "log_supplement" | "log_meal" | "get_mantra" | "check_progress" | "unknown",
+  "intent": "log_supplement" | "log_meal" | "add_bill" | "add_subscription" | "add_income" | "get_mantra" | "check_progress" | "unknown",
   "supplement_name": "name if logging supplement",
   "meal_description": "description if logging meal",
   "protein_estimate": number if meal,
   "calories_estimate": number if meal,
+  "bill_name": "name if adding bill (e.g. 'Rent', 'Electric')",
+  "bill_amount": number if adding bill,
+  "bill_due_day": day of month (1-31) if adding bill,
+  "bill_frequency": "monthly" | "weekly" | "yearly" if adding bill,
+  "subscription_name": "name if adding subscription (e.g. 'Netflix', 'Gym')",
+  "subscription_amount": number if adding subscription,
+  "subscription_frequency": "monthly" | "yearly" | "weekly" if adding subscription,
+  "income_source": "source if adding income (e.g. 'Salary', 'Freelance')",
+  "income_amount": number if adding income,
+  "income_frequency": "monthly" | "biweekly" | "weekly" if adding income,
   "confidence": 0.0-1.0
 }
 ''';
@@ -123,6 +134,28 @@ Determine the user's intent. Respond with JSON only:
             imageMimeType: imageMimeType,
           );
 
+        case 'add_bill':
+          return await _addBill(
+            intent['bill_name'] as String?,
+            (intent['bill_amount'] as num?)?.toDouble(),
+            intent['bill_due_day'] as int?,
+            intent['bill_frequency'] as String?,
+          );
+
+        case 'add_subscription':
+          return await _addSubscription(
+            intent['subscription_name'] as String?,
+            (intent['subscription_amount'] as num?)?.toDouble(),
+            intent['subscription_frequency'] as String?,
+          );
+
+        case 'add_income':
+          return await _addIncome(
+            intent['income_source'] as String?,
+            (intent['income_amount'] as num?)?.toDouble(),
+            intent['income_frequency'] as String?,
+          );
+
         case 'get_mantra':
           return await _getRandomMantra();
 
@@ -134,7 +167,7 @@ Determine the user's intent. Respond with JSON only:
             success: false,
             type: ActionType.unknown,
             message:
-                "I didn't understand that. Try saying 'log my vitamins' or 'I ate some fruit'.",
+                "I didn't understand that. Try saying 'log my vitamins', 'I ate some fruit', or 'add a bill for rent \$1500 due on the 1st'.",
           );
       }
     } catch (e, stack) {
@@ -199,12 +232,10 @@ Determine the user's intent. Respond with JSON only:
   Future<ActionResult> _logMeal(
     String? description,
     int proteinGrams,
-    int calories,
-    {
-      Uint8List? imageBytes,
-      String? imageMimeType,
-    }
-  ) async {
+    int calories, {
+    Uint8List? imageBytes,
+    String? imageMimeType,
+  }) async {
     if (description == null || description.isEmpty) {
       return ActionResult(
         success: false,
@@ -318,6 +349,279 @@ Determine the user's intent. Respond with JSON only:
     );
   }
 
+  /// Add a bill
+  Future<ActionResult> _addBill(
+    String? name,
+    double? amount,
+    int? dueDay,
+    String? frequencyStr,
+  ) async {
+    if (name == null || name.isEmpty) {
+      return ActionResult(
+        success: false,
+        type: ActionType.addBill,
+        message:
+            'What bill do you want to add? Try: "Add rent bill \$1500 due on the 1st"',
+      );
+    }
+
+    if (amount == null || amount <= 0) {
+      return ActionResult(
+        success: false,
+        type: ActionType.addBill,
+        message: 'How much is the $name bill?',
+      );
+    }
+
+    final frequency = _parseBillFrequency(frequencyStr);
+    final actualDueDay = (dueDay ?? 1).clamp(1, 31);
+
+    final bill = Bill(
+      name: name,
+      amount: amount,
+      frequency: frequency,
+      dueDay: actualDueDay,
+      category: _guessBillCategory(name),
+      isActive: true,
+    );
+
+    await _database.insertBill(bill);
+
+    Logger.info('Added bill: $name - \$${amount.toStringAsFixed(2)}',
+        tag: _tag);
+
+    return ActionResult(
+      success: true,
+      type: ActionType.addBill,
+      message:
+          'Added $name: \$${amount.toStringAsFixed(0)}/mo, due day $actualDueDay',
+      details: {
+        'name': name,
+        'amount': amount,
+        'dueDay': actualDueDay,
+        'frequency': frequency.name,
+      },
+    );
+  }
+
+  /// Add a subscription
+  Future<ActionResult> _addSubscription(
+    String? name,
+    double? amount,
+    String? frequencyStr,
+  ) async {
+    if (name == null || name.isEmpty) {
+      return ActionResult(
+        success: false,
+        type: ActionType.addSubscription,
+        message:
+            'What subscription do you want to add? Try: "Add Netflix \$15 monthly"',
+      );
+    }
+
+    if (amount == null || amount <= 0) {
+      return ActionResult(
+        success: false,
+        type: ActionType.addSubscription,
+        message: 'How much is $name per month?',
+      );
+    }
+
+    final frequency = _parseSubscriptionFrequency(frequencyStr);
+
+    final subscription = Subscription(
+      name: name,
+      amount: amount,
+      frequency: frequency,
+      startDate: DateTime.now(),
+      category: _guessSubscriptionCategory(name),
+      isActive: true,
+    );
+
+    await _database.insertSubscription(subscription);
+
+    Logger.info('Added subscription: $name - \$${amount.toStringAsFixed(2)}',
+        tag: _tag);
+
+    return ActionResult(
+      success: true,
+      type: ActionType.addSubscription,
+      message: 'Added $name: \$${amount.toStringAsFixed(0)}/${frequency.name}',
+      details: {
+        'name': name,
+        'amount': amount,
+        'frequency': frequency.name,
+      },
+    );
+  }
+
+  /// Add an income source
+  Future<ActionResult> _addIncome(
+    String? source,
+    double? amount,
+    String? frequencyStr,
+  ) async {
+    if (source == null || source.isEmpty) {
+      return ActionResult(
+        success: false,
+        type: ActionType.addIncome,
+        message:
+            'What income source do you want to add? Try: "Add salary \$5000 monthly"',
+      );
+    }
+
+    if (amount == null || amount <= 0) {
+      return ActionResult(
+        success: false,
+        type: ActionType.addIncome,
+        message: 'How much is your $source income?',
+      );
+    }
+
+    final frequency = _parseIncomeFrequency(frequencyStr);
+
+    final income = Income(
+      source: source,
+      amount: amount,
+      frequency: frequency,
+      type: _guessIncomeType(source),
+      isActive: true,
+      isRecurring: true,
+    );
+
+    await _database.insertIncome(income);
+
+    Logger.info('Added income: $source - \$${amount.toStringAsFixed(2)}',
+        tag: _tag);
+
+    return ActionResult(
+      success: true,
+      type: ActionType.addIncome,
+      message:
+          'Added $source: \$${amount.toStringAsFixed(0)}/${frequency.name}',
+      details: {
+        'source': source,
+        'amount': amount,
+        'frequency': frequency.name,
+      },
+    );
+  }
+
+  // ===================
+  // Wealth Helpers
+  // ===================
+
+  BillFrequency _parseBillFrequency(String? value) {
+    if (value == null) return BillFrequency.monthly;
+    final lower = value.toLowerCase();
+    if (lower.contains('week')) return BillFrequency.weekly;
+    if (lower.contains('year') || lower.contains('annual')) {
+      return BillFrequency.yearly;
+    }
+    if (lower.contains('quarter')) return BillFrequency.quarterly;
+    return BillFrequency.monthly;
+  }
+
+  SubscriptionFrequency _parseSubscriptionFrequency(String? value) {
+    if (value == null) return SubscriptionFrequency.monthly;
+    final lower = value.toLowerCase();
+    if (lower.contains('week')) return SubscriptionFrequency.weekly;
+    if (lower.contains('year') || lower.contains('annual')) {
+      return SubscriptionFrequency.yearly;
+    }
+    return SubscriptionFrequency.monthly;
+  }
+
+  IncomeFrequency _parseIncomeFrequency(String? value) {
+    if (value == null) return IncomeFrequency.monthly;
+    final lower = value.toLowerCase();
+    if (lower.contains('week')) return IncomeFrequency.weekly;
+    if (lower.contains('biweek') || lower.contains('bi-week')) {
+      return IncomeFrequency.biweekly;
+    }
+    if (lower.contains('year') || lower.contains('annual')) {
+      return IncomeFrequency.yearly;
+    }
+    return IncomeFrequency.monthly;
+  }
+
+  BillCategory _guessBillCategory(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('rent') || lower.contains('mortgage')) {
+      return BillCategory.housing;
+    }
+    if (lower.contains('electric') ||
+        lower.contains('gas') ||
+        lower.contains('water') ||
+        lower.contains('utilit')) {
+      return BillCategory.utilities;
+    }
+    if (lower.contains('car') || lower.contains('auto')) {
+      return BillCategory.transportation;
+    }
+    if (lower.contains('insurance')) return BillCategory.insurance;
+    if (lower.contains('phone') ||
+        lower.contains('internet') ||
+        lower.contains('wifi')) {
+      return BillCategory.utilities;
+    }
+    return BillCategory.other;
+  }
+
+  SubscriptionCategory _guessSubscriptionCategory(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('netflix') ||
+        lower.contains('hulu') ||
+        lower.contains('disney') ||
+        lower.contains('hbo') ||
+        lower.contains('spotify') ||
+        lower.contains('apple music')) {
+      return SubscriptionCategory.entertainment;
+    }
+    if (lower.contains('gym') ||
+        lower.contains('fitness') ||
+        lower.contains('peloton')) {
+      return SubscriptionCategory.health;
+    }
+    if (lower.contains('cloud') ||
+        lower.contains('aws') ||
+        lower.contains('azure') ||
+        lower.contains('github') ||
+        lower.contains('notion')) {
+      return SubscriptionCategory.software;
+    }
+    if (lower.contains('news') ||
+        lower.contains('times') ||
+        lower.contains('journal')) {
+      return SubscriptionCategory.news;
+    }
+    return SubscriptionCategory.other;
+  }
+
+  IncomeType _guessIncomeType(String source) {
+    final lower = source.toLowerCase();
+    if (lower.contains('salary') ||
+        lower.contains('job') ||
+        lower.contains('work')) {
+      return IncomeType.salary;
+    }
+    if (lower.contains('freelance') ||
+        lower.contains('contract') ||
+        lower.contains('consult')) {
+      return IncomeType.freelance;
+    }
+    if (lower.contains('invest') ||
+        lower.contains('dividend') ||
+        lower.contains('stock')) {
+      return IncomeType.investment;
+    }
+    if (lower.contains('side') || lower.contains('gig')) return IncomeType.side;
+    if (lower.contains('rent') || lower.contains('property')) {
+      return IncomeType.rental;
+    }
+    return IncomeType.other;
+  }
+
   /// Guess meal type based on time of day
   MealType _guessMealType() {
     final hour = DateTime.now().hour;
@@ -406,6 +710,9 @@ class ActionResult {
 enum ActionType {
   logSupplement,
   logMeal,
+  addBill,
+  addSubscription,
+  addIncome,
   getMantra,
   checkProgress,
   unknown,

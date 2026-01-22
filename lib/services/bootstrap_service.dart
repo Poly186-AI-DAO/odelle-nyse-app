@@ -8,6 +8,7 @@ import '../config/azure_ai_config.dart';
 import '../database/app_database.dart';
 import '../models/mantra.dart';
 import '../models/tracking/supplement.dart';
+import '../models/tracking/workout_log.dart';
 import '../utils/logger.dart';
 import 'azure_agent_service.dart';
 import 'health_kit_service.dart';
@@ -821,9 +822,10 @@ JSON only: {"name":"X","exercises":[{"name":"X","sets":3,"reps":8}],"warmup":["X
         systemPrompt: 'Strength coach. JSON only, 5-7 exercises.',
         deployment: AzureAIDeployment.gpt5Chat,
         maxTokens: 1500,
+        responseFormat: 'json',
       );
 
-      // Clean response of markdown
+      // Clean response of markdown (fallback for edge cases)
       var cleanResponse = response.trim();
       if (cleanResponse.startsWith('```')) {
         cleanResponse = cleanResponse
@@ -836,26 +838,102 @@ JSON only: {"name":"X","exercises":[{"name":"X","sets":3,"reps":8}],"warmup":["X
       workoutPlan['estimatedDuration'] = durationMinutes;
 
       final today = DateTime.now().toIso8601String().split('T')[0];
+
+      // Save to database so it shows in UI
+      final workoutId =
+          await _saveWorkoutToDatabase(workoutPlan, durationMinutes);
+
+      // Also save JSON as backup/cache
       await _saveGeneratedData('workout_$today.json', jsonEncode(workoutPlan));
 
       Logger.info('Generated workout plan', tag: _tag, data: {
         'name': workoutPlan['name'],
         'exercises': (workoutPlan['exercises'] as List?)?.length ?? 0,
+        'workoutId': workoutId,
       });
 
       return jsonEncode({
         'success': true,
         'workout': workoutPlan,
+        'workoutId': workoutId,
         'message': 'Generated workout plan for $today',
       });
     } catch (e) {
       Logger.warning('Failed to generate workout plan: $e', tag: _tag);
       // Return a default workout on failure
+      final defaultWorkout = _getDefaultWorkout(workoutType);
+      final workoutId =
+          await _saveWorkoutToDatabase(defaultWorkout, durationMinutes);
       return jsonEncode({
         'success': true,
-        'workout': _getDefaultWorkout(workoutType),
+        'workout': defaultWorkout,
+        'workoutId': workoutId,
         'message': 'Using default $workoutType workout',
       });
+    }
+  }
+
+  /// Save generated workout to database so it appears in the UI
+  Future<int> _saveWorkoutToDatabase(
+    Map<String, dynamic> workoutPlan,
+    int durationMinutes,
+  ) async {
+    final now = DateTime.now();
+    final workoutType = _parseWorkoutTypeFromString(
+      workoutPlan['type'] as String? ?? 'strength',
+    );
+    final workoutName = workoutPlan['name'] as String? ?? 'Generated Workout';
+
+    // Build notes from exercises list
+    final exercises = workoutPlan['exercises'] as List? ?? [];
+    final exerciseNames =
+        exercises.map((e) => e['name'] as String? ?? 'Exercise').join(', ');
+    final notes = 'AI-generated plan: $exerciseNames';
+
+    final workoutLog = WorkoutLog(
+      startTime: now,
+      durationMinutes: durationMinutes,
+      type: workoutType,
+      name: workoutName,
+      notes: notes,
+      source: WorkoutSource.manual,
+    );
+
+    final id = await _database.insertWorkoutLog(workoutLog);
+    Logger.info('Saved workout to database', tag: _tag, data: {'id': id});
+    return id;
+  }
+
+  /// Parse workout type string to enum
+  WorkoutType _parseWorkoutTypeFromString(String typeString) {
+    final normalized =
+        typeString.toLowerCase().replaceAll('_', '').replaceAll(' ', '');
+    switch (normalized) {
+      case 'lower':
+      case 'lowerbody':
+      case 'legs':
+        return WorkoutType.strength;
+      case 'upper':
+      case 'upperbody':
+        return WorkoutType.strength;
+      case 'hypertrophy':
+        return WorkoutType.hypertrophy;
+      case 'powerlifting':
+        return WorkoutType.powerlifting;
+      case 'cardio':
+        return WorkoutType.cardio;
+      case 'hiit':
+        return WorkoutType.hiit;
+      case 'flexibility':
+        return WorkoutType.flexibility;
+      case 'yoga':
+        return WorkoutType.yoga;
+      case 'sports':
+        return WorkoutType.sports;
+      case 'mixed':
+      case 'fullbody':
+      default:
+        return WorkoutType.strength;
     }
   }
 
@@ -917,9 +995,10 @@ JSON: {"name":"X","protein":50,"cal":400,"ingredients":["X"]}
         systemPrompt: 'Nutritionist. JSON only.',
         deployment: AzureAIDeployment.gpt5Chat,
         maxTokens: 800,
+        responseFormat: 'json',
       );
 
-      // Clean response of markdown
+      // Clean response of markdown (fallback for edge cases)
       var cleanResponse = response.trim();
       if (cleanResponse.startsWith('```')) {
         cleanResponse = cleanResponse
@@ -927,7 +1006,14 @@ JSON: {"name":"X","protein":50,"cal":400,"ingredients":["X"]}
             .replaceAll(RegExp(r'\n?```$'), '');
       }
 
-      final mealSuggestion = jsonDecode(cleanResponse) as Map<String, dynamic>;
+      // Handle both array and object responses
+      final decoded = jsonDecode(cleanResponse);
+      final Map<String, dynamic> mealSuggestion;
+      if (decoded is List && decoded.isNotEmpty) {
+        mealSuggestion = decoded.first as Map<String, dynamic>;
+      } else {
+        mealSuggestion = decoded as Map<String, dynamic>;
+      }
 
       Logger.info('Suggested meal', tag: _tag, data: {
         'name': mealSuggestion['name'],

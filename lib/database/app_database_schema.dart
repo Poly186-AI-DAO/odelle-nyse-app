@@ -13,6 +13,7 @@ mixin AppDatabaseSchema {
     await _createWealthBondsTables(db); // v8: Wealth + Bonds pillars
     await _createSyncTables(db); // v9: Firebase sync queue
     await _createAgentTables(db); // v10: Agent outputs
+    await _createChatTables(db); // v11: Chat messages
     await _createIndexes(db);
     await _seedMantras(db);
 
@@ -54,6 +55,10 @@ mixin AppDatabaseSchema {
       await _createAgentTables(db);
       await _createIndexes(db);
     }
+    if (oldVersion < 11) {
+      await _createChatTables(db);
+      await _createIndexes(db);
+    }
   }
 
   /// Drop legacy content tables no longer in use
@@ -71,11 +76,13 @@ mixin AppDatabaseSchema {
         await db.execute('DROP TABLE IF EXISTS $table');
         Logger.info('Dropped legacy table: $table', tag: AppDatabase._tag);
       } catch (e) {
-        Logger.warning('Could not drop table $table: $e', tag: AppDatabase._tag);
+        Logger.warning('Could not drop table $table: $e',
+            tag: AppDatabase._tag);
       }
     }
 
-    Logger.info('Legacy content tables cleanup complete', tag: AppDatabase._tag);
+    Logger.info('Legacy content tables cleanup complete',
+        tag: AppDatabase._tag);
   }
 
   /// Create health data tables for caching HealthKit data
@@ -527,7 +534,8 @@ mixin AppDatabaseSchema {
   }
 
   Future<void> _addGenerationQueueColumns(Database db) async {
-    Logger.info('Ensuring generation_queue columns exist', tag: AppDatabase._tag);
+    Logger.info('Ensuring generation_queue columns exist',
+        tag: AppDatabase._tag);
 
     const columns = [
       'content_date TEXT',
@@ -772,9 +780,12 @@ mixin AppDatabaseSchema {
         'CREATE INDEX IF NOT EXISTS idx_dose_logs_timestamp ON dose_logs(timestamp)');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_dose_logs_supplement ON dose_logs(supplement_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_habit_logs_date ON habit_logs(date)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_habit_logs_habit ON habit_logs(habit_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_habit_logs_date ON habit_logs(date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_habit_logs_habit ON habit_logs(habit_id)');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_mood_entries_timestamp ON mood_entries(timestamp)');
     await db.execute(
@@ -847,6 +858,46 @@ mixin AppDatabaseSchema {
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_agent_outputs_reviewed ON agent_outputs(reviewed)');
 
-    Logger.info('Agent outputs table created successfully', tag: AppDatabase._tag);
+    Logger.info('Agent outputs table created successfully',
+        tag: AppDatabase._tag);
+  }
+
+  /// Create chat tables (v11)
+  Future<void> _createChatTables(Database db) async {
+    Logger.info('Creating chat tables', tag: AppDatabase._tag);
+
+    // Chat conversations - metadata for each conversation
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_conversations (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        last_message_at TEXT NOT NULL,
+        message_count INTEGER DEFAULT 0
+      )
+    ''');
+
+    // Chat messages - individual messages in conversations
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        conversation_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        image_path TEXT,
+        FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id)
+      )
+    ''');
+
+    // Create indexes for chat tables
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_chat_conversations_last_msg ON chat_conversations(last_message_at)');
+
+    Logger.info('Chat tables created successfully', tag: AppDatabase._tag);
   }
 }

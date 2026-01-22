@@ -11,6 +11,7 @@ import '../services/weather_service.dart';
 import '../services/sync_service.dart';
 import '../services/agent_scheduler_service.dart';
 import '../services/live_activity_service.dart';
+import '../utils/logger.dart';
 
 import '../services/health_kit_service.dart';
 import '../database/app_database.dart';
@@ -51,6 +52,19 @@ final psychographServiceProvider = Provider<PsychographService>((ref) {
 final psychographStateProvider = Provider<PsychographState>((ref) {
   final service = ref.watch(psychographServiceProvider);
   return service.state;
+});
+
+/// Psychograph state stream for UI updates
+final psychographStateStreamProvider = StreamProvider<PsychographState>((ref) async* {
+  final service = ref.watch(psychographServiceProvider);
+  yield service.state;
+  yield* Stream.periodic(const Duration(seconds: 30), (_) => service.state);
+});
+
+/// Daily prophecy text
+final dailyProphecyProvider = FutureProvider<String>((ref) async {
+  final service = ref.watch(psychographServiceProvider);
+  return service.getDailyProphecy();
 });
 
 /// Azure speech/voice recognition service
@@ -121,9 +135,41 @@ final bootstrapServiceProvider = Provider<BootstrapService>((ref) {
 });
 
 /// Bootstrap result state - tracks if bootstrap has run and its result
+/// Also triggers daily content generation and psychograph processing
 final bootstrapResultProvider = FutureProvider<BootstrapResult>((ref) async {
   final bootstrapService = ref.watch(bootstrapServiceProvider);
-  return bootstrapService.run();
+  final dailyContentService = ref.watch(dailyContentServiceProvider);
+  final psychographService = ref.watch(psychographServiceProvider);
+
+  // Run bootstrap first
+  final result = await bootstrapService.run();
+
+  // After bootstrap, check if we need to generate daily content
+  if (result.success) {
+    try {
+      final shouldGenerate = await dailyContentService.shouldGenerateForToday();
+      if (shouldGenerate) {
+        // Initialize and generate today's meditation content
+        await dailyContentService.initialize();
+        await dailyContentService.generateDailyMeditation();
+      }
+    } catch (e) {
+      // Don't fail bootstrap if daily content fails
+      Logger.warning('Daily content generation failed: $e',
+          tag: 'BootstrapResult');
+    }
+
+    // Trigger psychograph processing (already started via provider)
+    // Just ensure it runs an initial cycle
+    try {
+      await psychographService.triggerProcessing();
+    } catch (e) {
+      Logger.warning('Psychograph processing failed: $e',
+          tag: 'BootstrapResult');
+    }
+  }
+
+  return result;
 });
 
 /// Voice Action Service - processes voice commands and executes actions
