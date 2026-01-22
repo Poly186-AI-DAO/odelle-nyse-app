@@ -8,13 +8,13 @@ class SyncIndicator extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncService = ref.watch(syncServiceProvider);
-    
+
     return StreamBuilder<bool>(
       stream: syncService.isSyncingStream,
       initialData: false,
       builder: (context, snapshot) {
         final isSyncing = snapshot.data ?? false;
-        
+
         if (!isSyncing) return const SizedBox.shrink();
 
         return SafeArea(
