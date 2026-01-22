@@ -269,6 +269,7 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
               duration: '${workout.durationMinutes ?? 0} min',
               exerciseCount: 0, // workout.sets?.length ?? 0
               calories: workout.caloriesBurned,
+              imageUrl: workout.imagePath,
               isFeatured: index == 0,
             ),
           );

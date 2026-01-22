@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../constants/theme_constants.dart';
 
@@ -23,8 +24,28 @@ class WorkoutCard extends StatelessWidget {
     this.isFeatured = false,
   });
 
+  /// Determine correct ImageProvider based on path type
+  ImageProvider? _getImageProvider() {
+    if (imageUrl == null) return null;
+
+    // Check if it's a network URL or local file path
+    if (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://')) {
+      return NetworkImage(imageUrl!);
+    } else {
+      // Local file path
+      final file = File(imageUrl!);
+      if (file.existsSync()) {
+        return FileImage(file);
+      }
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageProvider = _getImageProvider();
+    final hasImage = imageProvider != null;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -41,9 +62,9 @@ class WorkoutCard extends StatelessWidget {
               offset: const Offset(0, 8),
             ),
           ],
-          image: imageUrl != null 
+          image: hasImage
               ? DecorationImage(
-                  image: NetworkImage(imageUrl!),
+                  image: imageProvider,
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
                     Colors.black.withValues(alpha: 0.3),
@@ -63,7 +84,8 @@ class WorkoutCard extends StatelessWidget {
                 children: [
                   if (isFeatured) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: ThemeConstants.accentColor,
                         borderRadius: BorderRadius.circular(4),
@@ -82,11 +104,16 @@ class WorkoutCard extends StatelessWidget {
                   Text(
                     title,
                     style: ThemeConstants.headingStyle.copyWith(
-                      color: imageUrl != null ? Colors.white : ThemeConstants.textOnLight,
+                      color:
+                          hasImage ? Colors.white : ThemeConstants.textOnLight,
                       fontSize: 20,
-                      shadows: imageUrl != null ? [
-                        Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 4),
-                      ] : null,
+                      shadows: hasImage
+                          ? [
+                              Shadow(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  blurRadius: 4),
+                            ]
+                          : null,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -94,26 +121,37 @@ class WorkoutCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.timer_outlined, 
-                          size: 14, 
-                          color: imageUrl != null ? Colors.white70 : ThemeConstants.textMuted),
+                      Icon(Icons.timer_outlined,
+                          size: 14,
+                          color: hasImage
+                              ? Colors.white70
+                              : ThemeConstants.textMuted),
                       const SizedBox(width: 4),
                       Text(
                         duration,
                         style: ThemeConstants.captionStyle.copyWith(
-                          color: imageUrl != null ? Colors.white70 : ThemeConstants.textMuted,
+                          color: hasImage
+                              ? Colors.white70
+                              : ThemeConstants.textMuted,
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Container(width: 4, height: 4, decoration: BoxDecoration(
-                        color: imageUrl != null ? Colors.white54 : ThemeConstants.textMuted,
-                        shape: BoxShape.circle,
-                      )),
+                      Container(
+                          width: 4,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: hasImage
+                                ? Colors.white54
+                                : ThemeConstants.textMuted,
+                            shape: BoxShape.circle,
+                          )),
                       const SizedBox(width: 12),
                       Text(
                         '$exerciseCount exercises',
                         style: ThemeConstants.captionStyle.copyWith(
-                          color: imageUrl != null ? Colors.white70 : ThemeConstants.textMuted,
+                          color: hasImage
+                              ? Colors.white70
+                              : ThemeConstants.textMuted,
                         ),
                       ),
                     ],
@@ -121,7 +159,7 @@ class WorkoutCard extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Start Button overlay
             if (onStart != null)
               Positioned(
@@ -131,13 +169,15 @@ class WorkoutCard extends StatelessWidget {
                   onTap: onStart,
                   borderRadius: BorderRadius.circular(24),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: ThemeConstants.polyBlue500,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: ThemeConstants.polyBlue500.withValues(alpha: 0.4),
+                          color:
+                              ThemeConstants.polyBlue500.withValues(alpha: 0.4),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -145,7 +185,8 @@ class WorkoutCard extends StatelessWidget {
                     ),
                     child: Row(
                       children: const [
-                        Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                        Icon(Icons.play_arrow_rounded,
+                            color: Colors.white, size: 20),
                         SizedBox(width: 4),
                         Text(
                           'Start',

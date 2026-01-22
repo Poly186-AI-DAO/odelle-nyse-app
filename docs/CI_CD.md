@@ -31,31 +31,40 @@ Odelle uses GitHub Actions for continuous integration and deployment. The pipeli
 └──────────────────────────┬──────────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  JOB: build-ios                                                  │
+│  JOB: build-ios (macos-14, Xcode 16.2)                           │
 ├─────────────────────────────────────────────────────────────────┤
 │  1. Checkout code                                                │
-│  2. Setup Flutter 3.35.3                                         │
-│  3. Create .env file                                             │
-│  4. Install dependencies (flutter pub get)                       │
-│  5. Run Flutter analyze (--no-fatal-infos)                       │
-│  6. Run tests (flutter test)                                     │
-│  7. Build iOS (no codesign)                                      │
-│  8. Upload artifact                                              │
+│  2. Select Xcode 16.2                                            │
+│  3. Setup Flutter 3.35.3                                         │
+│  4. Create .env file                                             │
+│  5. Create GoogleService-Info.plist                              │
+│  6. Install dependencies (flutter pub get)                       │
+│  7. Cache CocoaPods (ios/Pods, ~/.cocoapods)                     │
+│  8. Configure Git buffer (500MB for large pods)                  │
+│  9. Install CocoaPods (with 5 retries + exponential backoff)     │
+│ 10. Run Flutter analyze (--no-fatal-infos)                       │
+│ 11. Build iOS (no codesign)                                      │
+│ 12. Upload artifact                                              │
 └──────────────────────────┬──────────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  JOB: deploy-testflight (main branch only)                       │
 ├─────────────────────────────────────────────────────────────────┤
 │  1. Checkout code                                                │
-│  2. Setup Flutter 3.35.3                                         │
-│  3. Create .env file                                             │
-│  4. Install dependencies                                         │
-│  5. Import P12 certificate (Keychain)                            │
-│  6. Setup provisioning profile                                   │
-│  7. Create ExportOptions.plist                                   │
-│  8. Build & Archive iOS app                                      │
-│  9. Export IPA with signing                                      │
-│ 10. Upload to TestFlight via altool                              │
+│  2. Select Xcode 16.2                                            │
+│  3. Setup Flutter 3.35.3                                         │
+│  4. Create .env file                                             │
+│  5. Create GoogleService-Info.plist                              │
+│  6. Install dependencies                                         │
+│  7. Cache CocoaPods                                              │
+│  8. Configure Git buffer                                         │
+│  9. Setup iOS build environment                                  │
+│ 10. Import P12 certificate (Keychain)                            │
+│ 11. Setup provisioning profile                                   │
+│ 12. Create ExportOptions.plist                                   │
+│ 13. Build & Archive iOS app (with pod install retry)             │
+│ 14. Export IPA with signing                                      │
+│ 15. Upload to TestFlight via altool                              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -159,6 +168,58 @@ See [ANALYZER_ISSUES.md](ANALYZER_ISSUES.md) for current analyzer status.
 ## Troubleshooting
 
 ### Common Issues
+
+#### CocoaPods CDN HTTP 500 Errors (Transient)
+
+**Error:**
+```
+error: RPC failed; HTTP 500 curl 22 The requested URL returned error: 500
+fatal: expected 'packfile'
+Error running pod install
+```
+
+**Root Cause:** This is a **transient server-side error** from the CocoaPods CDN infrastructure. It's a known issue ([GitHub #12000](https://github.com/CocoaPods/CocoaPods/issues/12000), [#12865](https://github.com/cocoapods/cocoapods/issues/12865)) that affects GitHub Actions intermittently.
+
+**Solution (Implemented Jan 2026):**
+
+1. **CocoaPods Caching** - Added `actions/cache@v4` to cache:
+   - `ios/Pods`
+   - `~/Library/Caches/CocoaPods`
+   - `~/.cocoapods`
+   
+2. **Separate pod install step** - Moved pod install to its own step with:
+   - 5 retry attempts (exponential backoff: 30s, 60s, 90s, 120s, 150s)
+   - Clears corrupted cache on failure
+   
+3. **Git buffer configuration**:
+   ```bash
+   git config --global http.postBuffer 524288000  # 500MB
+   git config --global http.lowSpeedLimit 0
+   git config --global http.lowSpeedTime 999999
+   ```
+
+**If it still fails:** Simply re-run the GitHub Action. It's a transient CDN issue.
+
+#### iOS 26 SDK Requirement (April 2026 Deadline)
+
+**Warning from App Store Connect:**
+```
+SDK version issue. This app was built with the iOS 18.5 SDK. Starting April 2026, 
+all iOS and iPadOS apps must be built with the iOS 26 SDK or later, included in 
+Xcode 26 or later, in order to be uploaded to App Store Connect.
+```
+
+**Current Status:** Using Xcode 16.2 on `macos-14` runner. This provides iOS 18.2 SDK.
+
+**Action Required:** Before April 2026, update to Xcode 26 when available:
+```yaml
+- name: Select Xcode 26
+  uses: maxim-lobanov/setup-xcode@v1
+  with:
+    xcode-version: "26"
+```
+
+**Note:** The `Install iOS Platform` step was removed as Xcode 16.2 includes the required SDK. This step was causing unnecessary delays and wasn't needed.
 
 #### "No provisioning profile was found"
 - Check `IOS_PROVISIONING_PROFILE` secret is base64 encoded
@@ -290,6 +351,10 @@ orientations to support iPad multitasking.
 
 | Date | Change |
 |------|--------|
+| 2026-01-22 | Added CocoaPods caching and 5-retry logic for CDN failures |
+| 2026-01-22 | Removed unnecessary `Install iOS Platform` step |
+| 2026-01-22 | Added Git buffer config (500MB) for large pods |
+| 2026-01-22 | Upgraded to Xcode 16.2 for iOS 26 SDK compliance (April 2026 deadline) |
 | 2026-01-10 | ✅ First successful TestFlight deployment |
 | 2026-01-10 | Fixed iPad orientation validation for App Store |
 | 2026-01-09 | Fixed P12 certificate mismatch with provisioning profile |

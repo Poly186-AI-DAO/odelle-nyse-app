@@ -12,6 +12,7 @@ import '../constants/theme_constants.dart';
 import '../providers/viewmodels/chat_viewmodel.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/chat/chat_markdown.dart';
+import '../widgets/glass/glass_card_modern.dart';
 
 /// Chat Screen - Text-based conversation with the AI (Digital Twin)
 /// Full-bleed conversation over the breathing background
@@ -191,19 +192,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
           ),
 
-          // Content layer
+          // Messages list - full height, scrolls under the composer
           SafeArea(
             bottom: false,
-            child: Column(
-              children: [
-                Expanded(
-                  child: state.messages.isEmpty
-                      ? _buildEmptyState()
-                      : _buildMessagesList(state),
-                ),
-                _buildComposer(state),
-              ],
-            ),
+            child: state.messages.isEmpty
+                ? _buildEmptyState()
+                : _buildMessagesList(state),
+          ),
+
+          // Floating composer at bottom
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildComposer(state),
           ),
 
           // Error overlay
@@ -269,9 +271,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildMessagesList(ChatState state) {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(
-        horizontal: ThemeConstants.spacingMedium,
-        vertical: ThemeConstants.spacingSmall,
+      padding: const EdgeInsets.only(
+        left: ThemeConstants.spacingMedium,
+        right: ThemeConstants.spacingMedium,
+        top: ThemeConstants.spacingSmall,
+        bottom: 120, // Space for input composer
       ),
       itemCount: state.messages.length,
       itemBuilder: (context, index) {
@@ -289,27 +293,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ThemeConstants.spacingMedium,
         ThemeConstants.spacingSmall,
         ThemeConstants.spacingMedium,
-        bottomInset + ThemeConstants.spacingMedium,
+        bottomInset + 8,
       ),
-      child: BreathingCard(
-        borderRadius: 28,
-        child: Container(
-          padding: EdgeInsets.fromLTRB(
-            ThemeConstants.spacingSmall,
-            ThemeConstants.spacingSmall,
-            ThemeConstants.spacingSmall,
-            ThemeConstants.spacingSmall,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (state.hasPendingImage) ...[
-                _buildPendingImagePreview(state.pendingImage!),
-                const SizedBox(height: ThemeConstants.spacingSmall),
-              ],
-              _buildInputRow(state),
+      child: GlassCardModern(
+        borderRadius: 18,
+        blurStrength: 25,
+        backgroundColor: Colors.black.withValues(alpha: 0.4),
+        borderColor: Colors.white.withValues(alpha: 0.15),
+        padding: EdgeInsets.all(ThemeConstants.spacingSmall),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (state.hasPendingImage) ...[
+              _buildPendingImagePreview(state.pendingImage!),
+              const SizedBox(height: ThemeConstants.spacingSmall),
             ],
-          ),
+            _buildInputRow(state),
+          ],
         ),
       ),
     );

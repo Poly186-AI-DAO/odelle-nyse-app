@@ -18,24 +18,6 @@ jobs:
         with:
           xcode-version: "16.2"
 
-      - name: Install iOS Platform (required for Xcode 16.2)
-        run: |
-          # Initialize CoreSimulator framework (required on some runner versions)
-          echo "=== Initializing CoreSimulator ==="
-          xcrun simctl list > /dev/null 2>&1 || true
-
-          # Download iOS 18.2 platform (matches Xcode 16.2)
-          echo "=== Installing iOS 18.2 platform ==="
-          xcodebuild -downloadPlatform iOS -buildVersion 18.2
-
-          # Verify SDK installation
-          echo "=== Available SDKs ==="
-          xcodebuild -showsdks | grep -i ios
-
-          # List available simulators
-          echo "=== Available iOS Simulators ==="
-          xcrun simctl list devices | grep -i iphone | head -10
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -68,23 +50,49 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Configure Git for large pods
+        run: |
+          git config --global http.postBuffer 524288000
+          git config --global http.lowSpeedLimit 0
+          git config --global http.lowSpeedTime 999999
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios
+          # Retry logic for transient CocoaPods CDN failures
+          for i in 1 2 3 4 5; do
+            echo "=== Pod install attempt $i ==="
+            if pod install --repo-update; then
+              echo "Pod install succeeded on attempt $i"
+              exit 0
+            fi
+            echo "Pod install failed on attempt $i"
+            # Clear cache on failure to avoid corrupted state
+            rm -rf ~/Library/Caches/CocoaPods/Pods/External/* 2>/dev/null || true
+            # Exponential backoff: 30s, 60s, 120s, 240s
+            SLEEP_TIME=$((30 * i))
+            echo "Retrying in ${SLEEP_TIME}s..."
+            sleep $SLEEP_TIME
+          done
+          echo "Pod install failed after 5 attempts"
+          exit 1
+
       - name: Run Flutter analyze
         run: flutter analyze --no-fatal-infos
 
       - name: Build iOS (no codesign)
-        run: |
-          # Retry logic for transient CocoaPods/network failures
-          for i in 1 2 3; do
-            echo "=== Build attempt $i ==="
-            if flutter build ios --no-codesign --release; then
-              echo "Build succeeded on attempt $i"
-              exit 0
-            fi
-            echo "Build failed on attempt $i, retrying in 30s..."
-            sleep 30
-          done
-          echo "Build failed after 3 attempts"
-          exit 1
+        run: flutter build ios --no-codesign --release
 
       - name: Upload iOS build
         uses: actions/upload-artifact@v4
@@ -107,24 +115,6 @@ jobs:
         with:
           xcode-version: "16.2"
 
-      - name: Install iOS Platform (required for Xcode 16.2)
-        run: |
-          # Initialize CoreSimulator framework (required on some runner versions)
-          echo "=== Initializing CoreSimulator ==="
-          xcrun simctl list > /dev/null 2>&1 || true
-
-          # Download iOS 18.2 platform (matches Xcode 16.2)
-          echo "=== Installing iOS 18.2 platform ==="
-          xcodebuild -downloadPlatform iOS -buildVersion 18.2
-
-          # Verify SDK installation
-          echo "=== Available SDKs ==="
-          xcodebuild -showsdks | grep -i ios
-
-          # List available simulators
-          echo "=== Available iOS Simulators ==="
-          xcrun simctl list devices | grep -i iphone | head -10
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -156,6 +146,23 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Configure Git for large pods
+        run: |
+          git config --global http.postBuffer 524288000
+          git config --global http.lowSpeedLimit 0
+          git config --global http.lowSpeedTime 999999
 
       - name: Setup iOS build environment
         run: |
@@ -247,7 +254,24 @@ jobs:
 
           # Archive and export with signing
           cd ios
-          pod install --repo-update
+
+          # Pod install with retry logic for transient CDN failures
+          for i in 1 2 3 4 5; do
+            echo "=== Pod install attempt $i ==="
+            if pod install --repo-update; then
+              echo "Pod install succeeded on attempt $i"
+              break
+            fi
+            echo "Pod install failed on attempt $i"
+            rm -rf ~/Library/Caches/CocoaPods/Pods/External/* 2>/dev/null || true
+            if [ $i -eq 5 ]; then
+              echo "Pod install failed after 5 attempts"
+              exit 1
+            fi
+            SLEEP_TIME=$((30 * i))
+            echo "Retrying in ${SLEEP_TIME}s..."
+            sleep $SLEEP_TIME
+          done
 
           # Archive WITHOUT signing - let export handle it
           xcodebuild -workspace Runner.xcworkspace \

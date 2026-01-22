@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/theme_constants.dart';
+import '../models/wealth/wealth.dart';
 import '../providers/viewmodels/wealth_viewmodel.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
@@ -205,6 +206,11 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
 
   /// Compact bar - shown when panel is expanded
   Widget _buildCompactBar() {
+    final wealthState = ref.watch(wealthViewModelProvider);
+    final income = wealthState.totalMonthlyIncome;
+    final expenses = wealthState.totalMonthlyExpenses;
+    final net = wealthState.netMonthlyCashFlow;
+
     return Container(
       key: const ValueKey('compact'),
       width: double.infinity,
@@ -217,13 +223,13 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildCompactStat('💰', '\$0'),
+          _buildCompactStat('💰', '\$${income.toStringAsFixed(0)}'),
           Container(
               width: 1, height: 24, color: Colors.white.withValues(alpha: 0.1)),
-          _buildCompactStat('📤', '\$0'),
+          _buildCompactStat('📤', '\$${expenses.toStringAsFixed(0)}'),
           Container(
               width: 1, height: 24, color: Colors.white.withValues(alpha: 0.1)),
-          _buildCompactStat('📊', '\$0 net'),
+          _buildCompactStat('📊', '\$${net.toStringAsFixed(0)} net'),
         ],
       ),
     );
@@ -249,6 +255,8 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
 
   /// Bottom panel content
   Widget _buildBottomPanelContent(BuildContext context) {
+    final wealthState = ref.watch(wealthViewModelProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -265,12 +273,15 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
         _buildSectionHeaderWithAction(
             'BILLS DUE', 'Add', () => _showAddBillHint(context)),
         const SizedBox(height: 12),
-        _buildEmptyState(
-          icon: Icons.receipt_long_outlined,
-          message: 'No bills tracked yet',
-          actionText: 'Add Bill',
-          onAction: () => _showAddBillHint(context),
-        ),
+        if (wealthState.bills.isEmpty)
+          _buildEmptyState(
+            icon: Icons.receipt_long_outlined,
+            message: 'No bills tracked yet',
+            actionText: 'Add Bill',
+            onAction: () => _showAddBillHint(context),
+          )
+        else
+          ...wealthState.bills.take(3).map((bill) => _buildBillRow(bill)),
 
         const SizedBox(height: 24),
 
@@ -278,22 +289,341 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
         _buildSectionHeaderWithAction(
             'SUBSCRIPTIONS', 'Add', () => _showAddSubscriptionHint(context)),
         const SizedBox(height: 12),
-        _buildEmptyState(
-          icon: Icons.subscriptions_outlined,
-          message: 'Track your subscriptions',
-        ),
+        if (wealthState.subscriptions.isEmpty)
+          _buildEmptyState(
+            icon: Icons.subscriptions_outlined,
+            message: 'Track your subscriptions',
+          )
+        else
+          ...wealthState.subscriptions
+              .take(3)
+              .map((sub) => _buildSubscriptionRow(sub)),
 
         const SizedBox(height: 24),
 
         // Income
         _buildSectionHeader('INCOME'),
         const SizedBox(height: 12),
-        _buildEmptyState(
-          icon: Icons.account_balance_wallet_outlined,
-          message: 'Add income sources to see your cash flow',
-        ),
+        if (wealthState.incomes.isEmpty)
+          _buildEmptyState(
+            icon: Icons.account_balance_wallet_outlined,
+            message: 'Add income sources to see your cash flow',
+          )
+        else
+          ...wealthState.incomes
+              .take(3)
+              .map((income) => _buildIncomeRow(income)),
       ],
     );
+  }
+
+  Widget _buildBillRow(Bill bill) {
+    final isDueSoon = bill.isDueSoon(7);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ThemeConstants.glassBackgroundWeak,
+        borderRadius: ThemeConstants.borderRadius,
+        border: Border.all(
+            color: isDueSoon
+                ? Colors.orange.withValues(alpha: 0.3)
+                : ThemeConstants.glassBorderWeak),
+      ),
+      child: Row(
+        children: [
+          // Category icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _getCategoryColor(bill.category).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _getBillCategoryIcon(bill.category),
+              size: 20,
+              color: _getCategoryColor(bill.category),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bill.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConstants.textOnLight,
+                  ),
+                ),
+                Text(
+                  'Due day ${bill.dueDay}${bill.autopay ? ' • Autopay' : ''}',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: isDueSoon
+                        ? Colors.orange
+                        : ThemeConstants.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Amount
+          Text(
+            '\$${bill.amount.toStringAsFixed(0)}',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textOnLight,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionRow(Subscription sub) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ThemeConstants.glassBackgroundWeak,
+        borderRadius: ThemeConstants.borderRadius,
+        border: Border.all(color: ThemeConstants.glassBorderWeak),
+      ),
+      child: Row(
+        children: [
+          // Logo or icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: ThemeConstants.accentBlue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: sub.logoUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(sub.logoUrl!, fit: BoxFit.cover),
+                  )
+                : Icon(
+                    _getSubscriptionCategoryIcon(sub.category),
+                    size: 20,
+                    color: ThemeConstants.accentBlue,
+                  ),
+          ),
+          const SizedBox(width: 12),
+          // Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sub.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConstants.textOnLight,
+                  ),
+                ),
+                Text(
+                  _getFrequencyLabel(sub.frequency),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: ThemeConstants.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Amount
+          Text(
+            '\$${sub.amount.toStringAsFixed(0)}',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textOnLight,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIncomeRow(Income income) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ThemeConstants.glassBackgroundWeak,
+        borderRadius: ThemeConstants.borderRadius,
+        border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          // Icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _getIncomeTypeIcon(income.type),
+              size: 20,
+              color: Colors.green,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  income.source,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConstants.textOnLight,
+                  ),
+                ),
+                Text(
+                  _getIncomeFrequencyLabel(income.frequency),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: ThemeConstants.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Amount
+          Text(
+            '\$${income.amount.toStringAsFixed(0)}',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.green,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getCategoryColor(BillCategory category) {
+    switch (category) {
+      case BillCategory.housing:
+        return Colors.blue;
+      case BillCategory.utilities:
+        return Colors.amber;
+      case BillCategory.insurance:
+        return Colors.purple;
+      case BillCategory.transportation:
+        return Colors.teal;
+      case BillCategory.debt:
+        return Colors.red.shade700;
+      case BillCategory.subscription:
+        return Colors.indigo;
+      case BillCategory.other:
+        return ThemeConstants.textSecondary;
+    }
+  }
+
+  IconData _getBillCategoryIcon(BillCategory category) {
+    switch (category) {
+      case BillCategory.housing:
+        return Icons.home;
+      case BillCategory.utilities:
+        return Icons.power;
+      case BillCategory.insurance:
+        return Icons.security;
+      case BillCategory.transportation:
+        return Icons.directions_car;
+      case BillCategory.debt:
+        return Icons.credit_card;
+      case BillCategory.subscription:
+        return Icons.subscriptions;
+      case BillCategory.other:
+        return Icons.receipt_long;
+    }
+  }
+
+  IconData _getSubscriptionCategoryIcon(SubscriptionCategory category) {
+    switch (category) {
+      case SubscriptionCategory.entertainment:
+        return Icons.play_circle;
+      case SubscriptionCategory.productivity:
+        return Icons.work;
+      case SubscriptionCategory.health:
+        return Icons.fitness_center;
+      case SubscriptionCategory.education:
+        return Icons.school;
+      case SubscriptionCategory.software:
+        return Icons.computer;
+      case SubscriptionCategory.news:
+        return Icons.newspaper;
+      case SubscriptionCategory.social:
+        return Icons.people;
+      case SubscriptionCategory.other:
+        return Icons.subscriptions;
+    }
+  }
+
+  IconData _getIncomeTypeIcon(IncomeType type) {
+    switch (type) {
+      case IncomeType.salary:
+        return Icons.work;
+      case IncomeType.freelance:
+        return Icons.laptop;
+      case IncomeType.investment:
+        return Icons.trending_up;
+      case IncomeType.rental:
+        return Icons.apartment;
+      case IncomeType.business:
+        return Icons.business;
+      case IncomeType.side:
+        return Icons.lightbulb;
+      case IncomeType.other:
+        return Icons.account_balance_wallet;
+    }
+  }
+
+  String _getFrequencyLabel(SubscriptionFrequency freq) {
+    switch (freq) {
+      case SubscriptionFrequency.weekly:
+        return 'Weekly';
+      case SubscriptionFrequency.monthly:
+        return 'Monthly';
+      case SubscriptionFrequency.quarterly:
+        return 'Quarterly';
+      case SubscriptionFrequency.yearly:
+        return 'Yearly';
+    }
+  }
+
+  String _getIncomeFrequencyLabel(IncomeFrequency freq) {
+    switch (freq) {
+      case IncomeFrequency.weekly:
+        return 'Weekly';
+      case IncomeFrequency.biweekly:
+        return 'Bi-weekly';
+      case IncomeFrequency.monthly:
+        return 'Monthly';
+      case IncomeFrequency.quarterly:
+        return 'Quarterly';
+      case IncomeFrequency.yearly:
+        return 'Yearly';
+      case IncomeFrequency.oneTime:
+        return 'One-time';
+    }
   }
 
   Widget _buildSectionHeader(String title) {

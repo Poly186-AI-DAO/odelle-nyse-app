@@ -69,6 +69,23 @@ mixin AppDatabaseSchema {
       await _createImageTables(db);
       await _createIndexes(db);
     }
+    if (oldVersion < 14) {
+      await _addMantrasImagePath(db);
+    }
+  }
+
+  /// v14: Add image_path column to mantras table
+  Future<void> _addMantrasImagePath(Database db) async {
+    Logger.info('Adding image_path column to mantras table',
+        tag: AppDatabase._tag);
+    try {
+      await db.execute('ALTER TABLE mantras ADD COLUMN image_path TEXT');
+      Logger.info('Added image_path column to mantras table',
+          tag: AppDatabase._tag);
+    } catch (e) {
+      Logger.warning('Could not add image_path column: $e',
+          tag: AppDatabase._tag);
+    }
   }
 
   /// Drop legacy content tables no longer in use
@@ -615,7 +632,8 @@ mixin AppDatabaseSchema {
         text TEXT NOT NULL,
         is_active INTEGER DEFAULT 1,
         created_at TEXT NOT NULL,
-        category TEXT
+        category TEXT,
+        image_path TEXT
       )
     ''');
   }

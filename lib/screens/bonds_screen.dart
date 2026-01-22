@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/theme_constants.dart';
+import '../models/relationships/relationships.dart';
 import '../providers/viewmodels/bonds_viewmodel.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
@@ -174,6 +175,7 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
 
   /// Compact bar - shown when panel is expanded
   Widget _buildCompactBar() {
+    final bondsState = ref.watch(bondsViewModelProvider);
     return Container(
       key: const ValueKey('compact'),
       width: double.infinity,
@@ -186,13 +188,15 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildCompactStat('👥', '0'),
+          _buildCompactStat('👥', '${bondsState.totalContacts}'),
           Container(
               width: 1, height: 24, color: Colors.white.withValues(alpha: 0.1)),
-          _buildCompactStat('⏰', '0 overdue'),
+          _buildCompactStat(
+              '⏰', '${bondsState.overdueContacts.length} overdue'),
           Container(
               width: 1, height: 24, color: Colors.white.withValues(alpha: 0.1)),
-          _buildCompactStat('💬', '0 this week'),
+          _buildCompactStat(
+              '💬', '${bondsState.interactionsThisWeek} this week'),
         ],
       ),
     );
@@ -218,14 +222,18 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
 
   /// Bottom panel content
   Widget _buildBottomPanelContent(BuildContext context) {
+    final bondsState = ref.watch(bondsViewModelProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Week Day Picker
         WeekDayPicker(
-          selectedDate: DateTime.now(),
+          selectedDate: bondsState.selectedDate,
           headerText: "Stay connected",
-          onDateSelected: (date) {},
+          onDateSelected: (date) {
+            ref.read(bondsViewModelProvider.notifier).selectDate(date);
+          },
         ),
 
         const SizedBox(height: 20),
@@ -233,34 +241,258 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
         // Priority Contacts
         _buildSectionHeader('PRIORITY CONTACTS'),
         const SizedBox(height: 12),
-        _buildEmptyState(
-          icon: Icons.people_outline,
-          message: 'No priority contacts yet',
-          actionText: 'Add Contact',
-          onAction: () => _showAddContactHint(context),
-        ),
+        if (bondsState.priorityContacts.isEmpty)
+          _buildEmptyState(
+            icon: Icons.people_outline,
+            message: 'No priority contacts yet',
+            actionText: 'Add Contact',
+            onAction: () => _showAddContactHint(context),
+          )
+        else
+          ...bondsState.priorityContacts
+              .take(3)
+              .map((contact) => _buildContactRow(contact)),
 
         const SizedBox(height: 24),
 
-        // Reach Out To
+        // Reach Out To (Overdue)
         _buildSectionHeader('REACH OUT TO'),
         const SizedBox(height: 12),
-        _buildEmptyState(
-          icon: Icons.schedule,
-          message: 'Contacts overdue for connection will appear here',
-        ),
+        if (bondsState.overdueContacts.isEmpty)
+          _buildEmptyState(
+            icon: Icons.schedule,
+            message: 'Contacts overdue for connection will appear here',
+          )
+        else
+          ...bondsState.overdueContacts
+              .take(3)
+              .map((contact) => _buildContactRow(contact, showOverdue: true)),
 
         const SizedBox(height: 24),
 
         // Recent Interactions
         _buildSectionHeader('RECENT INTERACTIONS'),
         const SizedBox(height: 12),
-        _buildEmptyState(
-          icon: Icons.chat_bubble_outline,
-          message: 'Log interactions to track relationship health',
-        ),
+        if (bondsState.recentInteractions.isEmpty)
+          _buildEmptyState(
+            icon: Icons.chat_bubble_outline,
+            message: 'Log interactions to track relationship health',
+          )
+        else
+          ...bondsState.recentInteractions
+              .take(5)
+              .map((interaction) => _buildInteractionRow(interaction)),
       ],
     );
+  }
+
+  Widget _buildContactRow(Contact contact, {bool showOverdue = false}) {
+    final daysSinceContact = contact.lastContact != null
+        ? DateTime.now().difference(contact.lastContact!).inDays
+        : null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ThemeConstants.glassBackgroundWeak,
+        borderRadius: ThemeConstants.borderRadius,
+        border: Border.all(color: ThemeConstants.glassBorderWeak),
+      ),
+      child: Row(
+        children: [
+          // Avatar
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: ThemeConstants.accentBlue.withValues(alpha: 0.2),
+            backgroundImage: contact.photoUrl != null
+                ? NetworkImage(contact.photoUrl!)
+                : null,
+            child: contact.photoUrl == null
+                ? Text(
+                    contact.name.isNotEmpty
+                        ? contact.name[0].toUpperCase()
+                        : '?',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      color: ThemeConstants.accentBlue,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          // Name and details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  contact.nickname ?? contact.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConstants.textOnLight,
+                  ),
+                ),
+                if (daysSinceContact != null)
+                  Text(
+                    showOverdue
+                        ? '$daysSinceContact days overdue'
+                        : 'Last contact: $daysSinceContact days ago',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: showOverdue
+                          ? Colors.orange
+                          : ThemeConstants.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // Priority indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _getPriorityColor(contact.priority).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '★' * contact.priority,
+              style: TextStyle(
+                fontSize: 10,
+                color: _getPriorityColor(contact.priority),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInteractionRow(Interaction interaction) {
+    final timeAgo = _formatTimeAgo(interaction.timestamp);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ThemeConstants.glassBackgroundWeak,
+        borderRadius: ThemeConstants.borderRadius,
+        border: Border.all(color: ThemeConstants.glassBorderWeak),
+      ),
+      child: Row(
+        children: [
+          // Interaction type icon
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: ThemeConstants.accentBlue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _getInteractionIcon(interaction.type),
+              size: 18,
+              color: ThemeConstants.accentBlue,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  interaction.contact?.name ??
+                      'Contact #${interaction.contactId}',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConstants.textOnLight,
+                  ),
+                ),
+                Text(
+                  '${interaction.typeEmoji} ${_getInteractionTypeLabel(interaction.type)} • $timeAgo',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: ThemeConstants.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Quality indicator
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(
+                5,
+                (i) => Icon(
+                      i < interaction.quality ? Icons.star : Icons.star_border,
+                      size: 12,
+                      color: i < interaction.quality
+                          ? Colors.amber
+                          : ThemeConstants.textMuted,
+                    )),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getPriorityColor(int priority) {
+    if (priority >= 4) return Colors.red;
+    if (priority >= 3) return Colors.orange;
+    return ThemeConstants.textSecondary;
+  }
+
+  IconData _getInteractionIcon(InteractionType type) {
+    switch (type) {
+      case InteractionType.call:
+        return Icons.phone;
+      case InteractionType.videoCall:
+        return Icons.videocam;
+      case InteractionType.text:
+        return Icons.message;
+      case InteractionType.email:
+        return Icons.email;
+      case InteractionType.inPerson:
+        return Icons.people;
+      case InteractionType.social:
+        return Icons.thumb_up;
+      case InteractionType.gift:
+        return Icons.card_giftcard;
+      case InteractionType.other:
+        return Icons.chat_bubble_outline;
+    }
+  }
+
+  String _getInteractionTypeLabel(InteractionType type) {
+    switch (type) {
+      case InteractionType.call:
+        return 'Call';
+      case InteractionType.videoCall:
+        return 'Video';
+      case InteractionType.text:
+        return 'Text';
+      case InteractionType.email:
+        return 'Email';
+      case InteractionType.inPerson:
+        return 'In Person';
+      case InteractionType.social:
+        return 'Social';
+      case InteractionType.gift:
+        return 'Gift';
+      case InteractionType.other:
+        return 'Other';
+    }
+  }
+
+  String _formatTimeAgo(DateTime timestamp) {
+    final diff = DateTime.now().difference(timestamp);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'Just now';
   }
 
   Widget _buildSectionHeader(String title) {

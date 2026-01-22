@@ -1,25 +1,25 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/theme_constants.dart';
 import '../models/tracking/meal_log.dart';
+import '../providers/repository_providers.dart';
 import '../widgets/widgets.dart';
 
 /// Meal Plan screen showing today's meals, schedule, and meal history.
 /// Reuses: WeekDayPicker, MealTimelineRow, MacroPillRow
-class MealPlanScreen extends StatefulWidget {
+class MealPlanScreen extends ConsumerStatefulWidget {
   /// Optional meal to highlight/scroll to on open
   final MealLog? highlightedMeal;
 
   const MealPlanScreen({super.key, this.highlightedMeal});
 
   @override
-  State<MealPlanScreen> createState() => _MealPlanScreenState();
+  ConsumerState<MealPlanScreen> createState() => _MealPlanScreenState();
 }
 
-class _MealPlanScreenState extends State<MealPlanScreen>
+class _MealPlanScreenState extends ConsumerState<MealPlanScreen>
     with SingleTickerProviderStateMixin {
   static const double _mealIconSize = 48;
   static const double _mealLineHeight = 2;
@@ -43,10 +43,13 @@ class _MealPlanScreenState extends State<MealPlanScreen>
 
   Future<void> _loadMeals() async {
     try {
-      final mealsJson =
-          await rootBundle.loadString('data/tracking/meal_log.json');
-      final List<dynamic> mealsList = json.decode(mealsJson);
-      _allMeals = mealsList.map((j) => MealLog.fromJson(j)).toList();
+      final mealRepo = ref.read(mealRepositoryProvider);
+      // Load all meals (last 90 days for history)
+      final startDate = DateTime.now().subtract(const Duration(days: 90));
+      _allMeals = await mealRepo.getMeals(
+        startDate: startDate,
+        limit: 500,
+      );
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -57,7 +60,6 @@ class _MealPlanScreenState extends State<MealPlanScreen>
       }
     }
   }
-
 
   List<MealLog> get _selectedDateMeals {
     return _allMeals.where((m) {
@@ -237,11 +239,12 @@ class _MealPlanScreenState extends State<MealPlanScreen>
 
     // Calculate insights
     final totalMeals = _allMeals.length;
-    final totalCalories = _allMeals.fold(0, (sum, m) => sum + (m.calories ?? 0));
-    final totalProtein = _allMeals.fold(0, (sum, m) => sum + (m.proteinGrams ?? 0));
-    final avgCaloriesPerDay = sortedKeys.isNotEmpty 
-        ? (totalCalories / sortedKeys.length).round() 
-        : 0;
+    final totalCalories =
+        _allMeals.fold(0, (sum, m) => sum + (m.calories ?? 0));
+    final totalProtein =
+        _allMeals.fold(0, (sum, m) => sum + (m.proteinGrams ?? 0));
+    final avgCaloriesPerDay =
+        sortedKeys.isNotEmpty ? (totalCalories / sortedKeys.length).round() : 0;
 
     // Count meal types
     final mealTypeCounts = <MealType, int>{};
@@ -301,7 +304,8 @@ class _MealPlanScreenState extends State<MealPlanScreen>
           const SizedBox(height: 12),
           ...sortedKeys.take(5).map((dateKey) {
             final meals = _mealsByDate[dateKey]!;
-            final totalCals = meals.fold(0, (sum, m) => sum + (m.calories ?? 0));
+            final totalCals =
+                meals.fold(0, (sum, m) => sum + (m.calories ?? 0));
             return _buildHistoryDayCard(dateKey, meals, totalCals);
           }),
         ],
@@ -410,7 +414,8 @@ class _MealPlanScreenState extends State<MealPlanScreen>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_getMealIcon(entry.key.name), style: const TextStyle(fontSize: 20)),
+              Text(_getMealIcon(entry.key.name),
+                  style: const TextStyle(fontSize: 20)),
               const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -464,7 +469,8 @@ class _MealPlanScreenState extends State<MealPlanScreen>
     );
   }
 
-  Widget _buildHistoryDayCard(String dateKey, List<MealLog> meals, int totalCals) {
+  Widget _buildHistoryDayCard(
+      String dateKey, List<MealLog> meals, int totalCals) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -489,7 +495,8 @@ class _MealPlanScreenState extends State<MealPlanScreen>
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF3E0),
                   borderRadius: BorderRadius.circular(12),
@@ -508,13 +515,15 @@ class _MealPlanScreenState extends State<MealPlanScreen>
           const SizedBox(height: 12),
           // Meal icons row
           Row(
-            children: meals.map((meal) => Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text(
-                _getMealIcon(meal.type.name),
-                style: const TextStyle(fontSize: 24),
-              ),
-            )).toList(),
+            children: meals
+                .map((meal) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Text(
+                        _getMealIcon(meal.type.name),
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ))
+                .toList(),
           ),
           const SizedBox(height: 8),
           // Meal descriptions
@@ -687,8 +696,7 @@ class _MealPlanScreenState extends State<MealPlanScreen>
             children: [
               _buildInfoTag('📅', 'Mo - Fr'),
               const SizedBox(width: 16),
-              _buildInfoTag(
-                  '🍽️', '$dailyMealCount meals daily'),
+              _buildInfoTag('🍽️', '$dailyMealCount meals daily'),
               const SizedBox(width: 16),
               _buildInfoTag('👨‍👩‍👧‍👦', 'for 2 adults'),
             ],
@@ -795,7 +803,6 @@ class _MealPlanScreenState extends State<MealPlanScreen>
       ),
     );
   }
-
 
   String _getMealIcon(String type) {
     switch (type.toLowerCase()) {
