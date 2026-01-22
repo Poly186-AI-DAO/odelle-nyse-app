@@ -20,6 +20,7 @@ class VoiceState {
   final String? error;
   final ActionResult? lastActionResult; // Result of voice command processing
   final bool isProcessingAction; // True while LLM is processing command
+  final bool showCaptureOverlay; // True when transcription is ready to review
 
   const VoiceState({
     this.connectionState = VoiceLiveState.disconnected,
@@ -33,6 +34,7 @@ class VoiceState {
     this.error,
     this.lastActionResult,
     this.isProcessingAction = false,
+    this.showCaptureOverlay = false,
   });
 
   bool get isDisconnected => connectionState == VoiceLiveState.disconnected;
@@ -56,6 +58,7 @@ class VoiceState {
     String? error,
     ActionResult? lastActionResult,
     bool? isProcessingAction,
+    bool? showCaptureOverlay,
     bool clearActionResult = false,
   }) {
     return VoiceState(
@@ -72,6 +75,7 @@ class VoiceState {
           ? null
           : (lastActionResult ?? this.lastActionResult),
       isProcessingAction: isProcessingAction ?? this.isProcessingAction,
+      showCaptureOverlay: showCaptureOverlay ?? this.showCaptureOverlay,
     );
   }
 }
@@ -114,11 +118,14 @@ class VoiceViewModel extends Notifier<VoiceState> {
     _transcriptionSubscription?.cancel();
     _transcriptionSubscription = _service.transcriptionStream.listen((text) {
       // Clear AI response when user's turn finishes (new AI response incoming)
+      final hasTranscription = text.trim().isNotEmpty;
       state = state.copyWith(
         currentTranscription: text,
         partialTranscription: '',
         aiResponseText: '', // Clear for new AI response
         isAISpeaking: false,
+        showCaptureOverlay:
+            state.activeMode == VoiceLiveMode.transcription && hasTranscription,
       );
     });
 
@@ -151,6 +158,7 @@ class VoiceViewModel extends Notifier<VoiceState> {
       partialTranscription: '',
       aiResponseText: '',
       isAISpeaking: false,
+      showCaptureOverlay: false,
     );
 
     final connected = await _service.connect(mode: targetMode);
@@ -170,6 +178,7 @@ class VoiceViewModel extends Notifier<VoiceState> {
       partialTranscription: '',
       aiResponseText: '',
       isAISpeaking: false,
+      showCaptureOverlay: false,
     );
   }
 
@@ -179,6 +188,7 @@ class VoiceViewModel extends Notifier<VoiceState> {
     state = state.copyWith(
       currentTranscription: '',
       partialTranscription: '',
+      showCaptureOverlay: false,
     );
     _service.startRecording();
   }
@@ -200,6 +210,7 @@ class VoiceViewModel extends Notifier<VoiceState> {
     _service.cancelRecording();
     state = state.copyWith(
       partialTranscription: '',
+      showCaptureOverlay: false,
     );
   }
 
@@ -235,6 +246,7 @@ class VoiceViewModel extends Notifier<VoiceState> {
     state = state.copyWith(
       currentTranscription: '',
       partialTranscription: '',
+      showCaptureOverlay: false,
     );
   }
 
@@ -299,6 +311,61 @@ class VoiceViewModel extends Notifier<VoiceState> {
       );
       return errorResult;
     }
+  }
+
+  /// Process a custom transcription with optional image attachment
+  Future<ActionResult?> processCapture({
+    required String transcription,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+  }) async {
+    if (transcription.trim().isEmpty) {
+      Logger.warning('No transcription to process', tag: _tag);
+      return null;
+    }
+
+    Logger.info('Processing capture: "$transcription"', tag: _tag);
+    state = state.copyWith(
+      isProcessingAction: true,
+      currentTranscription: transcription,
+    );
+
+    try {
+      final result = await _actionService.processVoiceCommand(
+        transcription,
+        imageBytes: imageBytes,
+        imageMimeType: imageMimeType,
+      );
+      state = state.copyWith(
+        lastActionResult: result,
+        isProcessingAction: false,
+      );
+      return result;
+    } catch (e) {
+      Logger.error('Capture processing failed: $e', tag: _tag);
+      final errorResult = ActionResult(
+        success: false,
+        type: ActionType.error,
+        message: 'Failed to process capture',
+        error: e.toString(),
+      );
+      state = state.copyWith(
+        lastActionResult: errorResult,
+        isProcessingAction: false,
+      );
+      return errorResult;
+    }
+  }
+
+  /// Hide the capture overlay and optionally clear transcription
+  void dismissCaptureOverlay({bool clearTranscription = true}) {
+    state = state.copyWith(
+      showCaptureOverlay: false,
+      currentTranscription:
+          clearTranscription ? '' : state.currentTranscription,
+      partialTranscription:
+          clearTranscription ? '' : state.partialTranscription,
+    );
   }
 
   /// Clear the last action result

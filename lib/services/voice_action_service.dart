@@ -1,4 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 import '../config/azure_ai_config.dart';
 import '../database/app_database.dart';
@@ -32,7 +37,11 @@ class VoiceActionService {
         _database = database;
 
   /// Process a voice command and return an action result
-  Future<ActionResult> processVoiceCommand(String transcription) async {
+  Future<ActionResult> processVoiceCommand(
+    String transcription, {
+    Uint8List? imageBytes,
+    String? imageMimeType,
+  }) async {
     Logger.info('Processing voice command: "$transcription"', tag: _tag);
 
     if (transcription.trim().isEmpty) {
@@ -48,12 +57,12 @@ class VoiceActionService {
       final supplements = await _database.getSupplements();
       final supplementNames = supplements.map((s) => s.name).join(', ');
 
-      // Ask LLM to determine intent
-      final intentResponse = await _agentService.complete(
-        prompt: '''
+      final intentPrompt = '''
 User said: "$transcription"
 
 Available supplements: $supplementNames
+
+If an image is provided, use it to identify foods or supplements and estimate quantities.
 
 Determine the user's intent. Respond with JSON only:
 {
@@ -64,15 +73,34 @@ Determine the user's intent. Respond with JSON only:
   "calories_estimate": number if meal,
   "confidence": 0.0-1.0
 }
-''',
-        systemPrompt:
+''';
+
+      final userParts = <ChatContentPart>[
+        ChatContentPart.text(intentPrompt),
+      ];
+
+      if (imageBytes != null && imageBytes.isNotEmpty) {
+        final mimeType = imageMimeType ?? 'image/jpeg';
+        final base64Data = base64Encode(imageBytes);
+        final dataUrl = 'data:$mimeType;base64,$base64Data';
+        userParts.add(ChatContentPart.imageUrl(dataUrl));
+      }
+
+      // Ask LLM to determine intent
+      final intentResponse = await _agentService.chat(
+        messages: [
+          ChatMessage.system(
             'You are an intent classifier. Respond only with valid JSON.',
+          ),
+          ChatMessage.userWithParts(userParts),
+        ],
         deployment: AzureAIDeployment.gpt5Chat,
-        temperature: 0.3,
         maxTokens: 300,
+        responseFormat: 'json',
       );
 
-      final intent = jsonDecode(intentResponse) as Map<String, dynamic>;
+      final intent = jsonDecode(intentResponse.message.content ?? '{}')
+          as Map<String, dynamic>;
       final intentType = intent['intent'] as String? ?? 'unknown';
       final confidence = (intent['confidence'] as num?)?.toDouble() ?? 0.5;
 
@@ -91,6 +119,8 @@ Determine the user's intent. Respond with JSON only:
             intent['meal_description'] as String?,
             intent['protein_estimate'] as int? ?? 0,
             intent['calories_estimate'] as int? ?? 0,
+            imageBytes: imageBytes,
+            imageMimeType: imageMimeType,
           );
 
         case 'get_mantra':
@@ -170,6 +200,10 @@ Determine the user's intent. Respond with JSON only:
     String? description,
     int proteinGrams,
     int calories,
+    {
+      Uint8List? imageBytes,
+      String? imageMimeType,
+    }
   ) async {
     if (description == null || description.isEmpty) {
       return ActionResult(
@@ -193,7 +227,17 @@ Determine the user's intent. Respond with JSON only:
       source: MealSource.voice,
     );
 
-    await _database.insertMealLog(mealLog);
+    final mealId = await _database.insertMealLog(mealLog);
+    String? photoPath;
+    if (imageBytes != null && imageBytes.isNotEmpty) {
+      photoPath = await _saveMealPhoto(
+        mealId: mealId,
+        bytes: imageBytes,
+        mimeType: imageMimeType,
+      );
+      final updatedMeal = mealLog.copyWith(id: mealId, photoPath: photoPath);
+      await _database.updateMealLog(updatedMeal);
+    }
 
     Logger.info('Logged meal: $description', tag: _tag);
 
@@ -206,6 +250,7 @@ Determine the user's intent. Respond with JSON only:
         'protein': '${protein}g protein',
         'calories': '$cals cal',
         'time': DateTime.now().toIso8601String(),
+        if (photoPath != null) 'photo': 'Photo attached',
       },
     );
   }
@@ -306,6 +351,29 @@ Determine the user's intent. Respond with JSON only:
     if (lower.contains('egg')) return 70;
     if (lower.contains('shake')) return 200;
     return 100; // Default guess
+  }
+
+  Future<String> _saveMealPhoto({
+    required int mealId,
+    required Uint8List bytes,
+    String? mimeType,
+  }) async {
+    final extension = _extensionFromMime(mimeType);
+    final directory = await getApplicationDocumentsDirectory();
+    final imageDir = path.join(directory.path, 'images', 'meals');
+    final filePath = path.join(imageDir, 'meal_$mealId.$extension');
+    final file = File(filePath);
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(bytes);
+    return file.path;
+  }
+
+  String _extensionFromMime(String? mimeType) {
+    final lower = (mimeType ?? '').toLowerCase();
+    if (lower.contains('png')) return 'png';
+    if (lower.contains('heic')) return 'heic';
+    if (lower.contains('webp')) return 'webp';
+    return 'jpg';
   }
 }
 

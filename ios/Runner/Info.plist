@@ -93,6 +93,10 @@
 	<string>Microphone access is required for voice chat with the digital worker</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is required for video calls with the digital worker</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo access is required to attach images to your voice captures</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Photo access is required to save images from your captures</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Odelle reads your health data to display sleep, heart rate, and workout metrics on your dashboard</string>
 	<key>NSHealthUpdateUsageDescription</key>

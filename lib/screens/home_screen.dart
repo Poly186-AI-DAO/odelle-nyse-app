@@ -662,11 +662,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
 
             // Thought Capture Overlay - shown when recording on non-Now screens
-            if ((voiceState.isRecording || voiceState.isConnecting) &&
+            if ((voiceState.isRecording ||
+                    voiceState.isConnecting ||
+                    voiceState.showCaptureOverlay) &&
                 _currentPage != 2)
               Positioned.fill(
                 child: ThoughtCaptureOverlay(
-                  onDismiss: _onVoiceButtonTap, // Tap to stop
+                  onRequestStopRecording: _onVoiceButtonTap, // Tap to stop
+                  onRequestDismiss: () => ref
+                      .read(voiceViewModelProvider.notifier)
+                      .dismissCaptureOverlay(),
                 ),
               ),
           ],

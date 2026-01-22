@@ -10,10 +10,85 @@ import '../utils/logger.dart';
 /// Message role for chat completions
 enum ChatRole { system, user, assistant, tool }
 
+/// Content part for multimodal chat
+class ChatContentPart {
+  final String type;
+  final String? text;
+  final ChatImageUrl? imageUrl;
+
+  const ChatContentPart({
+    required this.type,
+    this.text,
+    this.imageUrl,
+  });
+
+  factory ChatContentPart.text(String text) =>
+      ChatContentPart(type: 'text', text: text);
+
+  factory ChatContentPart.imageUrl(String url, {String? detail}) =>
+      ChatContentPart(
+        type: 'image_url',
+        imageUrl: ChatImageUrl(url: url, detail: detail),
+      );
+
+  Map<String, dynamic> toJson() {
+    switch (type) {
+      case 'image_url':
+        return {
+          'type': type,
+          if (imageUrl != null) 'image_url': imageUrl!.toJson(),
+        };
+      case 'text':
+      default:
+        return {
+          'type': type,
+          if (text != null) 'text': text,
+        };
+    }
+  }
+
+  factory ChatContentPart.fromJson(Map<String, dynamic> json) {
+    final type = json['type'] as String? ?? 'text';
+    if (type == 'image_url') {
+      return ChatContentPart(
+        type: type,
+        imageUrl: json['image_url'] != null
+            ? ChatImageUrl.fromJson(json['image_url'] as Map<String, dynamic>)
+            : null,
+      );
+    }
+    return ChatContentPart(
+      type: type,
+      text: json['text'] as String?,
+    );
+  }
+}
+
+/// Image URL payload for multimodal chat
+class ChatImageUrl {
+  final String url;
+  final String? detail;
+
+  const ChatImageUrl({required this.url, this.detail});
+
+  Map<String, dynamic> toJson() => {
+        'url': url,
+        if (detail != null) 'detail': detail,
+      };
+
+  factory ChatImageUrl.fromJson(Map<String, dynamic> json) {
+    return ChatImageUrl(
+      url: json['url'] as String? ?? '',
+      detail: json['detail'] as String?,
+    );
+  }
+}
+
 /// A single message in the conversation
 class ChatMessage {
   final ChatRole role;
   final String? content;
+  final List<ChatContentPart>? contentParts;
   final String? name;
   final List<ToolCall>? toolCalls;
   final String? toolCallId;
@@ -21,6 +96,7 @@ class ChatMessage {
   const ChatMessage({
     required this.role,
     this.content,
+    this.contentParts,
     this.name,
     this.toolCalls,
     this.toolCallId,
@@ -31,7 +107,11 @@ class ChatMessage {
       'role': role.name,
     };
 
-    if (content != null) json['content'] = content;
+    if (contentParts != null) {
+      json['content'] = contentParts!.map((part) => part.toJson()).toList();
+    } else if (content != null) {
+      json['content'] = content;
+    }
     if (name != null) json['name'] = name;
     if (toolCallId != null) json['tool_call_id'] = toolCallId;
     if (toolCalls != null) {
@@ -42,12 +122,25 @@ class ChatMessage {
   }
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    final contentValue = json['content'];
+    String? content;
+    List<ChatContentPart>? contentParts;
+    if (contentValue is String) {
+      content = contentValue;
+    } else if (contentValue is List) {
+      contentParts = contentValue
+          .whereType<Map<String, dynamic>>()
+          .map(ChatContentPart.fromJson)
+          .toList();
+    }
+
     return ChatMessage(
       role: ChatRole.values.firstWhere(
         (r) => r.name == json['role'],
         orElse: () => ChatRole.assistant,
       ),
-      content: json['content'] as String?,
+      content: content,
+      contentParts: contentParts,
       name: json['name'] as String?,
       toolCallId: json['tool_call_id'] as String?,
       toolCalls: json['tool_calls'] != null
@@ -63,6 +156,9 @@ class ChatMessage {
 
   static ChatMessage user(String content) =>
       ChatMessage(role: ChatRole.user, content: content);
+
+  static ChatMessage userWithParts(List<ChatContentPart> parts) =>
+      ChatMessage(role: ChatRole.user, contentParts: parts);
 
   static ChatMessage assistant(String content, {List<ToolCall>? toolCalls}) =>
       ChatMessage(
