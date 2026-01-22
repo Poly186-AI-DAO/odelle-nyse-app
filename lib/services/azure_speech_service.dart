@@ -50,6 +50,12 @@ class AzureSpeechService {
   bool _awaitingAudioBufferClear = false;
   DateTime? _lastResponseDoneAt;
 
+  // Response tracking for interruption handling
+  // Per Azure docs: track item_id and audio_end_ms for proper truncation
+  String? _currentResponseItemId;
+  int _audioPlayedMs = 0;
+  bool _isAiSpeaking = false;
+
   // Connection completer for waiting on session.created
   Completer<bool>? _connectionCompleter;
 
@@ -234,11 +240,14 @@ class AzureSpeechService {
         ? ['text', 'audio']
         : ['text']; // Transcription-only mode
 
+    // VAD tuning: higher threshold and longer prefix padding reduces echo false-positives
+    // - threshold: 0.7 (was 0.5) - requires louder audio to trigger
+    // - prefix_padding_ms: 500 (was 300) - requires more sustained speech
     final turnDetection = _mode == VoiceLiveMode.conversation
         ? {
             'type': 'server_vad',
-            'threshold': 0.5,
-            'prefix_padding_ms': 300,
+            'threshold': 0.7,
+            'prefix_padding_ms': 500,
             'silence_duration_ms': 600,
           }
         : null; // transcription mode: client controls commit
@@ -365,10 +374,24 @@ class AzureSpeechService {
           // In conversation mode, state stays as recording (mic is still streaming)
           break;
 
+        case 'response.output_item.added':
+          // Track the response item ID for truncation on interruption
+          final item = data['item'] as Map<String, dynamic>?;
+          if (item != null && item['type'] == 'message') {
+            _currentResponseItemId = item['id'] as String?;
+            _audioPlayedMs = 0;
+            _isAiSpeaking = true;
+            Logger.debug('Response item started: $_currentResponseItemId',
+                tag: _tag);
+          }
+          break;
+
         case 'response.audio.delta':
           final audioBase64 = data['delta'] as String?;
           if (audioBase64 != null) {
             final audioBytes = base64Decode(audioBase64);
+            // Track audio duration for truncation (PCM16 @ 24kHz = 48 bytes/ms)
+            _audioPlayedMs += (audioBytes.length / 48).round();
             onAudioResponse?.call(audioBytes);
           }
           break;
@@ -390,11 +413,15 @@ class AzureSpeechService {
                 'state': _state.name,
                 'mode': _mode.name,
                 'totalChunks': _audioChunkCount,
+                'audioPlayedMs': _audioPlayedMs,
               });
 
           _lastResponseDoneAt = DateTime.now();
           _audioChunkCountSinceResponse = 0;
           _droppedAudioChunkCount = 0; // Reset dropped counter for new turn
+          _isAiSpeaking = false;
+          _currentResponseItemId = null;
+          _audioPlayedMs = 0;
 
           // In conversation mode, ensure state is recording so mic stream continues
           if (_mode == VoiceLiveMode.conversation) {
@@ -548,6 +575,53 @@ class AzureSpeechService {
     });
 
     Logger.info('Recording cancelled', tag: _tag);
+  }
+
+  /// Check if AI is currently speaking (for echo gating)
+  bool get isAiSpeaking => _isAiSpeaking;
+
+  /// Get current response item ID (for truncation)
+  String? get currentResponseItemId => _currentResponseItemId;
+
+  /// Get audio played in ms (for truncation)
+  int get audioPlayedMs => _audioPlayedMs;
+
+  /// Cancel in-progress response (for interruption handling)
+  /// Per Azure docs: send response.cancel to stop generation
+  void cancelResponse() {
+    if (!_isConnected) return;
+
+    Logger.info('Cancelling response', tag: _tag, data: {
+      'itemId': _currentResponseItemId,
+      'audioPlayedMs': _audioPlayedMs,
+    });
+
+    _sendJson({
+      'type': 'response.cancel',
+    });
+
+    _isAiSpeaking = false;
+  }
+
+  /// Truncate response to what user actually heard (for interruption handling)
+  /// Per Azure docs: sync server context with client playback state
+  void truncateResponse() {
+    if (!_isConnected || _currentResponseItemId == null) return;
+
+    Logger.info('Truncating response', tag: _tag, data: {
+      'itemId': _currentResponseItemId,
+      'audioEndMs': _audioPlayedMs,
+    });
+
+    _sendJson({
+      'type': 'conversation.item.truncate',
+      'item_id': _currentResponseItemId,
+      'content_index': 0,
+      'audio_end_ms': _audioPlayedMs,
+    });
+
+    _currentResponseItemId = null;
+    _audioPlayedMs = 0;
   }
 
   /// Request AI response (for voice assistant mode)

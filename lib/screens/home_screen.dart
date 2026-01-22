@@ -203,11 +203,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Handle voice interruptions: when user starts speaking during AI response
     // Per Azure Realtime API docs: use speech_started to interrupt playback
+    // ECHO GATING: Filter false triggers from AI audio being picked up by mic
     _speechService.onSpeechStarted = () {
-      Logger.info('User interrupted - stopping audio playback', tag: _tag);
-      // Stop any playing audio immediately
+      // Check if AI is currently speaking (potential echo situation)
+      if (!_speechService.isAiSpeaking) {
+        // AI is not speaking - this is definitely real user speech
+        Logger.debug('Speech started (AI not speaking)', tag: _tag);
+        return;
+      }
+
+      // AI IS speaking - this could be echo or real interruption
+      // For now, treat all speech during AI playback as real interruption
+      // The tuned VAD parameters (threshold: 0.7, prefix_padding: 500ms)
+      // should filter most echo. If this still triggers on echo,
+      // we can add a debounce or energy threshold check here.
+      Logger.info('User interrupted during AI speech', tag: _tag, data: {
+        'audioPlayedMs': _speechService.audioPlayedMs,
+        'responseItemId': _speechService.currentResponseItemId,
+      });
+
+      // 1. Stop local audio playback immediately
       AudioOutputService.instance.stop();
-      // Clear AI response text in the ViewModel
+
+      // 2. Cancel server response generation
+      _speechService.cancelResponse();
+
+      // 3. Truncate conversation to what user actually heard
+      _speechService.truncateResponse();
+
+      // 4. Clear AI response text in the ViewModel
       ref.read(voiceViewModelProvider.notifier).clearAiResponse();
     };
   }
