@@ -835,7 +835,30 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
     );
   }
 
-  Widget _buildImageStrip(String seed, {int count = 3, double height = 54}) {
+  /// Build a strip of images - uses generated images if available, falls back to placeholders
+  Widget _buildImageStrip(
+    String seed, {
+    int count = 3,
+    double height = 54,
+    List<String>? imagePaths,
+  }) {
+    // If we have generated images, use them
+    if (imagePaths != null && imagePaths.isNotEmpty) {
+      return SizedBox(
+        height: height,
+        child: Row(
+          children: [
+            for (var i = 0; i < imagePaths.length && i < count; i++) ...[
+              Expanded(child: _buildGeneratedImage(imagePaths[i], radius: 10)),
+              if (i < imagePaths.length - 1 && i < count - 1)
+                const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      );
+    }
+
+    // Fallback to placeholder assets
     final assets = _pickGalleryAssets(seed, count);
     if (assets.isEmpty) return const SizedBox.shrink();
 
@@ -852,16 +875,56 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
     );
   }
 
-  Widget _buildImageMosaic(String seed, {int count = 6}) {
-    final assets = _pickGalleryAssets(seed, count);
-    if (assets.isEmpty) return const SizedBox.shrink();
+  /// Display a generated image from file path
+  Widget _buildGeneratedImage(String path, {double radius = 12}) {
+    final file = File(path);
+    if (!file.existsSync()) {
+      return _buildGalleryTile('assets/icons/brain_icon.png', radius: radius);
+    }
 
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Image.file(
+        file,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            _buildGalleryTile('assets/icons/brain_icon.png', radius: radius),
+      ),
+    );
+  }
+
+  /// Build a mosaic of images - uses generated images if available
+  Widget _buildImageMosaic(
+    String seed, {
+    int count = 6,
+    List<String>? imagePaths,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         const columns = 3;
         const gap = 12.0;
         final tileWidth =
             (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+        // If we have generated images, use them
+        if (imagePaths != null && imagePaths.isNotEmpty) {
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (var i = 0; i < imagePaths.length && i < count; i++)
+                SizedBox(
+                  width: tileWidth,
+                  height: tileWidth * 0.75,
+                  child: _buildGeneratedImage(imagePaths[i], radius: 14),
+                ),
+            ],
+          );
+        }
+
+        // Fallback to placeholder assets
+        final assets = _pickGalleryAssets(seed, count);
+        if (assets.isEmpty) return const SizedBox.shrink();
 
         return Wrap(
           spacing: gap,
@@ -969,7 +1032,12 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildImageStrip(insight.title, count: 3, height: 54),
+              _buildImageStrip(
+                insight.title,
+                count: 3,
+                height: 54,
+                imagePaths: insight.imagePaths,
+              ),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -1186,7 +1254,11 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildImageMosaic(insight.title, count: 6),
+                            _buildImageMosaic(
+                              insight.title,
+                              count: 6,
+                              imagePaths: insight.imagePaths,
+                            ),
                             const SizedBox(height: 16),
                             _buildSectionHeader('IMAGE PROMPTS'),
                             const SizedBox(height: 8),
@@ -1309,7 +1381,7 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
                                   final prompts = snapshot.data ?? [];
                                   final count = prompts.isEmpty
                                       ? 6
-                                      : (prompts.length.clamp(4, 6) as int);
+                                      : prompts.length.clamp(4, 6);
                                   return Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,

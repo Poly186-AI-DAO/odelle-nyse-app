@@ -8,7 +8,6 @@ import 'package:permission_handler/permission_handler.dart';
 import '../models/journal_entry.dart';
 import '../providers/service_providers.dart';
 import '../providers/viewmodels/viewmodels.dart';
-import '../providers/viewmodels/voice_viewmodel.dart';
 import '../providers/voice_trigger_provider.dart';
 import '../services/azure_speech_service.dart';
 import '../services/audio_output_service.dart';

@@ -57,7 +57,7 @@ Future<void> handleMarkdownLinkTap(
     uri,
     mode: LaunchMode.externalApplication,
   );
-  if (!launched) {
+  if (!launched && context.mounted) {
     _showLinkError(context);
   }
 }

@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../config/azure_ai_config.dart';
 import '../utils/logger.dart';
 import 'azure_agent_service.dart';
+import 'azure_image_service.dart';
 import 'user_context_service.dart';
 
 /// The Psychograph Service - the "subconscious" LLM
@@ -22,6 +25,7 @@ class PsychographService {
   static const String _tag = 'PsychographService';
 
   final AzureAgentService _agentService;
+  final AzureImageService? _imageService;
   final UserContextService? _userContextService;
   Timer? _periodicTimer;
   bool _isProcessing = false;
@@ -42,8 +46,10 @@ class PsychographService {
 
   PsychographService({
     required AzureAgentService agentService,
+    AzureImageService? imageService,
     UserContextService? userContextService,
   })  : _agentService = agentService,
+        _imageService = imageService,
         _userContextService = userContextService;
 
   /// Get current psychograph state
@@ -311,12 +317,80 @@ Respond with JSON array:
         return [];
       }
 
-      return insightsList
+      final insights = insightsList
           .map((i) => PsychographInsight.fromJson(i as Map<String, dynamic>))
           .toList();
+
+      // Generate images for each insight if image service is available
+      if (_imageService != null && _imageService!.isInitialized) {
+        return await _generateInsightImages(insights);
+      }
+
+      return insights;
     } catch (e) {
       Logger.warning('Insight generation failed: $e', tag: _tag);
       return [];
+    }
+  }
+
+  /// Generate images for insights from their prompts
+  Future<List<PsychographInsight>> _generateInsightImages(
+    List<PsychographInsight> insights,
+  ) async {
+    if (_imageService == null || !_imageService!.isInitialized) {
+      return insights;
+    }
+
+    final result = <PsychographInsight>[];
+    final today = DateTime.now().toIso8601String().split('T')[0];
+
+    for (var i = 0; i < insights.length; i++) {
+      final insight = insights[i];
+      final imagePaths = <String>[];
+
+      // Generate up to 3 images per insight
+      for (var j = 0; j < insight.imagePrompts.length && j < 3; j++) {
+        try {
+          final prompt = insight.imagePrompts[j];
+          Logger.info('Generating insight image $j for "${insight.title}"',
+              tag: _tag);
+
+          final imageResult = await _imageService!.generateImage(
+            prompt: prompt,
+            size: ImageSize.square,
+          );
+
+          // Save to local file
+          final path = await _saveImageFile(
+            'insight_${i}_${j}_$today.png',
+            imageResult.bytes,
+          );
+          if (path != null) {
+            imagePaths.add(path);
+          }
+        } catch (e) {
+          Logger.warning('Failed to generate insight image $j: $e', tag: _tag);
+        }
+      }
+
+      result.add(insight.copyWithImages(imagePaths));
+    }
+
+    return result;
+  }
+
+  /// Save image bytes to local file
+  Future<String?> _saveImageFile(String filename, List<int> bytes) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/insights/$filename');
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(bytes);
+      Logger.debug('Saved insight image: ${file.path}', tag: _tag);
+      return file.path;
+    } catch (e) {
+      Logger.warning('Failed to save insight image: $e', tag: _tag);
+      return null;
     }
   }
 
@@ -493,10 +567,8 @@ Respond with JSON array of strings:
       final cleanJson = AzureAgentService.extractJson(response);
       final decoded = jsonDecode(cleanJson);
       final prompts = _parsePromptList(decoded);
-      final normalized = prompts
-          .map((p) => p.trim())
-          .where((p) => p.isNotEmpty)
-          .toList();
+      final normalized =
+          prompts.map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
 
       if (normalized.isEmpty) {
         throw Exception('No prophecy image prompts generated');
@@ -510,7 +582,8 @@ Respond with JSON array of strings:
       _prophecyImageDate = todayDate;
       return _prophecyImagePrompts;
     } catch (e) {
-      Logger.warning('Failed to generate prophecy image prompts: $e', tag: _tag);
+      Logger.warning('Failed to generate prophecy image prompts: $e',
+          tag: _tag);
       _prophecyImagePrompts = _fallbackProphecyImagePrompts(todayDate, count);
       _prophecyImageDate = todayDate;
       return _prophecyImagePrompts;
@@ -646,6 +719,7 @@ class PsychographInsight {
   final String action;
   final InsightCategory category;
   final List<String> imagePrompts;
+  final List<String> imagePaths; // Generated image file paths
 
   const PsychographInsight({
     required this.title,
@@ -653,7 +727,20 @@ class PsychographInsight {
     required this.action,
     required this.category,
     this.imagePrompts = const [],
+    this.imagePaths = const [],
   });
+
+  /// Create a copy with generated image paths
+  PsychographInsight copyWithImages(List<String> paths) {
+    return PsychographInsight(
+      title: title,
+      body: body,
+      action: action,
+      category: category,
+      imagePrompts: imagePrompts,
+      imagePaths: paths,
+    );
+  }
 
   factory PsychographInsight.fromJson(Map<String, dynamic> json) {
     final promptsRaw = json['image_prompts'] ?? json['imagePrompts'];
@@ -673,6 +760,7 @@ class PsychographInsight {
         orElse: () => InsightCategory.awareness,
       ),
       imagePrompts: prompts,
+      imagePaths: const [],
     );
   }
 }

@@ -33,9 +33,11 @@ final azureAgentServiceProvider = Provider<AzureAgentService>((ref) {
 /// Processes user data, updates RCA meter, generates insights
 final psychographServiceProvider = Provider<PsychographService>((ref) {
   final agentService = ref.watch(azureAgentServiceProvider);
+  final imageService = ref.watch(imageServiceProvider);
   final userContextService = ref.watch(userContextServiceProvider);
   final service = PsychographService(
     agentService: agentService,
+    imageService: imageService,
     userContextService: userContextService,
   );
 
@@ -146,10 +148,10 @@ final bootstrapServiceProvider = Provider<BootstrapService>((ref) {
 });
 
 /// Bootstrap result state - tracks if bootstrap has run and its result
-/// Also triggers daily content generation and psychograph processing
+/// Triggers psychograph processing after bootstrap completes.
+/// NOTE: Daily content generation is handled by DailyContentViewModel to avoid race conditions.
 final bootstrapResultProvider = FutureProvider<BootstrapResult>((ref) async {
   final bootstrapService = ref.watch(bootstrapServiceProvider);
-  final dailyContentService = ref.watch(dailyContentServiceProvider);
   final psychographService = ref.watch(psychographServiceProvider);
   final notificationService = ref.watch(notificationServiceProvider);
   final smartReminderService = ref.watch(smartReminderServiceProvider);
@@ -167,21 +169,8 @@ final bootstrapResultProvider = FutureProvider<BootstrapResult>((ref) async {
   // Run bootstrap
   final result = await bootstrapService.run();
 
-  // After bootstrap, check if we need to generate daily content
+  // After bootstrap, trigger supporting services (NOT daily content - that's handled by ViewModel)
   if (result.success) {
-    try {
-      final shouldGenerate = await dailyContentService.shouldGenerateForToday();
-      if (shouldGenerate) {
-        // Initialize and generate today's meditation content
-        await dailyContentService.initialize();
-        await dailyContentService.generateDailyMeditation();
-      }
-    } catch (e) {
-      // Don't fail bootstrap if daily content fails
-      Logger.warning('Daily content generation failed: $e',
-          tag: 'BootstrapResult');
-    }
-
     // Trigger psychograph processing (already started via provider)
     // Just ensure it runs an initial cycle
     try {

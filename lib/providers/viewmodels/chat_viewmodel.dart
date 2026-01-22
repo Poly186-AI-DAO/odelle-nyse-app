@@ -809,17 +809,24 @@ $psychographMemory
 
   BillCategory _guessBillCategory(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('rent') || lower.contains('mortgage'))
+    if (lower.contains('rent') || lower.contains('mortgage')) {
       return BillCategory.housing;
+    }
     if (lower.contains('electric') ||
         lower.contains('gas') ||
         lower.contains('water') ||
-        lower.contains('utilit')) return BillCategory.utilities;
-    if (lower.contains('car') || lower.contains('auto'))
-      return BillCategory.transportation;
-    if (lower.contains('insurance')) return BillCategory.insurance;
-    if (lower.contains('phone') || lower.contains('internet'))
+        lower.contains('utilit')) {
       return BillCategory.utilities;
+    }
+    if (lower.contains('car') || lower.contains('auto')) {
+      return BillCategory.transportation;
+    }
+    if (lower.contains('insurance')) {
+      return BillCategory.insurance;
+    }
+    if (lower.contains('phone') || lower.contains('internet')) {
+      return BillCategory.utilities;
+    }
     return BillCategory.other;
   }
 
@@ -828,28 +835,40 @@ $psychographMemory
     if (lower.contains('netflix') ||
         lower.contains('hulu') ||
         lower.contains('disney') ||
-        lower.contains('spotify')) return SubscriptionCategory.entertainment;
-    if (lower.contains('gym') || lower.contains('fitness'))
+        lower.contains('spotify')) {
+      return SubscriptionCategory.entertainment;
+    }
+    if (lower.contains('gym') || lower.contains('fitness')) {
       return SubscriptionCategory.health;
+    }
     if (lower.contains('cloud') ||
         lower.contains('notion') ||
-        lower.contains('github')) return SubscriptionCategory.software;
-    if (lower.contains('news') || lower.contains('times'))
+        lower.contains('github')) {
+      return SubscriptionCategory.software;
+    }
+    if (lower.contains('news') || lower.contains('times')) {
       return SubscriptionCategory.news;
+    }
     return SubscriptionCategory.other;
   }
 
   IncomeType _guessIncomeType(String source) {
     final lower = source.toLowerCase();
-    if (lower.contains('salary') || lower.contains('job'))
+    if (lower.contains('salary') || lower.contains('job')) {
       return IncomeType.salary;
-    if (lower.contains('freelance') || lower.contains('contract'))
+    }
+    if (lower.contains('freelance') || lower.contains('contract')) {
       return IncomeType.freelance;
-    if (lower.contains('invest') || lower.contains('dividend'))
+    }
+    if (lower.contains('invest') || lower.contains('dividend')) {
       return IncomeType.investment;
-    if (lower.contains('side') || lower.contains('gig')) return IncomeType.side;
-    if (lower.contains('rent') || lower.contains('property'))
+    }
+    if (lower.contains('side') || lower.contains('gig')) {
+      return IncomeType.side;
+    }
+    if (lower.contains('rent') || lower.contains('property')) {
       return IncomeType.rental;
+    }
     return IncomeType.other;
   }
 

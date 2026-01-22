@@ -42,7 +42,6 @@ class TwoToneSplitLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingHeroCard(
-      child: child,
       bottomPanel: bottomPanel,
       panelVisibility: panelVisibility,
       horizontalMargin: horizontalMargin,
@@ -57,6 +56,7 @@ class TwoToneSplitLayout extends StatelessWidget {
       bottomPanelPulseDuration: bottomPanelPulseDuration,
       bottomPanelPulseAmplitude: bottomPanelPulseAmplitude,
       bottomPanelProgressChanged: bottomPanelProgressChanged,
+      child: child,
     );
   }
 }

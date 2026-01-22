@@ -1,6 +1,5 @@
-/// Wealth domain models for the Wealth pillar.
-/// Covers bills, subscriptions, and income tracking.
-library wealth;
+// Wealth domain models for the Wealth pillar.
+// Covers bills, subscriptions, and income tracking.
 
 export 'bill.dart';
 export 'subscription.dart';
