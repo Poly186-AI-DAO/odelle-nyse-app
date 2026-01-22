@@ -66,16 +66,14 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
         bottom: false,
         child: Stack(
           children: [
-            // Hero content
+            // Hero content - always shown, animates with panel
             Positioned(
               left: 20,
               right: 20,
               bottom: cardBottom,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 150),
-                child: showFullCard
-                    ? _buildHeroContent()
-                    : _buildCompactBar(),
+                child: showFullCard ? _buildHeroContent() : _buildCompactBar(),
               ),
             ),
           ],
@@ -113,7 +111,7 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
               final income = wealthState.totalMonthlyIncome;
               final expenses = wealthState.totalMonthlyExpenses;
               final net = wealthState.netMonthlyCashFlow;
-              
+
               return Column(
                 children: [
                   // Income
@@ -153,7 +151,9 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 24,
                           fontWeight: FontWeight.w600,
-                          color: net >= 0 ? Colors.green.shade300 : Colors.red.shade300,
+                          color: net >= 0
+                              ? Colors.green.shade300
+                              : Colors.red.shade300,
                         ),
                       ),
                     ],
@@ -263,7 +263,8 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
         const SizedBox(height: 20),
 
         // Bills Due
-        _buildSectionHeaderWithAction('BILLS DUE', 'Add', () => _showAddBillHint(context)),
+        _buildSectionHeaderWithAction(
+            'BILLS DUE', 'Add', () => _showAddBillHint(context)),
         const SizedBox(height: 12),
         _buildEmptyState(
           icon: Icons.receipt_long_outlined,
@@ -275,7 +276,8 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
         const SizedBox(height: 24),
 
         // Subscriptions
-        _buildSectionHeaderWithAction('SUBSCRIPTIONS', 'Add', () => _showAddSubscriptionHint(context)),
+        _buildSectionHeaderWithAction(
+            'SUBSCRIPTIONS', 'Add', () => _showAddSubscriptionHint(context)),
         const SizedBox(height: 12),
         _buildEmptyState(
           icon: Icons.subscriptions_outlined,
@@ -307,7 +309,8 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
     );
   }
 
-  Widget _buildSectionHeaderWithAction(String title, String actionText, VoidCallback onAction) {
+  Widget _buildSectionHeaderWithAction(
+      String title, String actionText, VoidCallback onAction) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -375,7 +378,8 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
             GestureDetector(
               onTap: onAction,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: ThemeConstants.accentBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),

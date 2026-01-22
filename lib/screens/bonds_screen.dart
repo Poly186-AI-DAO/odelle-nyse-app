@@ -66,16 +66,14 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
         bottom: false,
         child: Stack(
           children: [
-            // Hero content
+            // Hero content - always shown, animates with panel
             Positioned(
               left: 20,
               right: 20,
               bottom: cardBottom,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 150),
-                child: showFullCard
-                    ? _buildHeroContent()
-                    : _buildCompactBar(),
+                child: showFullCard ? _buildHeroContent() : _buildCompactBar(),
               ),
             ),
           ],
@@ -116,9 +114,12 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildStatColumn('${bondsState.priorityContacts.length}', 'Priority'),
-                      _buildStatColumn('${bondsState.overdueContacts.length}', 'Overdue'),
-                      _buildStatColumn('${bondsState.interactionsThisWeek}', 'This Week'),
+                      _buildStatColumn(
+                          '${bondsState.priorityContacts.length}', 'Priority'),
+                      _buildStatColumn(
+                          '${bondsState.overdueContacts.length}', 'Overdue'),
+                      _buildStatColumn(
+                          '${bondsState.interactionsThisWeek}', 'This Week'),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -305,7 +306,8 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
             GestureDetector(
               onTap: onAction,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: ThemeConstants.accentBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),

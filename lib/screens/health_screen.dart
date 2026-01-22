@@ -8,6 +8,7 @@ import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/dashboard/body_stats_card.dart';
 import '../providers/viewmodels/viewmodels.dart';
+
 import 'meal_plan_screen.dart';
 
 class HealthScreen extends ConsumerStatefulWidget {
@@ -79,7 +80,7 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
         bottom: false,
         child: Stack(
           children: [
-            // Single animated stats card that moves and transforms
+            // Stats card - always shown, animates with panel
             if (!state.isLoading)
               Positioned(
                 left: 20,

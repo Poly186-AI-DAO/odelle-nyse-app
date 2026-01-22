@@ -14,6 +14,7 @@ class VoiceButton extends StatefulWidget {
   final bool isConnected; // Connected to voice service
   final bool isProcessing;
   final bool isLocked; // Visual state for locked mode
+  final bool inverted; // When true: black bg, white icon (for non-main screens)
   final double size;
   final IconData icon;
 
@@ -28,6 +29,7 @@ class VoiceButton extends StatefulWidget {
     this.isConnected = false,
     this.isProcessing = false,
     this.isLocked = false,
+    this.inverted = false,
     this.size = 64,
     this.icon = Icons.graphic_eq,
   });
@@ -173,22 +175,30 @@ class _VoiceButtonState extends State<VoiceButton>
                 ),
               );
             },
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
               width: widget.size,
               height: widget.size,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white,
+                color: widget.inverted ? const Color(0xFF1A1A1A) : Colors.white,
                 // Show border when connected
                 border: widget.isConnected
                     ? Border.all(
                         color: const Color(0xFF22C55E).withValues(alpha: 0.5),
                         width: 2,
                       )
-                    : null,
+                    : widget.inverted
+                        ? Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 1,
+                          )
+                        : null,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
+                    color: Colors.black
+                        .withValues(alpha: widget.inverted ? 0.3 : 0.15),
                     blurRadius: 20,
                     offset: const Offset(0, 4),
                   ),
@@ -213,19 +223,35 @@ class _VoiceButtonState extends State<VoiceButton>
                     ? SizedBox(
                         width: widget.size * 0.4,
                         height: widget.size * 0.4,
-                        child: const CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF1A1A1A),
+                            widget.inverted
+                                ? Colors.white
+                                : const Color(0xFF1A1A1A),
                           ),
                         ),
                       )
                     : widget.isListening
-                        ? _VoiceWaveform(size: widget.size * 0.5)
-                        : Icon(
-                            widget.icon,
-                            size: widget.size * 0.4,
-                            color: const Color(0xFF1A1A1A),
+                        ? _VoiceWaveform(
+                            size: widget.size * 0.5,
+                            color: widget.inverted
+                                ? Colors.white
+                                : const Color(0xFF1A1A1A),
+                          )
+                        : TweenAnimationBuilder<Color?>(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            tween: ColorTween(
+                              end: widget.inverted
+                                  ? Colors.white
+                                  : const Color(0xFF1A1A1A),
+                            ),
+                            builder: (context, color, _) => Icon(
+                              widget.icon,
+                              size: widget.size * 0.4,
+                              color: color,
+                            ),
                           ),
               ),
             ),
@@ -239,8 +265,12 @@ class _VoiceButtonState extends State<VoiceButton>
 /// Animated waveform for active listening state
 class _VoiceWaveform extends StatefulWidget {
   final double size;
+  final Color color;
 
-  const _VoiceWaveform({required this.size});
+  const _VoiceWaveform({
+    required this.size,
+    this.color = const Color(0xFF1A1A1A),
+  });
 
   @override
   State<_VoiceWaveform> createState() => _VoiceWaveformState();
@@ -282,7 +312,7 @@ class _VoiceWaveformState extends State<_VoiceWaveform>
               height: widget.size * height,
               margin: const EdgeInsets.symmetric(horizontal: 1.5),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
+                color: widget.color,
                 borderRadius: BorderRadius.circular(1.5),
               ),
             );

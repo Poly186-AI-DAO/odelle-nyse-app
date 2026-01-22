@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../models/journal_entry.dart';
 import '../providers/service_providers.dart';
 import '../providers/viewmodels/voice_viewmodel.dart';
+import '../providers/voice_trigger_provider.dart';
 import '../services/azure_speech_service.dart';
 import '../services/audio_output_service.dart';
 import '../utils/audio_resampler.dart';
@@ -15,7 +16,9 @@ import '../utils/logger.dart';
 import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/navigation/pillar_nav_bar.dart';
 import '../widgets/voice/voice_button.dart';
+import '../widgets/voice/thought_capture_overlay.dart';
 import '../widgets/molecules/sync_indicator.dart';
+import '../widgets/feedback/app_toast.dart';
 import 'soul_screen.dart';
 import 'bonds_screen.dart';
 import 'now_screen.dart';
@@ -120,18 +123,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (result.agentSummary != null && mounted) {
       // Show a brief toast with the bootstrap summary
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.agentSummary!.length > 100
-                ? '${result.agentSummary!.substring(0, 100)}...'
-                : result.agentSummary!,
-          ),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      AppToast.info(
+          context,
+          result.agentSummary!.length > 100
+              ? '${result.agentSummary!.substring(0, 100)}...'
+              : result.agentSummary!);
     }
-    
+
     // Trigger initial sync
     if (mounted) {
       ref.read(syncServiceProvider).syncPendingChanges();
@@ -178,13 +176,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _recordingStartTime = null;
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Voice error: $error'),
-            backgroundColor: Colors.red.shade700,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        AppToast.error(context, 'Voice error: $error');
       }
     };
 
@@ -291,7 +283,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int? _activeSessionScreen;
 
   /// Get the appropriate mode for the current screen
-  VoiceLiveMode get _targetMode => _currentPage == 2  // Now screen
+  VoiceLiveMode get _targetMode => _currentPage == 2 // Now screen
       ? VoiceLiveMode.conversation
       : VoiceLiveMode.transcription;
 
@@ -592,6 +584,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Watch voice state for reactive UI updates
     final voiceState = ref.watch(voiceViewModelProvider);
 
+    // Listen for voice trigger from child screens (e.g., ThoughtCaptureCard)
+    final voiceTrigger = ref.watch(voiceTriggerProvider);
+    if (voiceTrigger) {
+      // Clear the trigger and handle recording
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(voiceTriggerProvider.notifier).clearTrigger();
+        _onVoiceButtonTap();
+      });
+    }
+
     return Scaffold(
       backgroundColor: _getInterpolatedBackground(),
       extendBody: true,
@@ -651,13 +653,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
-            
+
             // Sync Indicator (Top Right)
             const Positioned(
               top: 0,
               right: 0,
               child: SyncIndicator(),
             ),
+
+            // Thought Capture Overlay - shown when recording on non-Now screens
+            if ((voiceState.isRecording || voiceState.isConnecting) &&
+                _currentPage != 2)
+              Positioned.fill(
+                child: ThoughtCaptureOverlay(
+                  onDismiss: _onVoiceButtonTap, // Tap to stop
+                ),
+              ),
           ],
         ),
       ),
@@ -667,6 +678,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: const EdgeInsets.only(bottom: 16),
         child: VoiceButton(
           size: 64,
+          // Inverted colors on non-main screens: black bg, white icon
+          inverted: _currentPage != 2,
           // Icon logic:
           // - If locked (session on different screen): lock icon
           // - Otherwise: soundwave for all states (waveform animates when active)

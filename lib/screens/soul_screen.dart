@@ -6,6 +6,7 @@ import '../constants/theme_constants.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../providers/viewmodels/viewmodels.dart';
+
 import 'chat_screen.dart';
 import 'mantra_screen.dart';
 import 'meditation_screen.dart';
@@ -70,7 +71,7 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
         bottom: false,
         child: Stack(
           children: [
-            // Single animated stats card that moves and transforms
+            // Hero content - always shown, animates with panel
             if (!state.isLoading)
               Positioned(
                 left: 20,
