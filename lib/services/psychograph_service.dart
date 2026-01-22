@@ -37,6 +37,8 @@ class PsychographService {
   // Cached prophecy (updated daily)
   String? _dailyProphecy;
   DateTime? _prophecyDate;
+  List<String> _prophecyImagePrompts = [];
+  DateTime? _prophecyImageDate;
 
   PsychographService({
     required AzureAgentService agentService,
@@ -275,9 +277,10 @@ Each insight should:
 1. Notice a pattern
 2. Suggest a small action
 3. Connect to their growth
+4. Include 3 concise image prompts (no text in the image)
 
 Respond with JSON array:
-[{"title": "...", "body": "...", "action": "...", "category": "presence|awareness|integration"}]
+[{"title": "...", "body": "...", "action": "...", "category": "presence|awareness|integration", "image_prompts": ["...", "...", "..."]}]
 ''';
 
     try {
@@ -445,6 +448,75 @@ Write the prophecy now. Make it mythic, personal, and inspiring.
 ''';
   }
 
+  /// Generate image prompts for today's prophecy
+  Future<List<String>> getDailyProphecyImagePrompts({int count = 6}) async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    if (_prophecyImageDate == todayDate && _prophecyImagePrompts.isNotEmpty) {
+      return _prophecyImagePrompts;
+    }
+
+    if (!_agentService.isInitialized) {
+      _prophecyImagePrompts = _fallbackProphecyImagePrompts(todayDate, count);
+      _prophecyImageDate = todayDate;
+      return _prophecyImagePrompts;
+    }
+
+    try {
+      final prophecy = await getDailyProphecy();
+      final prompt = '''
+Based on the daily prophecy below, craft $count distinct image prompts for an AI image generator.
+
+Prophecy:
+$prophecy
+
+Requirements:
+- Vivid, cinematic, mythic scenes
+- No text, letters, or symbols in the image
+- Concrete visual elements and atmosphere
+- Each prompt under 40 words
+
+Respond with JSON array of strings:
+["prompt 1", "prompt 2", "..."]
+''';
+
+      final response = await _agentService.complete(
+        prompt: prompt,
+        systemPrompt:
+            'You are a visual storyteller crafting concise image prompts.',
+        deployment: AzureAIDeployment.gpt5,
+        temperature: 0.7,
+        responseFormat: 'json',
+      );
+
+      final cleanJson = AzureAgentService.extractJson(response);
+      final decoded = jsonDecode(cleanJson);
+      final prompts = _parsePromptList(decoded);
+      final normalized = prompts
+          .map((p) => p.trim())
+          .where((p) => p.isNotEmpty)
+          .toList();
+
+      if (normalized.isEmpty) {
+        throw Exception('No prophecy image prompts generated');
+      }
+
+      _prophecyImagePrompts = _normalizePromptCount(
+        normalized,
+        _fallbackProphecyImagePrompts(todayDate, count),
+        count,
+      );
+      _prophecyImageDate = todayDate;
+      return _prophecyImagePrompts;
+    } catch (e) {
+      Logger.warning('Failed to generate prophecy image prompts: $e', tag: _tag);
+      _prophecyImagePrompts = _fallbackProphecyImagePrompts(todayDate, count);
+      _prophecyImageDate = todayDate;
+      return _prophecyImagePrompts;
+    }
+  }
+
   /// Default prophecy when generation fails
   String _getDefaultProphecy(DateTime date) {
     final dayOfWeek = [
@@ -464,6 +536,58 @@ Your Life Path 4 grounds you in purpose while Destiny 7 whispers of deeper truth
 
 Today is not merely a day—it is another step in the great work of raising consciousness. Move forward with intention.
 ''';
+  }
+
+  List<String> _fallbackProphecyImagePrompts(DateTime date, int count) {
+    final dayOfWeek = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday'
+    ][date.weekday % 7];
+
+    final prompts = [
+      'A lone figure on a cliff at dawn, winds carrying glowing constellations, cinematic lighting, wide horizon',
+      'An ancient library with floating astrological charts and luminous orbs, soft gold light, mystical atmosphere',
+      'A calm ocean reflecting a star map, silver moonlight, serene and expansive, ultra wide angle',
+      'A sculpted mask splitting into three archetypal faces, dramatic chiaroscuro, dark velvet background',
+      'A winding path through a crystalline forest, teal mist, warm sunrise rays, ethereal mood',
+      'A celestial compass resting on stone, beams of light pointing north, sacred geometry implied',
+      'A mythic temple doorway opening to a sky of moving constellations, glowing dust particles',
+      'A sunrise over a desert on $dayOfWeek, with a single phoenix silhouette, amber haze',
+    ];
+
+    return prompts.take(count).toList();
+  }
+
+  List<String> _parsePromptList(dynamic decoded) {
+    if (decoded is List) {
+      return decoded.whereType<String>().toList();
+    }
+    if (decoded is Map && decoded['prompts'] is List) {
+      return (decoded['prompts'] as List).whereType<String>().toList();
+    }
+    if (decoded is String) {
+      return [decoded];
+    }
+    return [];
+  }
+
+  List<String> _normalizePromptCount(
+    List<String> prompts,
+    List<String> fallback,
+    int count,
+  ) {
+    final normalized = prompts.take(count).toList();
+    var fallbackIndex = 0;
+    while (normalized.length < count && fallbackIndex < fallback.length) {
+      normalized.add(fallback[fallbackIndex]);
+      fallbackIndex += 1;
+    }
+    return normalized;
   }
 
   /// Get the cached daily prophecy (returns null if not yet generated)
@@ -521,15 +645,25 @@ class PsychographInsight {
   final String body;
   final String action;
   final InsightCategory category;
+  final List<String> imagePrompts;
 
   const PsychographInsight({
     required this.title,
     required this.body,
     required this.action,
     required this.category,
+    this.imagePrompts = const [],
   });
 
   factory PsychographInsight.fromJson(Map<String, dynamic> json) {
+    final promptsRaw = json['image_prompts'] ?? json['imagePrompts'];
+    final prompts = <String>[];
+    if (promptsRaw is List) {
+      prompts.addAll(promptsRaw.whereType<String>());
+    } else if (promptsRaw is String && promptsRaw.trim().isNotEmpty) {
+      prompts.add(promptsRaw);
+    }
+
     return PsychographInsight(
       title: json['title'] as String? ?? 'Insight',
       body: json['body'] as String? ?? '',
@@ -538,6 +672,7 @@ class PsychographInsight {
         (c) => c.name == json['category'],
         orElse: () => InsightCategory.awareness,
       ),
+      imagePrompts: prompts,
     );
   }
 }

@@ -27,6 +27,16 @@ class SoulScreen extends ConsumerStatefulWidget {
 class _SoulScreenState extends ConsumerState<SoulScreen> {
   final PageController _mantraController =
       PageController(viewportFraction: 0.9);
+  static const List<String> _galleryAssets = [
+    'assets/icons/brain_icon.png',
+    'assets/icons/yin_yang_icon.png',
+    'assets/icons/wealth_icon.png',
+    'assets/icons/bonds_icon.png',
+    'assets/icons/body_powerlifting_icon.png',
+    'assets/icons/mind_meditate_icon.png',
+    'assets/icons/body_gym_icon.png',
+    'assets/icons/body_icon.png',
+  ];
 
   @override
   void initState() {
@@ -565,7 +575,7 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
     }
 
     return SizedBox(
-      height: 140,
+      height: 170,
       child: PageView.builder(
         controller: _mantraController,
         itemCount: mantras.length,
@@ -592,6 +602,8 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildImageStrip(text, count: 3, height: 48),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Icon(
@@ -779,6 +791,142 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
     );
   }
 
+  List<String> _pickGalleryAssets(String seed, int count) {
+    if (_galleryAssets.isEmpty || count <= 0) return [];
+    final start = seed.hashCode.abs() % _galleryAssets.length;
+    return List.generate(
+      count,
+      (index) => _galleryAssets[(start + index) % _galleryAssets.length],
+    );
+  }
+
+  LinearGradient _galleryGradientFor(String seed) {
+    const palettes = [
+      [ThemeConstants.polyPurple300, ThemeConstants.deepNavy],
+      [ThemeConstants.polyMint400, ThemeConstants.polyBlue300],
+      [ThemeConstants.polyPink400, ThemeConstants.polyPurple200],
+      [ThemeConstants.sunsetGold, ThemeConstants.warmTaupe],
+      [ThemeConstants.steelBlue, ThemeConstants.darkTeal],
+    ];
+    final palette = palettes[seed.hashCode.abs() % palettes.length];
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: palette,
+    );
+  }
+
+  Widget _buildGalleryTile(String asset, {double radius = 12}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _galleryGradientFor(asset),
+        ),
+        child: Center(
+          child: Image.asset(
+            asset,
+            width: 28,
+            height: 28,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageStrip(String seed, {int count = 3, double height = 54}) {
+    final assets = _pickGalleryAssets(seed, count);
+    if (assets.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: height,
+      child: Row(
+        children: [
+          for (var i = 0; i < assets.length; i++) ...[
+            Expanded(child: _buildGalleryTile(assets[i], radius: 10)),
+            if (i < assets.length - 1) const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageMosaic(String seed, {int count = 6}) {
+    final assets = _pickGalleryAssets(seed, count);
+    if (assets.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const columns = 3;
+        const gap = 12.0;
+        final tileWidth =
+            (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final asset in assets)
+              SizedBox(
+                width: tileWidth,
+                height: tileWidth * 0.75,
+                child: _buildGalleryTile(asset, radius: 14),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildImagePromptList(List<String> prompts) {
+    if (prompts.isEmpty) {
+      return Text(
+        'Image prompts are calibrating...',
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          color: ThemeConstants.textSecondary,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < prompts.length; i++) ...[
+          Text(
+            '${i + 1}. ${prompts[i]}',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: ThemeConstants.textSecondary,
+              height: 1.35,
+            ),
+          ),
+          if (i < prompts.length - 1) const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildInsightCategoryTag(InsightCategory category) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: ThemeConstants.polyPurple200.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        category.name.toUpperCase(),
+        style: GoogleFonts.inter(
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.2,
+          color: ThemeConstants.polyPurple400,
+        ),
+      ),
+    );
+  }
+
   Widget _buildInsightCards(AsyncValue<PsychographState> psychographState) {
     return psychographState.when(
       loading: () => _buildEmptyPanelCard('Insights are loading...'),
@@ -789,7 +937,7 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
         }
 
         return SizedBox(
-          height: 160,
+          height: 220,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: state.insights.length,
@@ -804,56 +952,81 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
   }
 
   Widget _buildInsightCard(PsychographInsight insight) {
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ThemeConstants.glassBorderWeak),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: ThemeConstants.polyPurple200.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              insight.category.name.toUpperCase(),
-              style: GoogleFonts.inter(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-                color: ThemeConstants.polyPurple400,
+        onTap: () => _showInsightSheet(insight),
+        child: Container(
+          width: 240,
+          height: 210,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: ThemeConstants.glassBorderWeak),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildImageStrip(insight.title, count: 3, height: 54),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _buildInsightCategoryTag(insight.category),
+                  const Spacer(),
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 14,
+                    color: ThemeConstants.polyPurple400,
+                  ),
+                ],
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                insight.title,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeConstants.textOnLight,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: Text(
+                  insight.body,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: ThemeConstants.textSecondary,
+                    height: 1.3,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Tap to explore',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeConstants.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 10,
+                    color: ThemeConstants.textSecondary,
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            insight.title,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: ThemeConstants.textOnLight,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            insight.body,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              color: ThemeConstants.textSecondary,
-              height: 1.3,
-            ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -863,23 +1036,56 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
       loading: () => _buildEmptyPanelCard('Prophecy is weaving...'),
       error: (_, __) => _buildEmptyPanelCard('Prophecy unavailable right now.'),
       data: (prophecy) {
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white,
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: ThemeConstants.glassBorderWeak),
-          ),
-          child: Text(
-            prophecy,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: ThemeConstants.textSecondary,
-              height: 1.5,
+            onTap: _showProphecySheet,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: ThemeConstants.glassBorderWeak),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildImageStrip(prophecy, count: 4, height: 62),
+                  const SizedBox(height: 12),
+                  Text(
+                    prophecy,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: ThemeConstants.textSecondary,
+                      height: 1.5,
+                    ),
+                    maxLines: 5,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Text(
+                        'Tap to explore',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: ThemeConstants.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 10,
+                        color: ThemeConstants.textSecondary,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            maxLines: 6,
-            overflow: TextOverflow.ellipsis,
           ),
         );
       },
@@ -905,9 +1111,136 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
     );
   }
 
+  Future<void> _showInsightSheet(PsychographInsight insight) async {
+    if (!mounted) return;
+
+    final prompts = insight.imagePrompts
+        .map((prompt) => prompt.trim())
+        .where((prompt) => prompt.isNotEmpty)
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: ThemeConstants.panelWhite,
+                borderRadius: ThemeConstants.borderRadiusBottomSheet,
+                boxShadow: ThemeConstants.cardShadow,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: ThemeConstants.spacingSmall),
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: ThemeConstants.textMuted,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: ThemeConstants.spacingMedium),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: ThemeConstants.spacingLarge,
+                      ),
+                      child: Row(
+                        children: [
+                          _buildInsightCategoryTag(insight.category),
+                          const Spacer(),
+                          Text(
+                            'Insight',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: ThemeConstants.textSecondary,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: ThemeConstants.spacingSmall),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(
+                          ThemeConstants.spacingLarge,
+                          0,
+                          ThemeConstants.spacingLarge,
+                          ThemeConstants.spacingLarge,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildImageMosaic(insight.title, count: 6),
+                            const SizedBox(height: 16),
+                            _buildSectionHeader('IMAGE PROMPTS'),
+                            const SizedBox(height: 8),
+                            _buildImagePromptList(prompts),
+                            const SizedBox(height: 18),
+                            Text(
+                              insight.title,
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: ThemeConstants.textOnLight,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              insight.body,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: ThemeConstants.textSecondary,
+                                height: 1.5,
+                              ),
+                            ),
+                            if (insight.action.trim().isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              _buildSectionHeader('SUGGESTED ACTION'),
+                              const SizedBox(height: 8),
+                              Text(
+                                insight.action,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: ThemeConstants.textOnLight,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _showProphecySheet() async {
     try {
       final prophecy = await ref.read(dailyProphecyProvider.future);
+      final imagePromptsFuture =
+          ref.read(dailyProphecyImagePromptsProvider.future);
       if (!mounted) return;
 
       showModalBottomSheet(
@@ -967,13 +1300,50 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
                             ThemeConstants.spacingLarge,
                             ThemeConstants.spacingLarge,
                           ),
-                          child: Text(
-                            prophecy,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: ThemeConstants.textSecondary,
-                              height: 1.5,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FutureBuilder<List<String>>(
+                                future: imagePromptsFuture,
+                                builder: (context, snapshot) {
+                                  final prompts = snapshot.data ?? [];
+                                  final count = prompts.isEmpty
+                                      ? 6
+                                      : (prompts.length.clamp(4, 6) as int);
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildImageMosaic(prophecy, count: count),
+                                      const SizedBox(height: 16),
+                                      _buildSectionHeader('IMAGE PROMPTS'),
+                                      const SizedBox(height: 8),
+                                      if (snapshot.connectionState ==
+                                              ConnectionState.waiting &&
+                                          prompts.isEmpty)
+                                        Text(
+                                          'Image prompts are weaving...',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            color: ThemeConstants.textSecondary,
+                                          ),
+                                        )
+                                      else
+                                        _buildImagePromptList(prompts),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                prophecy,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: ThemeConstants.textSecondary,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

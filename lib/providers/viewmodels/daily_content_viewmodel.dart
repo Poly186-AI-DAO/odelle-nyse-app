@@ -196,19 +196,59 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
       limit: 1,
     );
 
+    final parsed = _parseMantrasRows(rows);
+    if (parsed.isNotEmpty) return parsed;
+
+    final fallbackRows = await db.query(
+      'generation_queue',
+      where: "type = ? AND status = 'completed'",
+      whereArgs: ['mantras'],
+      orderBy: 'created_at DESC',
+      limit: 1,
+    );
+    final fallbackParsed = _parseMantrasRows(fallbackRows);
+    if (fallbackParsed.isNotEmpty) return fallbackParsed;
+
+    final service = ref.read(dailyContentServiceProvider);
+    await service.initialize();
+    if (service.mantras.isEmpty) return [];
+    return service.mantras.take(4).toList();
+  }
+
+  List<String> _parseMantrasRows(List<Map<String, dynamic>> rows) {
     if (rows.isEmpty) return [];
-
     final output = rows.first['output_data'] as String?;
-    if (output == null || output.isEmpty) return [];
+    if (output == null || output.trim().isEmpty) return [];
+    return _parseMantrasPayload(output);
+  }
 
+  List<String> _parseMantrasPayload(String output) {
     try {
-      final decoded = jsonDecode(output) as Map<String, dynamic>;
-      final list = decoded['mantras'] as List?;
-      if (list == null) return [];
-      return list.map((m) => m.toString()).toList();
+      final decoded = jsonDecode(output);
+      if (decoded is List) {
+        return decoded.map((m) => m.toString()).toList();
+      }
+      if (decoded is Map<String, dynamic>) {
+        final list = decoded['mantras'] as List?;
+        if (list == null) return [];
+        return list.map((m) => m.toString()).toList();
+      }
+      if (decoded is String && decoded.trim().isNotEmpty) {
+        return [decoded.trim()];
+      }
     } catch (_) {
-      return [];
+      // Fall through to plaintext parsing below.
     }
+
+    final lines = output
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .map((line) => line.replaceFirst(RegExp(r'^[-*•]\s*'), ''))
+        .map((line) => line.replaceAll('"', '').trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    return lines;
   }
 
   List<DailyMeditation> _parseMeditations(

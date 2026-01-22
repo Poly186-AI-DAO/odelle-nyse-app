@@ -16,6 +16,16 @@ jobs:
       - name: Select Xcode 16
         run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
+      - name: Install iOS Platform (required for Xcode 16.2)
+        run: |
+          # Download iOS platform - this is required on GitHub runners
+          echo "=== Installing iOS platform ==="
+          xcodebuild -downloadPlatform iOS || true
+          
+          # Verify
+          echo "=== Available SDKs ==="
+          xcodebuild -showsdks | grep -i ios || true
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -72,6 +82,16 @@ jobs:
 
       - name: Select Xcode 16
         run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+      - name: Install iOS Platform (required for Xcode 16.2)
+        run: |
+          # Download iOS platform - this is required on GitHub runners
+          echo "=== Installing iOS platform ==="
+          xcodebuild -downloadPlatform iOS || true
+          
+          # Verify
+          echo "=== Available SDKs ==="
+          xcodebuild -showsdks | grep -i ios || true
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2

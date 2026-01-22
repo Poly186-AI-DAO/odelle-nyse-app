@@ -70,6 +70,12 @@ final dailyProphecyProvider = FutureProvider<String>((ref) async {
   return service.getDailyProphecy();
 });
 
+/// Daily prophecy image prompts (for gallery previews)
+final dailyProphecyImagePromptsProvider = FutureProvider<List<String>>((ref) {
+  final service = ref.watch(psychographServiceProvider);
+  return service.getDailyProphecyImagePrompts();
+});
+
 /// Azure speech/voice recognition service
 final voiceServiceProvider = Provider<AzureSpeechService>((ref) {
   return AzureSpeechService();
