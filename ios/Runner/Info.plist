@@ -38,14 +38,6 @@
 				<string>com.googleusercontent.apps.579852048871-cleqh8ihfc8hl054b9eusqgkapt1rgva</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>fb852963779728950</string>
-			</array>
-			<key>CFBundleURLName</key>
-			<string>facebook</string>
-		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
@@ -68,25 +60,12 @@
 	</array>
 	<key>UIRequiresFullScreen</key>
 	<true/>
-	<key>FacebookAppID</key>
-	<string>852963779728950</string>
-	<key>FacebookClientToken</key>
-	<string>0444d3ef3b09f8385aeba4e714b5fe53</string>
-	<key>FacebookDisplayName</key>
-	<string>Poly</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>fbapi</string>
-		<string>fb-messenger-share-api</string>
-		<string>fbauth2</string>
-		<string>fbshareextension</string>
-	</array>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Speech recognition is used for voice interaction with the digital worker</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -110,6 +89,11 @@
 		<string>audio</string>
 		<string>voip</string>
 		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.poly186.odelle.refresh</string>
+		<string>com.poly186.odelle.processing</string>
 	</array>
 </dict>
 </plist>

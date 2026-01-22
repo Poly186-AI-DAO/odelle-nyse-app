@@ -241,6 +241,93 @@ Xcode 26 or later, in order to be uploaded to App Store Connect.
 - Run locally: `flutter analyze --no-fatal-infos`
 - Fix all Warning-level issues (Info-level is ignored)
 
+#### Swift Files Not in Xcode Project (Cannot find 'X' in scope)
+
+**Error:**
+```
+error: Cannot find 'AgentActivityAttributes' in scope
+/ios/Runner/AppDelegate.swift:106:33: error: Cannot find 'AgentActivityAttributes' in scope
+```
+
+**Root Cause:** Swift files exist in `ios/Runner/` but are not registered in `project.pbxproj`. This happens when files are added manually via file system rather than through Xcode.
+
+**Solution:** Add the Swift file to `ios/Runner.xcodeproj/project.pbxproj` in these sections:
+
+1. **PBXBuildFile section** - Add compilation reference:
+   ```
+   AAAA00001CF900000000001A /* AgentActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA00001CF900000000001B /* AgentActivityAttributes.swift */; };
+   ```
+
+2. **PBXFileReference section** - Declare the file:
+   ```
+   AAAA00001CF900000000001B /* AgentActivityAttributes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AgentActivityAttributes.swift; sourceTree = "<group>"; };
+   ```
+
+3. **PBXGroup (Runner)** - Add to children array:
+   ```
+   AAAA00001CF900000000001B /* AgentActivityAttributes.swift */,
+   ```
+
+4. **PBXSourcesBuildPhase** - Add to compilation sources:
+   ```
+   AAAA00001CF900000000001A /* AgentActivityAttributes.swift in Sources */,
+   ```
+
+**Prevention:** Always add Swift files through Xcode, or open the project in Xcode after adding files to let it regenerate the project structure.
+
+**Files currently in project.pbxproj:**
+- `AppDelegate.swift` (Live Activities, MethodChannel)
+- `AgentActivityAttributes.swift` (ActivityKit attributes for Live Activities)
+- `GeneratedPluginRegistrant.m` (Flutter plugin registration)
+
+#### Dead Dependencies Causing Build Failures
+
+**Error:**
+```
+error: 'LoginConfiguration' cannot be constructed because it has no accessible initializers
+/Pods/flutter_facebook_auth/FBSDKLoginConfiguration+Extension.swift:7:16
+```
+
+**Root Cause:** Unused dependencies (like `flutter_facebook_auth`) can break builds when their native SDKs update with breaking changes.
+
+**Solution:**
+1. Search codebase for actual usage:
+   ```bash
+   grep -r "facebook\|FacebookAuth" lib/
+   ```
+2. If no usage found, remove from `pubspec.yaml`
+3. Clean build:
+   ```bash
+   flutter clean && flutter pub get
+   cd ios && pod install --repo-update
+   ```
+
+**Prevention:** Periodically audit dependencies with `flutter pub deps` and remove unused packages.
+
+#### BGTaskSchedulerPermittedIdentifiers Missing
+
+**Error:**
+```
+Missing Info.plist value. The Info.plist key 'BGTaskSchedulerPermittedIdentifiers' must contain 
+a list of identifiers used to submit and handle tasks when 'UIBackgroundModes' has a value of 'processing'.
+```
+
+**Root Cause:** When `UIBackgroundModes` contains `processing`, Apple requires a list of task identifiers that can be scheduled.
+
+**Solution:** Add to `ios/Runner/Info.plist`:
+```xml
+<key>BGTaskSchedulerPermittedIdentifiers</key>
+<array>
+    <string>com.poly186.odelle.refresh</string>
+    <string>com.poly186.odelle.processing</string>
+</array>
+```
+
+**Current Background Modes:**
+- `audio` - For ElevenLabs voice playback
+- `voip` - For real-time voice communication
+- `processing` - For background agent tasks (requires BGTaskSchedulerPermittedIdentifiers)
+
 ---
 
 ## Local Testing
@@ -351,6 +438,10 @@ orientations to support iPad multitasking.
 
 | Date | Change |
 |------|--------|
+| 2026-01-22 | Added BGTaskSchedulerPermittedIdentifiers for background processing validation |
+| 2026-01-22 | Removed Facebook SDK config from Info.plist (dead dependency cleanup) |
+| 2026-01-22 | Fixed AgentActivityAttributes.swift not in Xcode project.pbxproj |
+| 2026-01-22 | Removed dead dependency `flutter_facebook_auth` causing Swift errors |
 | 2026-01-22 | Added CocoaPods caching and 5-retry logic for CDN failures |
 | 2026-01-22 | Removed unnecessary `Install iOS Platform` step |
 | 2026-01-22 | Added Git buffer config (500MB) for large pods |
