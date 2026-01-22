@@ -62,7 +62,19 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Build iOS (no codesign)
-        run: flutter build ios --no-codesign --release
+        run: |
+          # Retry logic for transient CocoaPods/network failures
+          for i in 1 2 3; do
+            echo "=== Build attempt $i ==="
+            if flutter build ios --no-codesign --release; then
+              echo "Build succeeded on attempt $i"
+              exit 0
+            fi
+            echo "Build failed on attempt $i, retrying in 30s..."
+            sleep 30
+          done
+          echo "Build failed after 3 attempts"
+          exit 1
 
       - name: Upload iOS build
         uses: actions/upload-artifact@v4
