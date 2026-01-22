@@ -146,7 +146,8 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
 
         if (shouldGenerate || missingTypes.isNotEmpty) {
           await service.generateDailyMeditations(
-            types: missingTypes.isEmpty ? _defaultMeditationTypes : missingTypes,
+            types:
+                missingTypes.isEmpty ? _defaultMeditationTypes : missingTypes,
           );
         }
 
@@ -228,12 +229,11 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
             decoded['title']?.toString() ?? _fallbackTitleForType(type);
         final description =
             decoded['description']?.toString() ?? _extractDescription(decoded);
-        final duration =
-            (decoded['duration_minutes'] as num?)?.toInt() ?? 10;
-        final imagePath = decoded['imagePath']?.toString() ??
-            row['image_path']?.toString();
-        final audioPath = decoded['audioPath']?.toString() ??
-            row['audio_path']?.toString();
+        final duration = (decoded['duration_minutes'] as num?)?.toInt() ?? 10;
+        final imagePath =
+            decoded['imagePath']?.toString() ?? row['image_path']?.toString();
+        final audioPath =
+            decoded['audioPath']?.toString() ?? row['audio_path']?.toString();
 
         byType[type] = DailyMeditation(
           title: title,

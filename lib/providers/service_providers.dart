@@ -55,7 +55,8 @@ final psychographStateProvider = Provider<PsychographState>((ref) {
 });
 
 /// Psychograph state stream for UI updates
-final psychographStateStreamProvider = StreamProvider<PsychographState>((ref) async* {
+final psychographStateStreamProvider =
+    StreamProvider<PsychographState>((ref) async* {
   final service = ref.watch(psychographServiceProvider);
   yield service.state;
   yield* Stream.periodic(const Duration(seconds: 30), (_) => service.state);
@@ -191,15 +192,15 @@ final voiceActionServiceProvider = Provider<VoiceActionService>((ref) {
 /// Auto-syncs every 5 minutes
 final syncServiceProvider = Provider<SyncService>((ref) {
   final service = SyncService();
-  
+
   // Auto-start periodic sync when provider is first accessed
   service.startPeriodicSync();
-  
+
   // Clean up when disposed
   ref.onDispose(() {
     service.stopPeriodicSync();
   });
-  
+
   return service;
 });
 
