@@ -3,7 +3,7 @@ enum AzureAIDeployment {
   tts,
   realtimeVoice,
   realtimeMini,
-  gpt5Chat,
+  gpt5,
   gpt5Nano,
 }
 
@@ -18,8 +18,8 @@ extension AzureAIDeploymentInfo on AzureAIDeployment {
         return 'gpt-realtime';
       case AzureAIDeployment.realtimeMini:
         return 'gpt-realtime-mini';
-      case AzureAIDeployment.gpt5Chat:
-        return 'gpt-5.2-chat';
+      case AzureAIDeployment.gpt5:
+        return 'gpt-5.2';
       case AzureAIDeployment.gpt5Nano:
         return 'gpt-5-nano';
     }
@@ -35,7 +35,7 @@ extension AzureAIDeploymentInfo on AzureAIDeployment {
         return 'Realtime voice';
       case AzureAIDeployment.realtimeMini:
         return 'Realtime mini';
-      case AzureAIDeployment.gpt5Chat:
+      case AzureAIDeployment.gpt5:
         return 'GPT-5.2 Chat (heavy reasoning)';
       case AzureAIDeployment.gpt5Nano:
         return 'GPT-5 Nano (fast/cheap)';
@@ -43,16 +43,14 @@ extension AzureAIDeploymentInfo on AzureAIDeployment {
   }
 
   bool get isChat {
-    return this == AzureAIDeployment.gpt5Chat ||
-        this == AzureAIDeployment.gpt5Nano;
+    return this == AzureAIDeployment.gpt5 || this == AzureAIDeployment.gpt5Nano;
   }
 }
 
 class AzureAIConfig {
   static const AzureAIDeployment defaultRealtimeDeployment =
       AzureAIDeployment.realtimeVoice;
-  static const AzureAIDeployment defaultChatDeployment =
-      AzureAIDeployment.gpt5Chat;
+  static const AzureAIDeployment defaultChatDeployment = AzureAIDeployment.gpt5;
   static const AzureAIDeployment fastChatDeployment =
       AzureAIDeployment.gpt5Nano;
 

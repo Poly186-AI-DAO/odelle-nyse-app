@@ -109,6 +109,7 @@
 	<array>
 		<string>audio</string>
 		<string>voip</string>
+		<string>processing</string>
 	</array>
 </dict>
 </plist>

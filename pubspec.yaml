@@ -1,7 +1,7 @@
 name: odelle_nyse
 description: Odelle Nyse (ON) - Self-Actualization Operating System
 publish_to: 'none'
-version: 1.9.7+25
+version: 1.9.8+26
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -46,6 +46,10 @@ dependencies:
   health: ^13.2.1
   weather_kit: ^0.3.0
   geolocator: ^13.0.2
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
+  flutter_markdown: ^0.7.7+1
+  liquid_glass_easy: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +73,12 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/riv/
+    - docs/ODELLE_CONSCIOUSNESS_ARCHITECTURE.md
+    - docs/Princeps_Mantras.md
+    - docs/Princeps_Prime.md
+    - docs/WHITEPAPER.md
+    - docs/The_Master_Algorithm.md
+    - docs/META_Awareness_Framework.md
     - data/tracking/
     - data/gamification/
     - data/misc/

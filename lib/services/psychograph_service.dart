@@ -192,18 +192,19 @@ Respond with ONLY a JSON object:
 ''';
 
     try {
-      // RCA scoring is internal processing - use Nano
+      // RCA scoring - use quality model for accurate assessment
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt:
             'You are a psychological assessment system. Respond only with valid JSON.',
-        deployment: AzureAIDeployment.gpt5Nano, // Processing (JSON parsing)
+        deployment: AzureAIDeployment.gpt5,
         temperature: 0.3,
-        maxTokens: 1000, // Nano needs min 1000
         responseFormat: 'json',
       );
 
-      final result = jsonDecode(response) as Map<String, dynamic>;
+      // Use extractJson to handle any residual markdown
+      final cleanJson = AzureAgentService.extractJson(response);
+      final result = jsonDecode(cleanJson) as Map<String, dynamic>;
       return (result['score'] as num).toDouble();
     } catch (e) {
       Logger.warning('RCA computation failed: $e', tag: _tag);
@@ -245,9 +246,8 @@ Respond with ONLY the psychograph text, no JSON or formatting.
         prompt: prompt,
         systemPrompt:
             'You are a depth psychologist writing brief, insightful psychographs.',
-        deployment: AzureAIDeployment.gpt5Chat, // Quality for user content
+        deployment: AzureAIDeployment.gpt5,
         temperature: 0.7,
-        maxTokens: 500, // Short psychograph text
       );
 
       return response.trim();
@@ -286,13 +286,28 @@ Respond with JSON array:
         prompt: prompt,
         systemPrompt:
             'You are a wise mentor generating concise, actionable insights.',
-        deployment: AzureAIDeployment.gpt5Chat, // Quality for user content
+        deployment: AzureAIDeployment.gpt5,
         temperature: 0.6,
-        maxTokens: 800, // Multiple insights
         responseFormat: 'json',
       );
 
-      final insightsList = jsonDecode(response) as List;
+      // Use extractJson to handle any residual markdown
+      final cleanJson = AzureAgentService.extractJson(response);
+      final decoded = jsonDecode(cleanJson);
+
+      // Handle both array format and object-with-array format
+      List insightsList;
+      if (decoded is List) {
+        insightsList = decoded;
+      } else if (decoded is Map && decoded.containsKey('insights')) {
+        insightsList = decoded['insights'] as List;
+      } else if (decoded is Map) {
+        // Single insight wrapped in object
+        insightsList = [decoded];
+      } else {
+        return [];
+      }
+
       return insightsList
           .map((i) => PsychographInsight.fromJson(i as Map<String, dynamic>))
           .toList();
@@ -371,9 +386,8 @@ Speak directly to the user in second person ("You are...").
 Be specific to THEIR cosmic profile - avoid generic horoscope language.
 Make it feel like a wise sage speaking eternal truths about their unique path.
 Keep it 2-3 paragraphs, poetic but not flowery.''',
-        deployment: AzureAIDeployment.gpt5Chat, // Quality matters for prophecy
-        temperature: 0.8, // Creative but grounded
-        maxTokens: 600,
+        deployment: AzureAIDeployment.gpt5,
+        temperature: 0.8,
       );
 
       _dailyProphecy = response.trim();

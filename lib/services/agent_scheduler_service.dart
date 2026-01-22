@@ -5,6 +5,7 @@ import '../database/app_database.dart';
 import '../models/agent_output.dart';
 import '../utils/logger.dart';
 import 'azure_agent_service.dart';
+import 'notification_service.dart';
 
 /// Scheduler that runs AI agents on intervals:
 /// - GPT-5 Nano: Every 5 minutes (fast, cheap processing)
@@ -14,6 +15,7 @@ class AgentSchedulerService {
 
   final AzureAgentService _agentService;
   final AppDatabase _db;
+  final NotificationService? _notificationService;
 
   Timer? _nanoTimer;
   Timer? _chatTimer;
@@ -32,8 +34,10 @@ class AgentSchedulerService {
   AgentSchedulerService({
     required AzureAgentService agentService,
     required AppDatabase db,
+    NotificationService? notificationService,
   })  : _agentService = agentService,
-        _db = db;
+        _db = db,
+        _notificationService = notificationService;
 
   /// Start the agent scheduler
   Future<void> start() async {
@@ -83,15 +87,21 @@ class AgentSchedulerService {
     Logger.info('Running Nano cycle #$_nanoCycleCount', tag: _tag);
     _updateStatus(AgentStatus.running(AgentType.nano, 'Processing...'));
 
+    // Show Live Activity on Dynamic Island
+    await _notificationService?.showAgentWorking(
+      agentType: AgentType.nano,
+      message: 'Processing cycle #$_nanoCycleCount...',
+    );
+
     try {
       // Nano does quick processing tasks
       final prompt = _buildNanoPrompt();
       final response = await _agentService.complete(
         prompt: prompt,
-        systemPrompt: 'You are a fast, efficient AI assistant doing background processing. '
+        systemPrompt:
+            'You are a fast, efficient AI assistant doing background processing. '
             'Respond concisely with actionable insights. Always respond in valid JSON.',
         deployment: AzureAIDeployment.gpt5Nano,
-        maxTokens: 2000,
       );
 
       // Store the output
@@ -102,10 +112,34 @@ class AgentSchedulerService {
       );
       await _db.insertAgentOutput(output);
 
+      // Update Live Activity to show completion
+      await _notificationService?.updateAgentStatus(
+        agentType: AgentType.nano,
+        message: 'Cycle complete',
+        isComplete: true,
+      );
+
+      // Hide Live Activity after brief delay
+      Future.delayed(const Duration(seconds: 2), () {
+        _notificationService?.hideAgentStatus();
+      });
+
       _updateStatus(AgentStatus.completed(AgentType.nano, response));
       Logger.info('Nano cycle #$_nanoCycleCount completed', tag: _tag);
     } catch (e) {
       Logger.error('Nano cycle failed: $e', tag: _tag);
+
+      // Show error on Live Activity
+      await _notificationService?.updateAgentStatus(
+        agentType: AgentType.nano,
+        message: 'Cycle failed',
+        isError: true,
+      );
+
+      Future.delayed(const Duration(seconds: 3), () {
+        _notificationService?.hideAgentStatus();
+      });
+
       _updateStatus(AgentStatus.error(AgentType.nano, e.toString()));
     }
   }
@@ -113,7 +147,14 @@ class AgentSchedulerService {
   /// Run a Chat agent cycle (supervisor)
   Future<void> _runChatCycle() async {
     Logger.info('Running Chat supervisor cycle', tag: _tag);
-    _updateStatus(AgentStatus.running(AgentType.chat, 'Reviewing Nano outputs...'));
+    _updateStatus(
+        AgentStatus.running(AgentType.chat, 'Reviewing Nano outputs...'));
+
+    // Show Live Activity on Dynamic Island
+    await _notificationService?.showAgentWorking(
+      agentType: AgentType.chat,
+      message: 'Reviewing agent outputs...',
+    );
 
     try {
       // Get unreviewed Nano outputs
@@ -121,18 +162,27 @@ class AgentSchedulerService {
 
       if (nanoOutputs.isEmpty) {
         Logger.info('No unreviewed Nano outputs to process', tag: _tag);
-        _updateStatus(AgentStatus.completed(AgentType.chat, 'No outputs to review'));
+        await _notificationService?.hideAgentStatus();
+        _updateStatus(
+            AgentStatus.completed(AgentType.chat, 'No outputs to review'));
         return;
       }
+
+      // Update status
+      await _notificationService?.updateAgentStatus(
+        agentType: AgentType.chat,
+        message: 'Analyzing ${nanoOutputs.length} outputs...',
+      );
 
       // Build supervisor prompt
       final prompt = _buildChatSupervisorPrompt(nanoOutputs);
       final response = await _agentService.complete(
         prompt: prompt,
-        systemPrompt: 'You are a senior AI supervisor reviewing the work of a junior agent. '
+        systemPrompt:
+            'You are a senior AI supervisor reviewing the work of a junior agent. '
             'Analyze the outputs, identify patterns, suggest improvements, and compile '
             'an action list. Be thorough but concise.',
-        deployment: AzureAIDeployment.gpt5Chat,
+        deployment: AzureAIDeployment.gpt5,
         maxTokens: 4000,
       );
 
@@ -155,10 +205,34 @@ class AgentSchedulerService {
         }
       }
 
+      // Update Live Activity to show completion
+      await _notificationService?.updateAgentStatus(
+        agentType: AgentType.chat,
+        message: 'Review complete',
+        isComplete: true,
+      );
+
+      // Hide Live Activity after brief delay
+      Future.delayed(const Duration(seconds: 2), () {
+        _notificationService?.hideAgentStatus();
+      });
+
       _updateStatus(AgentStatus.completed(AgentType.chat, response));
       Logger.info('Chat supervisor cycle completed', tag: _tag);
     } catch (e) {
       Logger.error('Chat cycle failed: $e', tag: _tag);
+
+      // Show error on Live Activity
+      await _notificationService?.updateAgentStatus(
+        agentType: AgentType.chat,
+        message: 'Review failed',
+        isError: true,
+      );
+
+      Future.delayed(const Duration(seconds: 3), () {
+        _notificationService?.hideAgentStatus();
+      });
+
       _updateStatus(AgentStatus.error(AgentType.chat, e.toString()));
     }
   }
@@ -258,21 +332,21 @@ class AgentStatus {
   factory AgentStatus.idle(String message) =>
       AgentStatus._(type: AgentStatusType.idle, message: message);
 
-  factory AgentStatus.running(AgentType agent, String message) =>
-      AgentStatus._(type: AgentStatusType.running, agentType: agent, message: message);
+  factory AgentStatus.running(AgentType agent, String message) => AgentStatus._(
+      type: AgentStatusType.running, agentType: agent, message: message);
 
   factory AgentStatus.completed(AgentType agent, String message) =>
-      AgentStatus._(type: AgentStatusType.completed, agentType: agent, message: message);
+      AgentStatus._(
+          type: AgentStatusType.completed, agentType: agent, message: message);
 
-  factory AgentStatus.error(AgentType agent, String message) =>
-      AgentStatus._(type: AgentStatusType.error, agentType: agent, message: message);
+  factory AgentStatus.error(AgentType agent, String message) => AgentStatus._(
+      type: AgentStatusType.error, agentType: agent, message: message);
 
-  factory AgentStatus.stopped() =>
-      AgentStatus._(type: AgentStatusType.stopped, message: 'Scheduler stopped');
+  factory AgentStatus.stopped() => AgentStatus._(
+      type: AgentStatusType.stopped, message: 'Scheduler stopped');
 
   bool get isRunning => type == AgentStatusType.running;
   bool get isError => type == AgentStatusType.error;
 }
 
 enum AgentStatusType { idle, running, completed, error, stopped }
-

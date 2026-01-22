@@ -29,7 +29,7 @@ class SettingsState extends Equatable {
     this.appVersion = '',
     this.buildNumber = '',
     this.isLoading = false,
-    this.instructions = OdelleSystemPrompt.conversationMode,
+    this.instructions = OdelleSystemPrompt.chatMode,
     this.voice = DigitalWorkerVoice.alloy,
     this.enableNoiseSuppression = true,
     this.enableEchoCancellation = true,

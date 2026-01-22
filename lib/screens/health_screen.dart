@@ -65,9 +65,8 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
     // Content crossfade (full card content vs compact bar content)
     final showFullCard = state.panelProgress < 0.6;
 
-    return FloatingHeroCard(
+    return TwoToneSplitLayout(
       panelVisibility: widget.panelVisibility,
-      draggableBottomPanel: true,
       bottomPanelMinHeight: minPanelHeight,
       bottomPanelMaxHeight: maxPanelHeight,
       bottomPanelShowHandle: true,

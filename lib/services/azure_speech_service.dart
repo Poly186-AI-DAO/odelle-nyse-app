@@ -258,7 +258,10 @@ class AzureSpeechService {
         'modalities': modalities,
         'voice': 'alloy',
         'instructions':
-            OdelleSystemPrompt.getPrompt(_mode == VoiceLiveMode.conversation),
+            OdelleSystemPrompt.getPrompt(
+              isConversation: _mode == VoiceLiveMode.conversation,
+              isRealtime: true,
+            ),
         'input_audio_format': 'pcm16',
         'output_audio_format': 'pcm16',
         'input_audio_transcription': {

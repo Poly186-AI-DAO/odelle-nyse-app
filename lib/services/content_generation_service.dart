@@ -289,7 +289,6 @@ Tone: Reverent but personal, mystical but grounded.
         prompt: prompt,
         systemPrompt:
             'You are a cosmic narrator revealing someone\'s true mythological identity. Write with reverence and power.',
-        maxTokens: 1500,
       );
 
       _notifyProgress(
@@ -382,7 +381,6 @@ Make them powerful, personal, and actionable.
         prompt: prompt,
         systemPrompt:
             'Generate mantras in valid JSON array format only. No markdown.',
-        maxTokens: 2000,
         responseFormat: 'json',
       );
 
@@ -454,7 +452,6 @@ Return JSON array with:
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt: 'Generate exercises in valid JSON array format only.',
-        maxTokens: 3000,
         responseFormat: 'json',
       );
 
@@ -565,7 +562,6 @@ Include RPE guidelines for main lifts.
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt: 'Generate workout plans in valid JSON format only.',
-        maxTokens: 1500,
         responseFormat: 'json',
       );
 
@@ -634,7 +630,6 @@ Return JSON:
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt: 'Generate meditation scripts in valid JSON format only.',
-        maxTokens: 2000,
         responseFormat: 'json',
       );
 
@@ -754,7 +749,6 @@ Return JSON:
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt: 'Generate meal suggestions in valid JSON format only.',
-        maxTokens: 600,
         responseFormat: 'json',
       );
 

@@ -820,7 +820,7 @@ JSON only: {"name":"X","exercises":[{"name":"X","sets":3,"reps":8}],"warmup":["X
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt: 'Strength coach. JSON only, 5-7 exercises.',
-        deployment: AzureAIDeployment.gpt5Chat,
+        deployment: AzureAIDeployment.gpt5,
         maxTokens: 1500,
         responseFormat: 'json',
       );
@@ -993,7 +993,7 @@ JSON: {"name":"X","protein":50,"cal":400,"ingredients":["X"]}
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt: 'Nutritionist. JSON only.',
-        deployment: AzureAIDeployment.gpt5Chat,
+        deployment: AzureAIDeployment.gpt5,
         maxTokens: 800,
         responseFormat: 'json',
       );

@@ -16,6 +16,35 @@ import '../../services/user_context_service.dart';
 import '../../utils/logger.dart';
 import '../service_providers.dart';
 
+/// Represents a tool call made by the AI (for UI display)
+class ToolCallInfo {
+  final String name;
+  final Map<String, dynamic>? args;
+  final String? result;
+  final bool isExecuting;
+
+  const ToolCallInfo({
+    required this.name,
+    this.args,
+    this.result,
+    this.isExecuting = false,
+  });
+
+  ToolCallInfo copyWith({
+    String? name,
+    Map<String, dynamic>? args,
+    String? result,
+    bool? isExecuting,
+  }) {
+    return ToolCallInfo(
+      name: name ?? this.name,
+      args: args ?? this.args,
+      result: result ?? this.result,
+      isExecuting: isExecuting ?? this.isExecuting,
+    );
+  }
+}
+
 /// A message in the chat conversation (UI model)
 class ChatMessageModel {
   final String id;
@@ -27,6 +56,7 @@ class ChatMessageModel {
   final String? thinkingContent;
   final String? imagePath;
   final Uint8List? pendingImageBytes; // For images not yet saved
+  final List<ToolCallInfo>? toolCalls; // Tool calls made during response
 
   const ChatMessageModel({
     required this.id,
@@ -38,9 +68,12 @@ class ChatMessageModel {
     this.thinkingContent,
     this.imagePath,
     this.pendingImageBytes,
+    this.toolCalls,
   });
 
   bool get hasImage => imagePath != null || pendingImageBytes != null;
+
+  bool get hasToolCalls => toolCalls != null && toolCalls!.isNotEmpty;
 
   ChatMessageModel copyWith({
     String? id,
@@ -52,6 +85,7 @@ class ChatMessageModel {
     String? thinkingContent,
     String? imagePath,
     Uint8List? pendingImageBytes,
+    List<ToolCallInfo>? toolCalls,
   }) {
     return ChatMessageModel(
       id: id ?? this.id,
@@ -63,6 +97,7 @@ class ChatMessageModel {
       thinkingContent: thinkingContent ?? this.thinkingContent,
       imagePath: imagePath ?? this.imagePath,
       pendingImageBytes: pendingImageBytes ?? this.pendingImageBytes,
+      toolCalls: toolCalls ?? this.toolCalls,
     );
   }
 }
@@ -179,21 +214,36 @@ class ChatViewModel extends Notifier<ChatState> {
 
     final messages = await _database.getChatMessages(conversationId);
 
-    // Convert DB records to UI models
-    final uiMessages = messages
-        .where((m) => m.role != 'system') // Don't show system prompts
-        .map((m) => ChatMessageModel(
-              id: m.id?.toString() ?? _uuid.v4(),
-              content: m.content,
-              isUser: m.role == 'user',
-              timestamp: m.timestamp,
-              imagePath: m.imagePath,
-            ))
-        .toList();
+    // Convert DB records to UI models, clearing stale image paths.
+    final uiMessages = <ChatMessageModel>[];
+    for (final message in messages) {
+      if (message.role == 'system') continue;
+
+      String? imagePath = message.imagePath;
+      if (imagePath != null) {
+        final imageFile = File(imagePath);
+        final exists = await imageFile.exists();
+        if (!exists) {
+          imagePath = null;
+          if (message.id != null) {
+            await _database.updateChatMessageImagePath(message.id!, null);
+          }
+        }
+      }
+
+      uiMessages.add(ChatMessageModel(
+        id: message.id?.toString() ?? _uuid.v4(),
+        content: message.content,
+        isUser: message.role == 'user',
+        timestamp: message.timestamp,
+        imagePath: imagePath,
+      ));
+    }
 
     // Rebuild LLM conversation history
     _conversationHistory.clear();
-    _conversationHistory.add(ChatMessage.system(_buildSystemPrompt()));
+    final systemPrompt = await _buildSystemPrompt();
+    _conversationHistory.add(ChatMessage.system(systemPrompt));
     for (final message in messages) {
       if (message.role == 'user') {
         _conversationHistory.add(ChatMessage.user(message.content));
@@ -224,7 +274,8 @@ class ChatViewModel extends Notifier<ChatState> {
 
     // Initialize LLM history with system prompt
     _conversationHistory.clear();
-    _conversationHistory.add(ChatMessage.system(_buildSystemPrompt()));
+    final systemPrompt = await _buildSystemPrompt();
+    _conversationHistory.add(ChatMessage.system(systemPrompt));
 
     state = state.copyWith(
       messages: [],
@@ -235,9 +286,11 @@ class ChatViewModel extends Notifier<ChatState> {
   }
 
   /// Build the system prompt with user context
-  String _buildSystemPrompt() {
+  Future<String> _buildSystemPrompt() async {
+    final psychographMemory = await _buildPsychographMemorySection();
+    final referenceDocs = _userContextService.getReferenceDocs();
     return '''
-${OdelleSystemPrompt.conversationMode}
+${OdelleSystemPrompt.chatMode}
 
 ---
 
@@ -259,7 +312,7 @@ WHEN TO USE TOOLS:
 • User mentions workouts/exercise → log or suggest workout
 • User mentions food/eating → estimate and track
 • User asks "how am I doing?" → get_user_status first, then respond
-• User shares something new about themselves → update psychograph mentally
+• User shares something new about themselves → note_pattern
 
 IMAGE ANALYSIS:
 ─────────────────────────────────────────
@@ -280,7 +333,54 @@ RESPONSE STYLE:
 
 ## USER CONTEXT (YOUR WORLD MODEL)
 ${_userContextService.getQuickContext()}
+
+$referenceDocs
+
+$psychographMemory
 ''';
+  }
+
+  Future<String> _buildPsychographMemorySection() async {
+    const limit = 5;
+    try {
+      final topPatterns =
+          await _database.getTopPsychographPatterns(limit: limit);
+      final recentPatterns =
+          await _database.getRecentPsychographPatterns(limit: limit);
+
+      if (topPatterns.isEmpty && recentPatterns.isEmpty) {
+        return '## PSYCHOGRAPH MEMORY\n- No stored patterns yet.';
+      }
+
+      final buffer = StringBuffer();
+      buffer.writeln('## PSYCHOGRAPH MEMORY');
+      if (topPatterns.isNotEmpty) {
+        buffer.writeln('Top patterns:');
+        for (final pattern in topPatterns) {
+          buffer.writeln(
+              '- [${pattern.category}] ${_normalizeMemoryText(pattern.observation)} (count: ${pattern.count}, last_seen: ${pattern.lastSeen.toIso8601String()})');
+        }
+      }
+      if (recentPatterns.isNotEmpty) {
+        buffer.writeln('Recent patterns:');
+        for (final pattern in recentPatterns) {
+          final context = _normalizeMemoryText(pattern.context);
+          final contextSuffix =
+              context.isNotEmpty ? ' (context: $context)' : '';
+          buffer.writeln(
+              '- [${pattern.category}] ${_normalizeMemoryText(pattern.observation)}$contextSuffix');
+        }
+      }
+      return buffer.toString().trimRight();
+    } catch (e) {
+      Logger.warning('Failed to load psychograph patterns: $e', tag: _tag);
+      return '## PSYCHOGRAPH MEMORY\n- Unable to load stored patterns.';
+    }
+  }
+
+  String _normalizeMemoryText(String? value) {
+    if (value == null) return '';
+    return value.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   /// Get all available tools (expanded beyond just wealth)
@@ -541,19 +641,34 @@ ${_userContextService.getQuickContext()}
           {'success': false, 'error': 'Missing category or observation'});
     }
 
-    // For now, just log it - in the future this could persist to a psychograph database
-    Logger.info('Psychograph pattern noted', tag: _tag, data: {
-      'category': category,
-      'observation': observation,
-      'context': context,
-      'timestamp': DateTime.now().toIso8601String(),
-    });
+    final timestamp = DateTime.now();
+    try {
+      final id = await _database.insertPsychographPattern(
+        PsychographPattern(
+          category: category,
+          observation: observation,
+          context: context,
+          createdAt: timestamp,
+        ),
+      );
+      Logger.info('Psychograph pattern noted', tag: _tag, data: {
+        'id': id,
+        'category': category,
+        'observation': observation,
+        'context': context,
+        'timestamp': timestamp.toIso8601String(),
+      });
 
-    return jsonEncode({
-      'success': true,
-      'message': 'Pattern recorded: [$category] $observation',
-      'note': 'This updates my world model of the user.'
-    });
+      return jsonEncode({
+        'success': true,
+        'id': id,
+        'message': 'Pattern recorded: [$category] $observation',
+        'note': 'This updates my world model of the user.'
+      });
+    } catch (e) {
+      Logger.warning('Failed to save psychograph pattern: $e', tag: _tag);
+      return jsonEncode({'success': false, 'error': e.toString()});
+    }
   }
 
   Future<String> _toolAddBill(Map<String, dynamic> args) async {
@@ -995,34 +1110,105 @@ ${_userContextService.getQuickContext()}
           tag: _tag);
 
       String aiContent;
+      final toolCallsList = <ToolCallInfo>[];
 
       // Check if this might benefit from proactive tool use
       if (text.isNotEmpty && _mightBeActionRequest(text)) {
-        // Use agent mode with all available tools
-        Logger.info('Using proactive agent mode with tools', tag: _tag);
+        // Use streaming agent mode with all available tools
+        Logger.info('Using proactive streaming agent mode with tools',
+            tag: _tag);
 
-        final response = await _agentService.runAgent(
+        final stream = _agentService.runAgentStream(
           messages: _conversationHistory,
           tools: _getTools(),
           executor: _executeTool,
-          maxIterations: 5, // Allow more iterations for complex queries
-          deployment: AzureAIDeployment.gpt5Chat,
+          maxIterations: 5,
+          deployment: AzureAIDeployment.gpt5,
         );
 
-        aiContent =
-            response.message.content ?? "Done! I've updated your records.";
+        final contentBuffer = StringBuffer();
 
-        // Update the loading message with the final content
+        await for (final event in stream) {
+          switch (event.type) {
+            case StreamEventType.toolCall:
+              // Add tool call to list (shows as "calling...")
+              if (event.toolName != null) {
+                toolCallsList.add(ToolCallInfo(
+                  name: event.toolName!,
+                  args: event.toolArgs,
+                  isExecuting: true,
+                ));
+                _updateStreamingMessage(
+                  aiMessageId,
+                  content: contentBuffer.toString(),
+                  toolCalls: List.from(toolCallsList),
+                );
+              }
+              break;
+
+            case StreamEventType.toolResult:
+              // Update the tool call with result
+              if (event.toolName != null) {
+                final idx = toolCallsList.lastIndexWhere(
+                    (t) => t.name == event.toolName && t.isExecuting);
+                if (idx >= 0) {
+                  toolCallsList[idx] = toolCallsList[idx].copyWith(
+                    result: event.toolResult,
+                    isExecuting: false,
+                  );
+                  _updateStreamingMessage(
+                    aiMessageId,
+                    content: contentBuffer.toString(),
+                    toolCalls: List.from(toolCallsList),
+                  );
+                }
+              }
+              break;
+
+            case StreamEventType.content:
+              if (event.content != null) {
+                contentBuffer.write(event.content);
+                _updateStreamingMessage(
+                  aiMessageId,
+                  content: contentBuffer.toString(),
+                  toolCalls: List.from(toolCallsList),
+                );
+              }
+              break;
+
+            case StreamEventType.thinking:
+              // Agent mode typically doesn't emit thinking, but handle it
+              break;
+
+            case StreamEventType.done:
+              Logger.info('Agent stream completed: ${event.finishReason}',
+                  tag: _tag);
+              break;
+
+            case StreamEventType.usage:
+              break;
+
+            case StreamEventType.error:
+              throw Exception(event.error ?? 'Unknown agent error');
+          }
+        }
+
+        aiContent = contentBuffer.isNotEmpty
+            ? contentBuffer.toString()
+            : "Done! I've updated your records.";
+
+        // Finalize the message
         _updateStreamingMessage(
           aiMessageId,
           content: aiContent,
+          toolCalls: toolCallsList.isNotEmpty ? toolCallsList : null,
           isLoading: false,
         );
       } else {
         // Use streaming API for regular conversation
         final stream = _agentService.chatStream(
           messages: _conversationHistory,
-          deployment: AzureAIDeployment.gpt5Chat,
+          deployment: AzureAIDeployment.gpt5,
         );
 
         final contentBuffer = StringBuffer();
@@ -1056,6 +1242,11 @@ ${_userContextService.getQuickContext()}
                   isThinking: false,
                 );
               }
+              break;
+
+            case StreamEventType.toolCall:
+            case StreamEventType.toolResult:
+              // Not used in regular streaming mode (only agent mode)
               break;
 
             case StreamEventType.done:
@@ -1165,6 +1356,7 @@ ${_userContextService.getQuickContext()}
     bool? isThinking,
     bool? isLoading,
     DateTime? timestamp,
+    List<ToolCallInfo>? toolCalls,
   }) {
     final messages = [...state.messages];
     final index = messages.indexWhere((m) => m.id == messageId);
@@ -1176,6 +1368,7 @@ ${_userContextService.getQuickContext()}
       isThinking: isThinking,
       isLoading: isLoading ?? messages[index].isLoading,
       timestamp: timestamp,
+      toolCalls: toolCalls ?? messages[index].toolCalls,
     );
 
     state = state.copyWith(messages: messages);

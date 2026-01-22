@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,9 +12,10 @@ import 'package:image_picker/image_picker.dart';
 import '../constants/theme_constants.dart';
 import '../providers/viewmodels/chat_viewmodel.dart';
 import '../widgets/effects/breathing_card.dart';
+import '../widgets/chat/chat_markdown.dart';
 
 /// Chat Screen - Text-based conversation with the AI (Digital Twin)
-/// Design matches the app's floating hero card pattern with white bottom panel
+/// Full-bleed conversation over the breathing background
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
@@ -59,9 +62,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _showImagePicker() async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: ThemeConstants.panelWhite,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(ThemeConstants.radiusLarge),
+        ),
       ),
       builder: (context) => SafeArea(
         child: Padding(
@@ -74,7 +79,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: ThemeConstants.textMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -92,7 +97,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 title: Text('Take Photo',
                     style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
                 subtitle: Text('Use camera',
-                    style: GoogleFonts.inter(color: Colors.grey)),
+                    style: GoogleFonts.inter(color: ThemeConstants.textMuted)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera);
@@ -113,7 +118,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 title: Text('Photo Library',
                     style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
                 subtitle: Text('Choose existing',
-                    style: GoogleFonts.inter(color: Colors.grey)),
+                    style: GoogleFonts.inter(color: ThemeConstants.textMuted)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
@@ -153,7 +158,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(chatViewModelProvider);
-    final screenHeight = MediaQuery.of(context).size.height;
     final safeTop = MediaQuery.of(context).padding.top;
 
     // Scroll to bottom when messages change or during streaming
@@ -181,7 +185,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             top: 6,
             left: 8,
             right: 8,
-            bottom: screenHeight * 0.42, // Leave room for white panel
+            bottom: 6,
             child: BreathingCard(
               borderRadius: 48,
               child: const SizedBox.expand(),
@@ -193,22 +197,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             bottom: false,
             child: Column(
               children: [
-                // Header
-                _buildHeader(state),
-
-                // Messages area (in the dark card)
                 Expanded(
-                  flex: 58, // ~58% for dark area
                   child: state.messages.isEmpty
                       ? _buildEmptyState()
                       : _buildMessagesList(state),
                 ),
-
-                // White bottom panel (input area)
-                Expanded(
-                  flex: 42, // ~42% for white panel
-                  child: _buildWhitePanel(state),
-                ),
+                _buildComposer(state),
               ],
             ),
           ),
@@ -216,56 +210,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           // Error overlay
           if (state.error != null)
             Positioned(
-              top: safeTop + 60,
+              top: safeTop + 12,
               left: 16,
               right: 16,
               child: _buildErrorBanner(state.error!),
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(ChatState state) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
-        children: [
-          IconButton(
-            icon:
-                const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          const Spacer(),
-          Column(
-            children: [
-              Text(
-                'Note to Self',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (!state.isInitialized)
-                Text(
-                  'Loading...',
-                  style: GoogleFonts.inter(
-                    color: Colors.white54,
-                    fontSize: 11,
-                  ),
-                ),
-            ],
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.add_comment_outlined,
-                color: Colors.white70, size: 20),
-            onPressed: () {
-              ref.read(chatViewModelProvider.notifier).clearConversation();
-            },
-            tooltip: 'New conversation',
-          ),
         ],
       ),
     );
@@ -321,7 +270,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildMessagesList(ChatState state) {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: ThemeConstants.spacingMedium,
+        vertical: ThemeConstants.spacingSmall,
+      ),
       itemCount: state.messages.length,
       itemBuilder: (context, index) {
         final message = state.messages[index];
@@ -330,71 +282,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildWhitePanel(ChatState state) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x15000000),
-            blurRadius: 20,
-            offset: Offset(0, -4),
-          ),
-        ],
+  Widget _buildComposer(ChatState state) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        ThemeConstants.spacingMedium,
+        ThemeConstants.spacingSmall,
+        ThemeConstants.spacingMedium,
+        bottomInset + ThemeConstants.spacingSmall,
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
-        ),
-        child: Column(
-          children: [
-            // Handle
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Pending image preview
-            if (state.hasPendingImage)
-              _buildPendingImagePreview(state.pendingImage!),
-
-            // Recent AI messages in white panel (last 2)
-            Expanded(
-              child: _buildRecentResponses(state),
-            ),
-
-            // Input area
-            _buildInputArea(state),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (state.hasPendingImage) ...[
+            _buildPendingImagePreview(state.pendingImage!),
+            const SizedBox(height: ThemeConstants.spacingSmall),
           ],
-        ),
+          _buildInputRow(state),
+        ],
       ),
     );
   }
 
   Widget _buildPendingImagePreview(Uint8List bytes) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
+        color: ThemeConstants.glassBackgroundStrong,
+        borderRadius: BorderRadius.circular(ThemeConstants.radiusMedium),
+        border: Border.all(
+          color: ThemeConstants.glassBorder,
+          width: ThemeConstants.borderWidth,
+        ),
       ),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(ThemeConstants.radiusSmall),
             child: Image.memory(
               bytes,
               width: 48,
@@ -407,13 +332,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: Text(
               'Image attached',
               style: GoogleFonts.inter(
-                color: Colors.grey.shade700,
+                color: ThemeConstants.secondaryTextColor,
                 fontSize: 14,
               ),
             ),
           ),
           IconButton(
-            icon: Icon(Icons.close, color: Colors.grey.shade500, size: 20),
+            icon: Icon(
+              Icons.close,
+              color: ThemeConstants.mutedTextColor,
+              size: 20,
+            ),
             onPressed: () {
               ref.read(chatViewModelProvider.notifier).clearPendingImage();
             },
@@ -423,251 +352,91 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildRecentResponses(ChatState state) {
-    // Show recent AI responses in the white panel for visibility
-    // Include streaming messages (have content, but may still be loading)
-    final aiMessages = state.messages
-        .where((m) => !m.isUser && (m.content.isNotEmpty || m.isThinking))
-        .toList();
-
-    if (aiMessages.isEmpty) {
-      // Check if there's a loading message
-      final isStreaming = state.messages.any((m) => m.isLoading && !m.isUser);
-      if (isStreaming) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Thinking...',
-                  style: GoogleFonts.inter(
-                    color: Colors.grey.shade500,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildInputRow(ChatState state) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Image picker button
+        IconButton(
+          icon: Icon(
+            Icons.add_photo_alternate_outlined,
+            color: state.hasPendingImage
+                ? ThemeConstants.polyPurple500
+                : ThemeConstants.mutedTextColor,
           ),
-        );
-      }
-
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text(
-            'Send a message to start the conversation',
-            style: GoogleFonts.inter(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-            ),
-          ),
+          onPressed: _showImagePicker,
         ),
-      );
-    }
 
-    // Show last AI response (may be still streaming)
-    final lastResponse = aiMessages.last;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      ThemeConstants.polyPurple500,
-                      ThemeConstants.polyBlue500,
-                    ],
-                  ),
-                ),
-                child: const Icon(Icons.auto_awesome,
-                    color: Colors.white, size: 14),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Odelle',
-                style: GoogleFonts.inter(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (lastResponse.isLoading) ...[
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.5,
-                    color: ThemeConstants.polyPurple500,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          // Show thinking content if available
-          if (lastResponse.isThinking &&
-              lastResponse.thinkingContent != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: ThemeConstants.polyPurple500.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.psychology,
-                      size: 16, color: ThemeConstants.polyPurple500),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      lastResponse.thinkingContent!.length > 150
-                          ? '${lastResponse.thinkingContent!.substring(0, 150)}...'
-                          : lastResponse.thinkingContent!,
-                      style: GoogleFonts.inter(
-                        color: ThemeConstants.polyPurple700,
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+        // Text input
+        Expanded(
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 100),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(ThemeConstants.radiusLarge),
+              border: Border.all(
+                color: ThemeConstants.glassBorder,
+                width: ThemeConstants.borderWidthThin,
               ),
             ),
-          ],
-          const SizedBox(height: 8),
-          Text(
-            lastResponse.content.isNotEmpty
-                ? lastResponse.content
-                : (lastResponse.isThinking ? 'Processing...' : ''),
-            style: GoogleFonts.inter(
-              color: ThemeConstants.textOnLight,
-              fontSize: 15,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInputArea(ChatState state) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 8,
-        top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 8,
-      ),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Image picker button
-          IconButton(
-            icon: Icon(
-              Icons.add_photo_alternate_outlined,
-              color: state.hasPendingImage
-                  ? ThemeConstants.polyPurple500
-                  : Colors.grey.shade600,
-            ),
-            onPressed: _showImagePicker,
-          ),
-
-          // Text input
-          Expanded(
-            child: Container(
-              constraints: const BoxConstraints(maxHeight: 100),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(24),
+            child: TextField(
+              controller: _textController,
+              focusNode: _focusNode,
+              style: GoogleFonts.inter(
+                color: ThemeConstants.textColor,
+                fontSize: 16,
               ),
-              child: TextField(
-                controller: _textController,
-                focusNode: _focusNode,
-                style: GoogleFonts.inter(
-                  color: ThemeConstants.textOnLight,
+              decoration: InputDecoration(
+                hintText: state.hasPendingImage
+                    ? 'Add a message...'
+                    : 'What\'s on your mind?',
+                hintStyle: GoogleFonts.inter(
+                  color: ThemeConstants.mutedTextColor,
                   fontSize: 16,
                 ),
-                decoration: InputDecoration(
-                  hintText: state.hasPendingImage
-                      ? 'Add a message...'
-                      : 'What\'s on your mind?',
-                  hintStyle: GoogleFonts.inter(
-                    color: Colors.grey.shade500,
-                    fontSize: 16,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: ThemeConstants.spacingMedium,
+                  vertical: ThemeConstants.spacingSmall,
                 ),
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendMessage(),
-                maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
               ),
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _sendMessage(),
+              maxLines: null,
+              textCapitalization: TextCapitalization.sentences,
             ),
           ),
-          const SizedBox(width: 8),
+        ),
+        const SizedBox(width: ThemeConstants.spacingSmall),
 
-          // Send button
-          GestureDetector(
-            onTap: state.isLoading ? null : _sendMessage,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: state.isLoading
-                    ? null
-                    : LinearGradient(
-                        colors: [
-                          ThemeConstants.polyPurple500,
-                          ThemeConstants.polyBlue500,
-                        ],
-                      ),
-                color: state.isLoading ? Colors.grey.shade300 : null,
-                shape: BoxShape.circle,
-              ),
-              child: state.isLoading
-                  ? const Padding(
-                      padding: EdgeInsets.all(10),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.arrow_upward,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+        // Send button
+        GestureDetector(
+          onTap: state.isLoading ? null : _sendMessage,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: state.isLoading ? null : ThemeConstants.buttonGradient,
+              color:
+                  state.isLoading ? ThemeConstants.glassBackgroundStrong : null,
+              shape: BoxShape.circle,
             ),
+            child: state.isLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(10),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(
+                    Icons.arrow_upward,
+                    color: Colors.white,
+                    size: 20,
+                  ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -733,6 +502,9 @@ class _ChatBubble extends StatelessWidget {
                 message.thinkingContent != null)
               _buildThinkingBubble(),
 
+            // Tool calls indicator (for AI messages with tool use)
+            if (!isUser && message.hasToolCalls) ..._buildToolCallBubbles(),
+
             // Image if present
             if (message.hasImage) _buildImageBubble(),
 
@@ -741,11 +513,69 @@ class _ChatBubble extends StatelessWidget {
               _buildLoadingBubble(isUser)
             else if (message.content.isNotEmpty &&
                 message.content != '📷 Image')
-              _buildContentBubble(isUser),
+              _buildContentBubble(context, isUser),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildToolCallBubbles() {
+    return message.toolCalls!.map((toolCall) {
+      final isExecuting = toolCall.isExecuting;
+      final icon = isExecuting ? Icons.sync : Icons.check_circle_outline;
+      final iconColor =
+          isExecuting ? ThemeConstants.polyPurple300 : Colors.green.shade300;
+      final label = _formatToolName(toolCall.name);
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: ThemeConstants.polyPurple500.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: ThemeConstants.polyPurple500.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isExecuting)
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+                ),
+              )
+            else
+              Icon(icon, size: 14, color: iconColor),
+            const SizedBox(width: 6),
+            Text(
+              isExecuting ? '$label...' : label,
+              style: GoogleFonts.inter(
+                color: ThemeConstants.polyPurple200,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  String _formatToolName(String name) {
+    // Convert snake_case to readable format
+    return name
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isNotEmpty
+            ? '${word[0].toUpperCase()}${word.substring(1)}'
+            : '')
+        .join(' ');
   }
 
   Widget _buildThinkingBubble() {
@@ -806,7 +636,12 @@ class _ChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildContentBubble(bool isUser) {
+  Widget _buildContentBubble(BuildContext context, bool isUser) {
+    final baseStyle = GoogleFonts.inter(
+      color: Colors.white,
+      fontSize: 15,
+      height: 1.4,
+    );
     return Container(
       margin: message.hasImage ? const EdgeInsets.only(top: 4) : null,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -824,16 +659,15 @@ class _ChatBubble extends StatelessWidget {
           color: Colors.white.withValues(alpha: isUser ? 0.2 : 0.1),
         ),
       ),
-      child: message.isLoading
-          ? const _PulsingDots()
-          : Text(
-              message.content,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.4,
-              ),
-            ),
+      child: MarkdownBody(
+        data: message.content,
+        onTapLink: (_, href, __) => handleMarkdownLinkTap(context, href),
+        styleSheet: buildChatMarkdownStyleSheet(
+          context,
+          baseStyle: baseStyle,
+          secondaryTextColor: ThemeConstants.secondaryTextColor,
+        ),
+      ),
     );
   }
 
@@ -846,8 +680,12 @@ class _ChatBubble extends StatelessWidget {
         fit: BoxFit.cover,
       );
     } else if (message.imagePath != null) {
+      final file = File(message.imagePath!);
+      if (!file.existsSync()) {
+        return _buildMissingImageBubble();
+      }
       imageWidget = Image.file(
-        File(message.imagePath!),
+        file,
         fit: BoxFit.cover,
       );
     } else {
@@ -866,6 +704,37 @@ class _ChatBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(15),
           child: imageWidget,
         ),
+      ),
+    );
+  }
+
+  Widget _buildMissingImageBubble() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.broken_image_outlined,
+            size: 16,
+            color: ThemeConstants.secondaryTextColor,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Image unavailable',
+            style: GoogleFonts.inter(
+              color: ThemeConstants.secondaryTextColor,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }

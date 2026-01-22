@@ -11,6 +11,8 @@ import '../services/weather_service.dart';
 import '../services/sync_service.dart';
 import '../services/agent_scheduler_service.dart';
 import '../services/live_activity_service.dart';
+import '../services/notification_service.dart';
+import '../services/smart_reminder_service.dart';
 import '../utils/logger.dart';
 
 import '../services/health_kit_service.dart';
@@ -106,12 +108,14 @@ final dailyContentServiceProvider = Provider<DailyContentService>((ref) {
   final imageService = ref.watch(imageServiceProvider);
   final weatherService = ref.watch(weatherServiceProvider);
   final database = ref.watch(databaseProvider);
+  final notificationService = ref.watch(notificationServiceProvider);
 
   final service = DailyContentService(
     agentService: agentService,
     imageService: imageService,
     database: database,
     weatherService: weatherService,
+    notificationService: notificationService,
   );
 
   return service;
@@ -141,8 +145,20 @@ final bootstrapResultProvider = FutureProvider<BootstrapResult>((ref) async {
   final bootstrapService = ref.watch(bootstrapServiceProvider);
   final dailyContentService = ref.watch(dailyContentServiceProvider);
   final psychographService = ref.watch(psychographServiceProvider);
+  final notificationService = ref.watch(notificationServiceProvider);
+  final smartReminderService = ref.watch(smartReminderServiceProvider);
 
-  // Run bootstrap first
+  // Initialize notification service first
+  try {
+    await notificationService.initialize();
+    await notificationService.requestPermissions();
+    Logger.info('Notification service initialized', tag: 'BootstrapResult');
+  } catch (e) {
+    Logger.warning('Notification service init failed: $e',
+        tag: 'BootstrapResult');
+  }
+
+  // Run bootstrap
   final result = await bootstrapService.run();
 
   // After bootstrap, check if we need to generate daily content
@@ -167,6 +183,14 @@ final bootstrapResultProvider = FutureProvider<BootstrapResult>((ref) async {
     } catch (e) {
       Logger.warning('Psychograph processing failed: $e',
           tag: 'BootstrapResult');
+    }
+
+    // Sync smart reminders with OS notification scheduler
+    try {
+      await smartReminderService.syncWithOS();
+      Logger.info('Smart reminders synced with OS', tag: 'BootstrapResult');
+    } catch (e) {
+      Logger.warning('Reminder sync failed: $e', tag: 'BootstrapResult');
     }
   }
 
@@ -210,10 +234,12 @@ final syncServiceProvider = Provider<SyncService>((ref) {
 final agentSchedulerProvider = Provider<AgentSchedulerService>((ref) {
   final agentService = ref.watch(azureAgentServiceProvider);
   final database = ref.watch(databaseProvider);
+  final notificationService = ref.watch(notificationServiceProvider);
 
   final scheduler = AgentSchedulerService(
     agentService: agentService,
     db: database,
+    notificationService: notificationService,
   );
 
   // Auto-start the scheduler when provider is first accessed
@@ -231,4 +257,32 @@ final agentSchedulerProvider = Provider<AgentSchedulerService>((ref) {
 /// Bridges Flutter to native iOS ActivityKit via MethodChannel
 final liveActivityServiceProvider = Provider<LiveActivityService>((ref) {
   return LiveActivityService();
+});
+
+/// Unified Notification Service - orchestrates all notification types
+/// - Live Activities (Dynamic Island) for agent status
+/// - Local notifications for reminders and alerts
+/// - Rich notifications with images for surprise content
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  final liveActivityService = ref.watch(liveActivityServiceProvider);
+
+  final service = NotificationService(
+    liveActivityService: liveActivityService,
+  );
+
+  return service;
+});
+
+/// Smart Reminder Service - manages scheduled reminders
+/// - CRUD operations for reminders in database
+/// - Syncs reminders with OS notification scheduler
+/// - Supports water, meal, supplement, habit, and AI-generated reminders
+final smartReminderServiceProvider = Provider<SmartReminderService>((ref) {
+  final database = ref.watch(databaseProvider);
+  final notificationService = ref.watch(notificationServiceProvider);
+
+  return SmartReminderService(
+    database: database,
+    notificationService: notificationService,
+  );
 });

@@ -51,9 +51,8 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
     // Content crossfade
     final showFullCard = _panelProgress < 0.6;
 
-    return FloatingHeroCard(
+    return TwoToneSplitLayout(
       panelVisibility: widget.panelVisibility,
-      draggableBottomPanel: true,
       bottomPanelMinHeight: minPanelHeight,
       bottomPanelMaxHeight: maxPanelHeight,
       bottomPanelShowHandle: true,

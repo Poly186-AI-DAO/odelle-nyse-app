@@ -105,8 +105,7 @@ Determine the user's intent. Respond with JSON only:
           ),
           ChatMessage.userWithParts(userParts),
         ],
-        deployment: AzureAIDeployment.gpt5Chat,
-        maxTokens: 300,
+        deployment: AzureAIDeployment.gpt5,
         responseFormat: 'json',
       );
 

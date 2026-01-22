@@ -15,6 +15,7 @@ import '../models/tracking/meditation_log.dart';
 import '../utils/logger.dart';
 import 'azure_agent_service.dart';
 import 'azure_image_service.dart';
+import 'notification_service.dart';
 import 'weather_service.dart';
 
 /// Service to generate daily meditations and visualizations.
@@ -42,6 +43,7 @@ class DailyContentService {
   final WeatherService _weatherService;
   final AppDatabase _database;
   final http.Client _client;
+  NotificationService? _notificationService;
   bool _isInitialized = false;
 
   // Cached seed data from Princeps files
@@ -54,11 +56,18 @@ class DailyContentService {
     required AppDatabase database,
     WeatherService? weatherService,
     http.Client? client,
+    NotificationService? notificationService,
   })  : _agentService = agentService,
         _imageService = imageService,
         _weatherService = weatherService ?? WeatherService(),
         _database = database,
-        _client = client ?? http.Client();
+        _client = client ?? http.Client(),
+        _notificationService = notificationService;
+
+  /// Set notification service (can be injected after construction)
+  void setNotificationService(NotificationService service) {
+    _notificationService = service;
+  }
 
   /// Initialize service and load seed data
   Future<void> initialize() async {
@@ -429,7 +438,7 @@ Requirements:
     try {
       final response = await _agentService.complete(
         prompt: prompt,
-        deployment: AzureAIDeployment.gpt5Chat,
+        deployment: AzureAIDeployment.gpt5,
         temperature: 0.7,
         maxTokens: 800,
         responseFormat: 'json',
@@ -560,7 +569,7 @@ Pace: Include natural pauses marked with "..."
             'You help people raise their conscious awareness through presence and insight.'),
         ChatMessage.user(prompt),
       ],
-      deployment: AzureAIDeployment.gpt5Chat, // Quality model for user content
+      deployment: AzureAIDeployment.gpt5, // Quality model for user content
       temperature: 0.7,
       maxTokens: 2000, // Meditation scripts need room
     );
@@ -622,11 +631,10 @@ Requirements:
 Output: ONLY the image prompt string, nothing else.
 ''';
 
-    // Use GPT-5 Nano for processing (cheap, fast, image prompt extraction)
+    // Use GPT-5 for quality image prompts
     final response = await _agentService.complete(
       prompt: prompt,
-      deployment: AzureAIDeployment.gpt5Nano, // Processing model
-      maxTokens: 1000, // Nano needs min 1000 tokens
+      deployment: AzureAIDeployment.gpt5Nano,
     );
 
     return response;
@@ -718,8 +726,7 @@ Return only the affirmation text.
       // Use GPT-5.2 Chat for user-facing affirmations (quality content)
       final response = await _agentService.complete(
         prompt: prompt,
-        deployment:
-            AzureAIDeployment.gpt5Chat, // Quality model for user content
+        deployment: AzureAIDeployment.gpt5, // Quality model for user content
         temperature: 0.7,
         maxTokens: 500, // Affirmations are short
       );
@@ -806,6 +813,170 @@ Return only the affirmation text.
     final cleaned = script.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (cleaned.length <= 140) return cleaned;
     return '${cleaned.substring(0, 140)}...';
+  }
+
+  // ===========================================================================
+  // SURPRISE CONTENT GENERATION
+  // ===========================================================================
+
+  /// Generate a surprise image based on agent insights
+  /// Called by AgentSchedulerService when the AI decides to delight the user
+  Future<String?> generateSurpriseImage({
+    required String triggerContext,
+    String? customPrompt,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    Logger.info('Generating surprise image...', tag: _tag);
+
+    try {
+      // Generate an image prompt from the context
+      final imagePrompt =
+          customPrompt ?? await _generateSurpriseImagePrompt(triggerContext);
+
+      // Generate the image
+      final imageResult = await _imageService.generateImage(
+        prompt: imagePrompt,
+        size: ImageSize.square,
+      );
+
+      // Save locally
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final imagePath = await _saveLocalFile(
+        'surprise_$timestamp.png',
+        imageResult.bytes,
+      );
+
+      Logger.info('Surprise image generated: $imagePath', tag: _tag);
+
+      // Show notification with the image
+      if (_notificationService != null) {
+        await _notificationService!.showSurpriseImage(
+          title: 'A gift for you',
+          body: _extractInsightFromContext(triggerContext),
+          imagePath: imagePath,
+        );
+      }
+
+      return imagePath;
+    } catch (e, stack) {
+      Logger.error('Failed to generate surprise image',
+          tag: _tag, error: e, stackTrace: stack);
+      return null;
+    }
+  }
+
+  /// Generate a surprise insight notification (no image)
+  Future<void> generateSurpriseInsight({
+    required String insight,
+    String? title,
+  }) async {
+    if (_notificationService == null) {
+      Logger.warning('NotificationService not available for surprise insight',
+          tag: _tag);
+      return;
+    }
+
+    await _notificationService!.showInsight(
+      title: title ?? 'Insight for you',
+      insight: insight,
+    );
+
+    Logger.info('Surprise insight sent: $insight', tag: _tag);
+  }
+
+  /// Determine if we should surprise the user based on context and timing
+  bool shouldSurpriseUser({
+    required String agentOutput,
+    DateTime? lastSurpriseTime,
+    int minHoursBetweenSurprises = 4,
+  }) {
+    // Don't surprise too frequently
+    if (lastSurpriseTime != null) {
+      final hoursSinceLastSurprise =
+          DateTime.now().difference(lastSurpriseTime).inHours;
+      if (hoursSinceLastSurprise < minHoursBetweenSurprises) {
+        return false;
+      }
+    }
+
+    // Check if the output contains something worth sharing
+    final output = agentOutput.toLowerCase();
+
+    // Look for positive indicators
+    final positiveIndicators = [
+      'insight',
+      'achievement',
+      'milestone',
+      'breakthrough',
+      'completed',
+      'success',
+      'great job',
+      'well done',
+      'congratulations',
+      'streak',
+      'progress',
+    ];
+
+    // Check productivity score if present
+    final scoreMatch =
+        RegExp(r'"productivity_score"\s*:\s*(\d+)').firstMatch(output);
+    if (scoreMatch != null) {
+      final score = int.tryParse(scoreMatch.group(1) ?? '0') ?? 0;
+      if (score >= 8) return true; // High productivity moment
+    }
+
+    // Check for positive indicators
+    for (final indicator in positiveIndicators) {
+      if (output.contains(indicator)) {
+        // 30% chance to surprise when positive indicator found
+        return Random().nextDouble() < 0.30;
+      }
+    }
+
+    // Base 5% chance for any output
+    return Random().nextDouble() < 0.05;
+  }
+
+  /// Generate an image prompt for surprise content
+  Future<String> _generateSurpriseImagePrompt(String context) async {
+    final prompt = '''
+Based on this AI agent insight, create a SHORT, evocative image prompt (max 100 words) 
+for a beautiful, inspiring visualization. Focus on abstract beauty, nature, or cosmic themes.
+Do NOT include text or words in the image. Make it visually stunning and emotionally uplifting.
+
+Agent Insight:
+$context
+
+Respond with ONLY the image prompt, no explanations.
+''';
+
+    final response = await _agentService.complete(
+      prompt: prompt,
+      systemPrompt:
+          'You are an expert at creating concise, beautiful image prompts for AI art generation.',
+      deployment: AzureAIDeployment.gpt5Nano,
+      maxTokens: 200,
+    );
+
+    return response.trim();
+  }
+
+  /// Extract a short insight message from agent context
+  String _extractInsightFromContext(String context) {
+    // Try to extract the insight field from JSON
+    try {
+      final jsonMatch =
+          RegExp(r'"insight"\s*:\s*"([^"]+)"').firstMatch(context);
+      if (jsonMatch != null) {
+        return jsonMatch.group(1) ?? 'A moment of inspiration for you';
+      }
+    } catch (_) {}
+
+    // Fallback: use first sentence or truncate
+    final firstSentence = context.split(RegExp(r'[.!?]')).first.trim();
+    if (firstSentence.length <= 100) return firstSentence;
+    return '${firstSentence.substring(0, 97)}...';
   }
 }
 

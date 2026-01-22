@@ -42,6 +42,7 @@ part 'app_database_utils.dart';
 part 'app_database_sync.dart';
 part 'app_database_agent_outputs.dart';
 part 'app_database_chat.dart';
+part 'app_database_psychograph_patterns.dart';
 
 abstract class AppDatabaseBase {
   Future<Database> get database;
@@ -82,10 +83,11 @@ class AppDatabase extends AppDatabaseBase
         SyncQueueCrud,
         AgentOutputCrud,
         ChatMessageCrud,
+        PsychographPatternCrud,
         AppDatabaseUtils {
   static const String _tag = 'AppDatabase';
   static const String _databaseName = 'odelle_nyse.db';
-  static const int _databaseVersion = 11; // v11: Chat messages
+  static const int _databaseVersion = 12; // v12: Psychograph patterns
 
   static Database? _database;
   static final AppDatabase instance = AppDatabase._internal();

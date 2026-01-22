@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../constants/theme_constants.dart';
 import '../../constants/design_constants.dart';
 import '../glass/glass_card.dart';
+import 'chat_markdown.dart';
 
 class GlassChatBubble extends StatelessWidget {
   final String message;
@@ -40,10 +42,16 @@ class GlassChatBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                message,
-                style: DesignConstants.bodyM.copyWith(
-                  color: ThemeConstants.textColor,
+              MarkdownBody(
+                data: message,
+                onTapLink: (_, href, __) =>
+                    handleMarkdownLinkTap(context, href),
+                styleSheet: buildChatMarkdownStyleSheet(
+                  context,
+                  baseStyle: DesignConstants.bodyM.copyWith(
+                    color: ThemeConstants.textColor,
+                  ),
+                  secondaryTextColor: ThemeConstants.textColor,
                 ),
               ),
               if (timestamp != null) ...[

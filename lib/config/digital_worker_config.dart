@@ -42,7 +42,7 @@ class DigitalWorkerConfig {
   final int silenceDurationMs;
 
   const DigitalWorkerConfig({
-    this.instructions = OdelleSystemPrompt.conversationMode,
+    this.instructions = OdelleSystemPrompt.chatMode,
     this.modalities = const ['audio', 'text'],
     this.enableDebugLogs = kDebugMode,
     this.maxRecordingDuration = 300, // 5 minutes

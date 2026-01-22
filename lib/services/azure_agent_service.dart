@@ -285,6 +285,12 @@ enum StreamEventType {
   /// Reasoning/thinking content
   thinking,
 
+  /// Tool call being executed
+  toolCall,
+
+  /// Tool call result received
+  toolResult,
+
   /// Stream finished
   done,
 
@@ -304,6 +310,9 @@ class StreamEvent {
   final int? completionTokens;
   final int? totalTokens;
   final String? error;
+  final String? toolName;
+  final Map<String, dynamic>? toolArgs;
+  final String? toolResult;
 
   const StreamEvent({
     required this.type,
@@ -313,6 +322,9 @@ class StreamEvent {
     this.completionTokens,
     this.totalTokens,
     this.error,
+    this.toolName,
+    this.toolArgs,
+    this.toolResult,
   });
 
   factory StreamEvent.content(String content) => StreamEvent(
@@ -323,6 +335,26 @@ class StreamEvent {
   factory StreamEvent.thinking(String content) => StreamEvent(
         type: StreamEventType.thinking,
         content: content,
+      );
+
+  factory StreamEvent.toolCall({
+    required String name,
+    Map<String, dynamic>? args,
+  }) =>
+      StreamEvent(
+        type: StreamEventType.toolCall,
+        toolName: name,
+        toolArgs: args,
+      );
+
+  factory StreamEvent.toolResultEvent({
+    required String name,
+    required String result,
+  }) =>
+      StreamEvent(
+        type: StreamEventType.toolResult,
+        toolName: name,
+        toolResult: result,
       );
 
   factory StreamEvent.done(String? finishReason) => StreamEvent(
@@ -393,7 +425,7 @@ class AzureAgentService {
   Future<ChatCompletionResponse> chat({
     required List<ChatMessage> messages,
     List<ToolDefinition>? tools,
-    AzureAIDeployment deployment = AzureAIDeployment.gpt5Chat,
+    AzureAIDeployment deployment = AzureAIDeployment.gpt5,
     double? temperature,
     int? maxTokens,
     String? responseFormat,
@@ -416,7 +448,7 @@ class AzureAgentService {
     // Keep this code for future models that might support it.
     if (temperature != null &&
         deployment != AzureAIDeployment.gpt5Nano &&
-        deployment != AzureAIDeployment.gpt5Chat) {
+        deployment != AzureAIDeployment.gpt5) {
       body['temperature'] = temperature;
     }
 
@@ -493,7 +525,7 @@ class AzureAgentService {
     required List<ToolDefinition> tools,
     required ToolExecutor executor,
     int maxIterations = 10,
-    AzureAIDeployment deployment = AzureAIDeployment.gpt5Chat,
+    AzureAIDeployment deployment = AzureAIDeployment.gpt5,
     double? temperature,
   }) async {
     final conversationHistory = List<ChatMessage>.from(messages);
@@ -569,13 +601,121 @@ class AzureAgentService {
     );
   }
 
+  /// Run an agent loop that streams events including tool calls
+  /// This allows the UI to show tool execution in real-time
+  Stream<StreamEvent> runAgentStream({
+    required List<ChatMessage> messages,
+    required List<ToolDefinition> tools,
+    required ToolExecutor executor,
+    int maxIterations = 10,
+    AzureAIDeployment deployment = AzureAIDeployment.gpt5,
+    double? temperature,
+  }) async* {
+    final conversationHistory = List<ChatMessage>.from(messages);
+    int iterations = 0;
+
+    while (iterations < maxIterations) {
+      iterations++;
+
+      final response = await chat(
+        messages: conversationHistory,
+        tools: tools,
+        deployment: deployment,
+        temperature: temperature,
+      );
+
+      // If no tool calls, emit content and we're done
+      if (!response.hasToolCalls) {
+        if (response.message.content != null) {
+          yield StreamEvent.content(response.message.content!);
+        }
+        Logger.info(
+          'Agent stream completed after $iterations iterations',
+          tag: _tag,
+        );
+        yield StreamEvent.done('stop');
+        return;
+      }
+
+      // Add assistant message with tool calls to history
+      conversationHistory.add(response.message);
+
+      // Execute each tool call and emit events
+      for (final toolCall in response.message.toolCalls!) {
+        // Emit tool call event (UI shows "calling X...")
+        yield StreamEvent.toolCall(
+          name: toolCall.functionName,
+          args: toolCall.parsedArguments,
+        );
+
+        Logger.info(
+          'Executing tool: ${toolCall.functionName}',
+          tag: _tag,
+          data: {'args': toolCall.parsedArguments},
+        );
+
+        try {
+          final result = await executor(
+            toolCall.functionName,
+            toolCall.parsedArguments,
+          );
+
+          // Emit tool result event
+          yield StreamEvent.toolResultEvent(
+            name: toolCall.functionName,
+            result: result,
+          );
+
+          conversationHistory.add(ChatMessage.toolResult(
+            toolCallId: toolCall.id,
+            content: result,
+          ));
+        } catch (e) {
+          Logger.error(
+            'Tool execution failed: ${toolCall.functionName}',
+            tag: _tag,
+            error: e,
+          );
+
+          yield StreamEvent.toolResultEvent(
+            name: toolCall.functionName,
+            result: 'Error: $e',
+          );
+
+          conversationHistory.add(ChatMessage.toolResult(
+            toolCallId: toolCall.id,
+            content: 'Error: $e',
+          ));
+        }
+      }
+    }
+
+    Logger.warning(
+      'Agent stream reached max iterations ($maxIterations)',
+      tag: _tag,
+    );
+
+    // Make final call to get response
+    final finalResponse = await chat(
+      messages: conversationHistory,
+      tools: tools,
+      deployment: deployment,
+      temperature: temperature,
+    );
+
+    if (finalResponse.message.content != null) {
+      yield StreamEvent.content(finalResponse.message.content!);
+    }
+    yield StreamEvent.done('max_iterations');
+  }
+
   /// Quick helper for simple one-shot completions (no tools)
-  /// Uses the faster/cheaper nano model by default
+  /// Uses gpt-5 for quality outputs
   /// Set [responseFormat] to 'json' to force JSON output (no markdown wrapping)
   Future<String> complete({
     required String prompt,
     String? systemPrompt,
-    AzureAIDeployment deployment = AzureAIDeployment.gpt5Nano,
+    AzureAIDeployment deployment = AzureAIDeployment.gpt5,
     double? temperature,
     int? maxTokens,
     String? responseFormat,
@@ -616,7 +756,7 @@ class AzureAgentService {
   /// Returns a Stream of StreamEvent objects
   Stream<StreamEvent> chatStream({
     required List<ChatMessage> messages,
-    AzureAIDeployment deployment = AzureAIDeployment.gpt5Chat,
+    AzureAIDeployment deployment = AzureAIDeployment.gpt5,
     String? reasoningEffort,
   }) async* {
     if (!_isInitialized) {

@@ -14,6 +14,7 @@ mixin AppDatabaseSchema {
     await _createSyncTables(db); // v9: Firebase sync queue
     await _createAgentTables(db); // v10: Agent outputs
     await _createChatTables(db); // v11: Chat messages
+    await _createPsychographTables(db); // v12: Psychograph patterns
     await _createIndexes(db);
     await _seedMantras(db);
 
@@ -57,6 +58,10 @@ mixin AppDatabaseSchema {
     }
     if (oldVersion < 11) {
       await _createChatTables(db);
+      await _createIndexes(db);
+    }
+    if (oldVersion < 12) {
+      await _createPsychographTables(db);
       await _createIndexes(db);
     }
   }
@@ -899,5 +904,27 @@ mixin AppDatabaseSchema {
         'CREATE INDEX IF NOT EXISTS idx_chat_conversations_last_msg ON chat_conversations(last_message_at)');
 
     Logger.info('Chat tables created successfully', tag: AppDatabase._tag);
+  }
+
+  /// Create psychograph tables (v12)
+  Future<void> _createPsychographTables(Database db) async {
+    Logger.info('Creating psychograph tables', tag: AppDatabase._tag);
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS psychograph_patterns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        observation TEXT NOT NULL,
+        context TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_psychograph_patterns_category_observation ON psychograph_patterns(category, observation)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_psychograph_patterns_created ON psychograph_patterns(created_at)');
+
+    Logger.info('Psychograph tables created successfully', tag: AppDatabase._tag);
   }
 }

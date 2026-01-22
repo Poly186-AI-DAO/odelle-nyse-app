@@ -104,6 +104,17 @@ mixin ChatMessageCrud on AppDatabaseBase {
     return results.map(ChatMessageRecord.fromMap).toList();
   }
 
+  /// Update a message image path (set to null to clear)
+  Future<void> updateChatMessageImagePath(int messageId, String? imagePath) async {
+    final db = await database;
+    await db.update(
+      'chat_messages',
+      {'image_path': imagePath},
+      where: 'id = ?',
+      whereArgs: [messageId],
+    );
+  }
+
   /// Create a new conversation
   Future<void> createConversation(ChatConversation conversation) async {
     final db = await database;

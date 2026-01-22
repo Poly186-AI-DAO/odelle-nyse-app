@@ -10,6 +10,9 @@ import '../utils/logger.dart';
 /// - Princeps_Prime.md - Identity, archetypes, mission, philosophy
 /// - Princeps_Mantras.md - 694 affirmations organized by protocol
 /// - WHITEPAPER.md - The 10-week experiment, supplements, daily schedule, CBT reframes
+/// - ODELLE_CONSCIOUSNESS_ARCHITECTURE.md - Core architecture and cognition model
+/// - The_Master_Algorithm.md - Meta-operating system for transformation
+/// - META_Awareness_Framework.md - Awareness layers and practice
 ///
 /// No compression - LLMs have 120k-400k context windows, we pass everything as-is.
 class UserContextService {
@@ -19,6 +22,9 @@ class UserContextService {
   String? _primeContent;
   String? _mantrasContent;
   String? _whitepaperContent;
+  String? _architectureContent;
+  String? _masterAlgorithmContent;
+  String? _metaAwarenessContent;
   Map<String, dynamic>? _genesisProfile;
 
   // Parsed data
@@ -37,10 +43,16 @@ class UserContextService {
     Logger.info('Loading user context documents...', tag: _tag);
 
     try {
-      // Load the 3 markdown documents
+      // Load core markdown documents
       _primeContent = await _loadAsset('docs/Princeps_Prime.md');
       _mantrasContent = await _loadAsset('docs/Princeps_Mantras.md');
       _whitepaperContent = await _loadAsset('docs/WHITEPAPER.md');
+      _architectureContent =
+          await _loadAsset('docs/ODELLE_CONSCIOUSNESS_ARCHITECTURE.md');
+      _masterAlgorithmContent =
+          await _loadAsset('docs/The_Master_Algorithm.md');
+      _metaAwarenessContent =
+          await _loadAsset('docs/META_Awareness_Framework.md');
 
       // Load genesis profile JSON
       final genesisJson = await _loadAsset('data/user/genesis_profile.json');
@@ -130,6 +142,22 @@ class UserContextService {
       buffer.writeln('');
     }
 
+    if (_architectureContent != null) {
+      buffer.writeln('## ODELLE CONSCIOUSNESS ARCHITECTURE');
+      buffer.writeln(_architectureContent);
+      buffer.writeln('');
+    }
+    if (_masterAlgorithmContent != null) {
+      buffer.writeln('## THE MASTER ALGORITHM');
+      buffer.writeln(_masterAlgorithmContent);
+      buffer.writeln('');
+    }
+    if (_metaAwarenessContent != null) {
+      buffer.writeln('## META AWARENESS FRAMEWORK');
+      buffer.writeln(_metaAwarenessContent);
+      buffer.writeln('');
+    }
+
     return buffer.toString();
   }
 
@@ -213,6 +241,27 @@ class UserContextService {
     }
 
     return buffer.toString();
+  }
+
+  /// Get the raw reference documents for the agent to read.
+  String getReferenceDocs() {
+    final buffer = StringBuffer();
+
+    void appendDoc(String title, String? content) {
+      if (content == null || content.trim().isEmpty) return;
+      buffer.writeln('## $title');
+      buffer.writeln(content);
+      buffer.writeln('');
+    }
+
+    appendDoc('ODELLE CONSCIOUSNESS ARCHITECTURE', _architectureContent);
+    appendDoc('THE MASTER ALGORITHM', _masterAlgorithmContent);
+    appendDoc('META AWARENESS FRAMEWORK', _metaAwarenessContent);
+    appendDoc('PRINCEPS PRIME - WHO I AM', _primeContent);
+    appendDoc('MY MANTRAS & PROTOCOLS', _mantrasContent);
+    appendDoc('THE ODELLE NYSE PROTOCOL (WHITEPAPER)', _whitepaperContent);
+
+    return buffer.toString().trimRight();
   }
 
   /// Get genesis profile data

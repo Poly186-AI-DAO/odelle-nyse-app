@@ -72,9 +72,8 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
     // Content crossfade (full card content vs compact bar content)
     final showFullCard = state.panelProgress < 0.6;
 
-    return FloatingHeroCard(
+    return TwoToneSplitLayout(
       panelVisibility: widget.panelVisibility,
-      draggableBottomPanel: true,
       bottomPanelMinHeight: minPanelHeight,
       bottomPanelMaxHeight: maxPanelHeight,
       bottomPanelShowHandle: true,
@@ -419,7 +418,9 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
           headerText: "Your day ahead",
           onDateSelected: (date) {
             viewModel.selectDate(date);
-            ref.read(dailyContentViewModelProvider.notifier).refreshForDate(date);
+            ref
+                .read(dailyContentViewModelProvider.notifier)
+                .refreshForDate(date);
           },
         ),
 
@@ -573,66 +574,66 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
           return Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      ThemeConstants.polyMint400.withValues(alpha: 0.12),
-                      ThemeConstants.polyPurple200.withValues(alpha: 0.08),
-                    ],
-                  ),
-                  border: Border.all(
-                      color: ThemeConstants.glassBorderWeak.withValues(alpha: 0.6)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.auto_awesome_outlined,
-                          size: 16,
-                          color: ThemeConstants.polyMint400,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'DAILY MANTRA',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.4,
-                            color: ThemeConstants.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: Text(
-                        '"$text"',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: ThemeConstants.textOnLight,
-                          height: 1.3,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Swipe for more',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: ThemeConstants.textSecondary,
-                      ),
-                    ),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    ThemeConstants.polyMint400.withValues(alpha: 0.12),
+                    ThemeConstants.polyPurple200.withValues(alpha: 0.08),
                   ],
                 ),
+                border: Border.all(
+                    color:
+                        ThemeConstants.glassBorderWeak.withValues(alpha: 0.6)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_outlined,
+                        size: 16,
+                        color: ThemeConstants.polyMint400,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'DAILY MANTRA',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.4,
+                          color: ThemeConstants.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Text(
+                      '"$text"',
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: ThemeConstants.textOnLight,
+                        height: 1.3,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Swipe for more',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: ThemeConstants.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -912,36 +913,75 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
+        isScrollControlled: true,
         builder: (context) {
-          return Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Daily Prophecy',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: ThemeConstants.textOnLight,
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.7,
+            minChildSize: 0.4,
+            maxChildSize: 0.9,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: ThemeConstants.panelWhite,
+                  borderRadius: ThemeConstants.borderRadiusBottomSheet,
+                  boxShadow: ThemeConstants.cardShadow,
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: ThemeConstants.spacingSmall),
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: ThemeConstants.textMuted,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: ThemeConstants.spacingMedium),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: ThemeConstants.spacingLarge,
+                        ),
+                        child: Text(
+                          'Daily Prophecy',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: ThemeConstants.textOnLight,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: ThemeConstants.spacingSmall),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          padding: const EdgeInsets.fromLTRB(
+                            ThemeConstants.spacingLarge,
+                            0,
+                            ThemeConstants.spacingLarge,
+                            ThemeConstants.spacingLarge,
+                          ),
+                          child: Text(
+                            prophecy,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: ThemeConstants.textSecondary,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  prophecy,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: ThemeConstants.textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           );
         },
       );

@@ -4,6 +4,63 @@ import '../../constants/theme_constants.dart';
 import '../../utils/device_corner_radius.dart';
 import '../panels/bottom_panel.dart';
 
+/// Formalized two-tone split layout built on the floating hero card pattern.
+class TwoToneSplitLayout extends StatelessWidget {
+  final Widget child;
+  final Widget bottomPanel;
+  final double panelVisibility;
+  final double horizontalMargin;
+  final double topMarginExtra;
+  final double bottomPercentage;
+  final double? bottomPanelMinHeight;
+  final double? bottomPanelMaxHeight;
+  final EdgeInsetsGeometry? bottomPanelPadding;
+  final bool bottomPanelShowHandle;
+  final bool bottomPanelPulseEnabled;
+  final Duration bottomPanelPulseDuration;
+  final double bottomPanelPulseAmplitude;
+  final ValueChanged<double>? bottomPanelProgressChanged;
+
+  const TwoToneSplitLayout({
+    super.key,
+    required this.child,
+    required this.bottomPanel,
+    this.panelVisibility = 1.0,
+    this.horizontalMargin = 8.0,
+    this.topMarginExtra = 6.0,
+    this.bottomPercentage = 0.18,
+    this.bottomPanelMinHeight,
+    this.bottomPanelMaxHeight,
+    this.bottomPanelPadding,
+    this.bottomPanelShowHandle = true,
+    this.bottomPanelPulseEnabled = true,
+    this.bottomPanelPulseDuration = ThemeConstants.zenBreathCycle,
+    this.bottomPanelPulseAmplitude = ThemeConstants.zenBreathAmplitude,
+    this.bottomPanelProgressChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingHeroCard(
+      child: child,
+      bottomPanel: bottomPanel,
+      panelVisibility: panelVisibility,
+      horizontalMargin: horizontalMargin,
+      topMarginExtra: topMarginExtra,
+      bottomPercentage: bottomPercentage,
+      draggableBottomPanel: true,
+      bottomPanelMinHeight: bottomPanelMinHeight,
+      bottomPanelMaxHeight: bottomPanelMaxHeight,
+      bottomPanelPadding: bottomPanelPadding,
+      bottomPanelShowHandle: bottomPanelShowHandle,
+      bottomPanelPulseEnabled: bottomPanelPulseEnabled,
+      bottomPanelPulseDuration: bottomPanelPulseDuration,
+      bottomPanelPulseAmplitude: bottomPanelPulseAmplitude,
+      bottomPanelProgressChanged: bottomPanelProgressChanged,
+    );
+  }
+}
+
 /// A floating hero card that covers most of the screen
 /// Matching the fintech reference design with optional bottom panel
 class FloatingHeroCard extends StatelessWidget {

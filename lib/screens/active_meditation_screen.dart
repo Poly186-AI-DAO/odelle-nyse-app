@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import '../constants/theme_constants.dart';
 import '../models/tracking/meditation_log.dart';
 import '../utils/logger.dart';
+import '../widgets/effects/breathing_card.dart';
 import 'meditation_completion_screen.dart';
 
 /// Active Meditation Screen - Two-tone hero card design
@@ -190,80 +191,83 @@ class _ActiveMeditationScreenState extends State<ActiveMeditationScreen>
   }
 
   Widget _buildHeroImage() {
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(48),
-        color: ThemeConstants.darkTeal,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(48),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Background image or gradient
-            if (widget.imagePath != null && widget.imagePath!.isNotEmpty)
-              Image.file(
-                File(widget.imagePath!),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildDefaultBackground(),
-              )
-            else
-              _buildDefaultBackground(),
+    return BreathingCard(
+      borderRadius: 48,
+      animate: _isPlaying,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background image or gradient
+          if (widget.imagePath != null && widget.imagePath!.isNotEmpty)
+            Image.file(
+              File(widget.imagePath!),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildDefaultBackground(),
+            )
+          else
+            _buildDefaultBackground(),
 
-            // Gradient overlay for readability
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.3),
-                    Colors.black.withValues(alpha: 0.6),
-                  ],
-                ),
-              ),
-            ),
-
-            // Timer and title
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    _formatTime(_remainingSeconds),
-                    style: GoogleFonts.inter(
-                      fontSize: 72,
-                      fontWeight: FontWeight.w200,
-                      color: Colors.white,
-                      fontFeatures: [const FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _isPlaying ? 'Breathe' : 'Paused',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white70,
-                    ),
-                  ),
+          // Gradient overlay for readability
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.3),
+                  Colors.black.withValues(alpha: 0.6),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Dimming overlay when playing (for focus)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            color: _isPlaying
+                ? Colors.black.withValues(alpha: 0.15)
+                : Colors.transparent,
+          ),
+
+          // Timer and title
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  widget.title,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  _formatTime(_remainingSeconds),
+                  style: GoogleFonts.inter(
+                    fontSize: 72,
+                    fontWeight: FontWeight.w200,
+                    color: Colors.white,
+                    fontFeatures: [const FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _isPlaying ? 'Breathe' : 'Paused',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

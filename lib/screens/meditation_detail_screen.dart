@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/theme_constants.dart';
 import '../models/tracking/meditation_log.dart';
+import '../widgets/effects/breathing_card.dart';
 import '../widgets/widgets.dart';
 import 'active_meditation_screen.dart';
 
@@ -76,55 +77,48 @@ class _MeditationDetailScreenState extends State<MeditationDetailScreen> {
   }
 
   Widget _buildHeroImage() {
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(48),
-        color: ThemeConstants.darkTeal,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(48),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Background image or gradient
-            if (widget.imagePath != null && widget.imagePath!.isNotEmpty)
-              Image.file(
-                File(widget.imagePath!),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildDefaultBackground(),
-              )
-            else
-              _buildDefaultBackground(),
+    return BreathingCard(
+      borderRadius: 48,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background image or gradient
+          if (widget.imagePath != null && widget.imagePath!.isNotEmpty)
+            Image.file(
+              File(widget.imagePath!),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildDefaultBackground(),
+            )
+          else
+            _buildDefaultBackground(),
 
-            // Gradient overlay
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.2),
-                    Colors.black.withValues(alpha: 0.5),
-                  ],
-                ),
+          // Gradient overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.2),
+                  Colors.black.withValues(alpha: 0.5),
+                ],
               ),
             ),
+          ),
 
-            // Title overlay
-            Center(
-              child: Text(
-                widget.title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
+          // Title overlay
+          Center(
+            child: Text(
+              widget.title,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -195,8 +189,9 @@ class _MeditationDetailScreenState extends State<MeditationDetailScreen> {
               const SizedBox(height: 24),
 
               // Start button
-              OdelleButtonFullWidth.primary(
+              OdelleButtonFullWidth.dark(
                 text: 'Start ${_selectedDuration}m Session',
+                icon: Icons.play_arrow_rounded,
                 onPressed: () {
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(

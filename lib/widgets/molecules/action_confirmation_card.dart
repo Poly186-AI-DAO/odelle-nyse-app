@@ -134,6 +134,12 @@ class ActionConfirmationCard extends StatelessWidget {
         return Icons.medication_outlined;
       case ActionType.logMeal:
         return Icons.restaurant_outlined;
+      case ActionType.addBill:
+        return Icons.receipt_long_outlined;
+      case ActionType.addSubscription:
+        return Icons.subscriptions_outlined;
+      case ActionType.addIncome:
+        return Icons.attach_money_outlined;
       case ActionType.getMantra:
         return Icons.format_quote_outlined;
       case ActionType.checkProgress:
@@ -151,6 +157,12 @@ class ActionConfirmationCard extends StatelessWidget {
         return 'Supplement Logged';
       case ActionType.logMeal:
         return 'Meal Logged';
+      case ActionType.addBill:
+        return 'Bill Added';
+      case ActionType.addSubscription:
+        return 'Subscription Added';
+      case ActionType.addIncome:
+        return 'Income Added';
       case ActionType.getMantra:
         return 'Your Mantra';
       case ActionType.checkProgress:
