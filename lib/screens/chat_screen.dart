@@ -289,17 +289,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ThemeConstants.spacingMedium,
         ThemeConstants.spacingSmall,
         ThemeConstants.spacingMedium,
-        bottomInset + ThemeConstants.spacingSmall,
+        bottomInset + ThemeConstants.spacingMedium,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (state.hasPendingImage) ...[
-            _buildPendingImagePreview(state.pendingImage!),
-            const SizedBox(height: ThemeConstants.spacingSmall),
-          ],
-          _buildInputRow(state),
-        ],
+      child: BreathingCard(
+        borderRadius: 28,
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            ThemeConstants.spacingSmall,
+            ThemeConstants.spacingSmall,
+            ThemeConstants.spacingSmall,
+            ThemeConstants.spacingSmall,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (state.hasPendingImage) ...[
+                _buildPendingImagePreview(state.pendingImage!),
+                const SizedBox(height: ThemeConstants.spacingSmall),
+              ],
+              _buildInputRow(state),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -473,10 +484,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 }
 
 /// Chat bubble for dark card area
-class _ChatBubble extends StatelessWidget {
+class _ChatBubble extends StatefulWidget {
   final ChatMessageModel message;
 
   const _ChatBubble({required this.message});
+
+  @override
+  State<_ChatBubble> createState() => _ChatBubbleState();
+}
+
+class _ChatBubbleState extends State<_ChatBubble> {
+  bool _toolCallsExpanded = false;
+
+  ChatMessageModel get message => widget.message;
 
   @override
   Widget build(BuildContext context) {
@@ -501,9 +521,6 @@ class _ChatBubble extends StatelessWidget {
                 message.thinkingContent != null)
               _buildThinkingBubble(),
 
-            // Tool calls indicator (for AI messages with tool use)
-            if (!isUser && message.hasToolCalls) ..._buildToolCallBubbles(),
-
             // Image if present
             if (message.hasImage) _buildImageBubble(),
 
@@ -513,57 +530,128 @@ class _ChatBubble extends StatelessWidget {
             else if (message.content.isNotEmpty &&
                 message.content != '📷 Image')
               _buildContentBubble(context, isUser),
+
+            // Tool calls indicator AFTER content (collapsible)
+            if (!isUser && message.hasToolCalls) _buildToolCallsSection(),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildToolCallBubbles() {
-    return message.toolCalls!.map((toolCall) {
-      final isExecuting = toolCall.isExecuting;
-      final icon = isExecuting ? Icons.sync : Icons.check_circle_outline;
-      final iconColor =
-          isExecuting ? ThemeConstants.polyPurple300 : Colors.green.shade300;
-      final label = _formatToolName(toolCall.name);
+  Widget _buildToolCallsSection() {
+    final toolCalls = message.toolCalls!;
+    final hasExecuting = toolCalls.any((tc) => tc.isExecuting);
+    final count = toolCalls.length;
 
-      return Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: ThemeConstants.polyPurple500.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: ThemeConstants.polyPurple500.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isExecuting)
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(iconColor),
-                ),
-              )
-            else
-              Icon(icon, size: 14, color: iconColor),
-            const SizedBox(width: 6),
-            Text(
-              isExecuting ? '$label...' : label,
-              style: GoogleFonts.inter(
-                color: ThemeConstants.polyPurple200,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+    // If still executing, show all tool calls
+    if (hasExecuting) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: toolCalls.map((tc) => _buildToolCallChip(tc)).toList(),
+      );
+    }
+
+    // If complete, show collapsed summary that can expand
+    return GestureDetector(
+      onTap: () => setState(() => _toolCallsExpanded = !_toolCallsExpanded),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: ThemeConstants.polyPurple500.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: ThemeConstants.polyPurple500.withValues(alpha: 0.15),
               ),
             ),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 12,
+                  color: Colors.green.shade300,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$count tool${count > 1 ? 's' : ''} used',
+                  style: GoogleFonts.inter(
+                    color: ThemeConstants.polyPurple200.withValues(alpha: 0.7),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _toolCallsExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  size: 14,
+                  color: ThemeConstants.polyPurple200.withValues(alpha: 0.5),
+                ),
+              ],
+            ),
+          ),
+          if (_toolCallsExpanded)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children:
+                    toolCalls.map((tc) => _buildToolCallChip(tc)).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolCallChip(ToolCallInfo toolCall) {
+    final isExecuting = toolCall.isExecuting;
+    final iconColor =
+        isExecuting ? ThemeConstants.polyPurple300 : Colors.green.shade300;
+    final label = _formatToolName(toolCall.name);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: ThemeConstants.polyPurple500.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: ThemeConstants.polyPurple500.withValues(alpha: 0.2),
         ),
-      );
-    }).toList();
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isExecuting)
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+              ),
+            )
+          else
+            Icon(Icons.check_circle_outline, size: 14, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            isExecuting ? '$label...' : label,
+            style: GoogleFonts.inter(
+              color: ThemeConstants.polyPurple200,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatToolName(String name) {

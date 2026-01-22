@@ -933,7 +933,7 @@ Return JSON:
 
   Future<String> _saveImageFile(String name, Uint8List bytes) async {
     final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/images/$name.png');
+    final file = File('${directory.path}/images/exercises/$name.png');
     await file.parent.create(recursive: true);
     await file.writeAsBytes(bytes);
     return file.path;

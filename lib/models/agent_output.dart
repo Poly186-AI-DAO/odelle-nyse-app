@@ -42,7 +42,8 @@ class AgentOutput {
       ),
       prompt: map['prompt'] as String? ?? '',
       response: map['response'] as String? ?? '',
-      createdAt: DateTime.tryParse(map['created_at'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(map['created_at'] as String? ?? '') ??
+          DateTime.now(),
       reviewed: (map['reviewed'] as int?) == 1,
       reviewedBy: map['reviewed_by'] as String?,
       reviewNotes: map['review_notes'] as String?,
@@ -72,13 +73,15 @@ class AgentOutput {
   }
 
   @override
-  String toString() => 'AgentOutput(${agentType.name}: ${response.substring(0, response.length.clamp(0, 50))}...)';
+  String toString() =>
+      'AgentOutput(${agentType.name}: ${response.substring(0, response.length.clamp(0, 50))}...)';
 }
 
 /// Types of agents in the system
 enum AgentType {
-  nano,  // GPT-5 Nano - fast, cheap, every 5 min
-  chat,  // GPT-5 Chat - quality, supervisor, every 30 min
+  nano, // GPT-5 Nano - fast, cheap, every 5 min
+  chat, // GPT-5 Chat - quality, supervisor, every 30 min
+  bootstrap, // Bootstrap agent - runs at app startup
 }
 
 extension AgentTypeInfo on AgentType {
@@ -88,6 +91,8 @@ extension AgentTypeInfo on AgentType {
         return 'GPT-5 Nano';
       case AgentType.chat:
         return 'GPT-5 Chat';
+      case AgentType.bootstrap:
+        return 'Bootstrap';
     }
   }
 
@@ -97,6 +102,8 @@ extension AgentTypeInfo on AgentType {
         return '⚡';
       case AgentType.chat:
         return '🧠';
+      case AgentType.bootstrap:
+        return '🚀';
     }
   }
 }

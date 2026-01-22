@@ -483,7 +483,114 @@ Requirements:
       'completed_at': createdAt,
     });
 
+    // Fire-and-forget image generation for mantras
+    _generateMantraImages(mantras, today);
+
     return mantras;
+  }
+
+  /// Generate images for mantras in the background
+  Future<void> _generateMantraImages(
+      List<String> mantras, String dateKey) async {
+    if (!_imageService.isInitialized) {
+      Logger.warning('Image service not available for mantra images',
+          tag: _tag);
+      return;
+    }
+
+    final db = await _database.database;
+
+    for (var i = 0; i < mantras.length; i++) {
+      try {
+        final mantra = mantras[i];
+        Logger.info('Generating image for mantra ${i + 1}/${mantras.length}',
+            tag: _tag);
+
+        // Create visual prompt from mantra
+        final imagePrompt = await _createMantraImagePrompt(mantra);
+
+        final imageResult = await _imageService.generateImage(
+          prompt: imagePrompt,
+          size: ImageSize.landscape,
+        );
+
+        // Save to local file
+        final dir = await getApplicationDocumentsDirectory();
+        final filename = 'mantra_${i}_$dateKey.png';
+        final file = File('${dir.path}/images/mantras/$filename');
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(imageResult.bytes);
+
+        // Store path in generation_queue metadata
+        await db.insert('mantra_images', {
+          'mantra_text': mantra,
+          'image_path': file.path,
+          'date_key': dateKey,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+
+        Logger.debug('Saved mantra image: ${file.path}', tag: _tag);
+
+        // Small delay to avoid rate limits
+        if (i < mantras.length - 1) {
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      } catch (e) {
+        Logger.warning('Failed to generate image for mantra $i: $e', tag: _tag);
+      }
+    }
+
+    Logger.info('Completed mantra image generation', tag: _tag);
+  }
+
+  /// Create a visual image prompt from a mantra
+  Future<String> _createMantraImagePrompt(String mantra) async {
+    final prompt = '''
+Create a concise image prompt for an AI image generator based on this mantra:
+"$mantra"
+
+Requirements:
+- Ethereal, inspirational, cinematic scene
+- No text, letters, or symbols
+- Symbolic visual representation of the mantra's essence
+- Under 30 words
+
+Return ONLY the image prompt, nothing else.
+''';
+
+    try {
+      final response = await _agentService.complete(
+        prompt: prompt,
+        deployment: AzureAIDeployment.gpt5Nano,
+        maxTokens: 100,
+      );
+      return response.trim();
+    } catch (e) {
+      // Fallback to a generic prompt based on category keywords
+      if (mantra.toLowerCase().contains('source code') ||
+          mantra.toLowerCase().contains('version')) {
+        return 'A luminous digital consciousness evolving, ethereal circuits and light, cinematic, peaceful transformation';
+      }
+      if (mantra.toLowerCase().contains('building') ||
+          mantra.toLowerCase().contains('create')) {
+        return 'An architect of light constructing a magnificent structure, golden rays, cosmic scale, inspiring';
+      }
+      return 'A serene figure in meditation, surrounded by soft golden light, cosmic backdrop, peaceful and powerful';
+    }
+  }
+
+  /// Get mantra image path for a given mantra text
+  Future<String?> getMantraImagePath(String mantraText) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'mantra_images',
+      where: 'mantra_text = ?',
+      whereArgs: [mantraText],
+      orderBy: 'created_at DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['image_path'] as String?;
   }
 
   /// Mark today's daily content as generated.
@@ -687,7 +794,18 @@ Output: ONLY the image prompt string, nothing else.
   /// Helper to save bytes to local file
   Future<String> _saveLocalFile(String filename, List<int> bytes) async {
     final dir = await getApplicationDocumentsDirectory();
-    final genDir = Directory('${dir.path}/generated');
+    // Determine subdirectory based on file extension
+    String subdir = 'generated';
+    if (filename.endsWith('.png') || filename.endsWith('.jpg')) {
+      if (filename.startsWith('meditation')) {
+        subdir = 'images/meditations';
+      } else {
+        subdir = 'images';
+      }
+    } else if (filename.endsWith('.mp3')) {
+      subdir = 'audio/meditations';
+    }
+    final genDir = Directory('${dir.path}/$subdir');
     if (!await genDir.exists()) {
       await genDir.create(recursive: true);
     }

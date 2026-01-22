@@ -124,14 +124,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'summary': result.agentSummary,
     });
 
-    if (result.agentSummary != null && mounted) {
-      // Show a brief toast with the bootstrap summary
-      AppToast.info(
-          context,
-          result.agentSummary!.length > 100
-              ? '${result.agentSummary!.substring(0, 100)}...'
-              : result.agentSummary!);
-    }
+    // Bootstrap status is now shown via Dynamic Island Live Activity
+    // No need for in-app toast
 
     // Trigger initial sync
     if (mounted) {

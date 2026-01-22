@@ -5,6 +5,7 @@ class Mantra {
   final bool isActive;
   final DateTime createdAt;
   final String? category; // e.g., "morning", "stress", "focus"
+  final String? imagePath; // Local path to generated image
 
   Mantra({
     this.id,
@@ -12,6 +13,7 @@ class Mantra {
     this.isActive = true,
     DateTime? createdAt,
     this.category,
+    this.imagePath,
   }) : createdAt = createdAt ?? DateTime.now();
 
   /// Create from database map
@@ -22,6 +24,7 @@ class Mantra {
       isActive: (map['is_active'] as int?) == 1,
       createdAt: DateTime.parse(map['created_at'] as String),
       category: map['category'] as String?,
+      imagePath: map['image_path'] as String?,
     );
   }
 
@@ -33,6 +36,7 @@ class Mantra {
       'is_active': isActive ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
       'category': category,
+      'image_path': imagePath,
     };
   }
 
@@ -43,6 +47,7 @@ class Mantra {
     bool? isActive,
     DateTime? createdAt,
     String? category,
+    String? imagePath,
   }) {
     return Mantra(
       id: id ?? this.id,
@@ -50,6 +55,7 @@ class Mantra {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       category: category ?? this.category,
+      imagePath: imagePath ?? this.imagePath,
     );
   }
 

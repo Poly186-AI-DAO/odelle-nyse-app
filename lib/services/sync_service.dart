@@ -9,16 +9,16 @@ import '../utils/logger.dart';
 class SyncService {
   static const String _tag = 'SyncService';
   static const int syncIntervalMinutes = 5;
-  
+
   final AppDatabase _database;
   final FirebaseFirestore _firestore;
-  
+
   bool _isSyncing = false;
   Timer? _syncTimer;
   final _syncingController = StreamController<bool>.broadcast();
-  
+
   Stream<bool> get isSyncingStream => _syncingController.stream;
-  
+
   SyncService({
     AppDatabase? database,
     FirebaseFirestore? firestore,
@@ -31,24 +31,32 @@ class SyncService {
       Logger.warning('Periodic sync already running', tag: _tag);
       return;
     }
-    
-    Logger.info('Starting periodic sync every $syncIntervalMinutes minutes', tag: _tag);
-    
+
+    Logger.info('Starting periodic sync every $syncIntervalMinutes minutes',
+        tag: _tag);
+
     // Sync immediately first
     syncPendingChanges();
-    
+
     // Then sync periodically
     _syncTimer = Timer.periodic(
       Duration(minutes: syncIntervalMinutes),
       (_) => syncPendingChanges(),
     );
   }
-  
+
   /// Stop periodic sync
   void stopPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = null;
     Logger.info('Stopped periodic sync', tag: _tag);
+  }
+
+  /// Dispose resources - close stream controllers
+  void dispose() {
+    stopPeriodicSync();
+    _syncingController.close();
+    Logger.debug('SyncService disposed', tag: _tag);
   }
 
   void _setSyncing(bool value) {
@@ -82,11 +90,10 @@ class SyncService {
       Logger.debug('Sync already in progress, skipping', tag: _tag);
       return;
     }
-    
-    
+
     _setSyncing(true);
     Logger.info('Starting sync of pending changes', tag: _tag);
-    
+
     try {
       final db = await _database.database;
       final pending = await db.query(
@@ -96,18 +103,18 @@ class SyncService {
         orderBy: 'created_at ASC',
         limit: 50,
       );
-      
+
       if (pending.isEmpty) {
         Logger.debug('No pending changes to sync', tag: _tag);
         return;
       }
-      
+
       Logger.info('Found ${pending.length} pending changes', tag: _tag);
-      
+
       for (final item in pending) {
         await _syncItem(item);
       }
-      
+
       Logger.info('Sync completed', tag: _tag);
     } catch (e) {
       Logger.error('Sync failed: $e', tag: _tag);
@@ -123,12 +130,10 @@ class SyncService {
     final operation = item['operation'] as String;
     final dataJson = item['data'] as String?;
     final attempts = (item['attempts'] as int?) ?? 0;
-    
+
     try {
-      final docRef = _firestore
-          .collection(tableName)
-          .doc(rowId.toString());
-      
+      final docRef = _firestore.collection(tableName).doc(rowId.toString());
+
       switch (operation) {
         case 'INSERT':
         case 'UPDATE':
@@ -142,7 +147,7 @@ class SyncService {
           await docRef.delete();
           break;
       }
-      
+
       // Mark as synced
       final db = await _database.database;
       await db.update(
@@ -154,11 +159,11 @@ class SyncService {
         where: 'id = ?',
         whereArgs: [id],
       );
-      
+
       Logger.debug('Synced $operation for $tableName:$rowId', tag: _tag);
     } catch (e) {
       Logger.warning('Failed to sync $tableName:$rowId: $e', tag: _tag);
-      
+
       // Update attempts and mark as failed if max attempts reached
       final db = await _database.database;
       final newAttempts = attempts + 1;

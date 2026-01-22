@@ -260,6 +260,15 @@ class BodyViewModel extends Notifier<BodyState> {
         _generateMealImage(meal);
       }
     }
+
+    for (final workout in workouts) {
+      if (workout.imagePath == null || workout.imagePath!.isEmpty) {
+        Logger.info(
+            'Missing image for workout ${workout.id}, queuing generation',
+            tag: _tag);
+        _generateWorkoutImage(workout);
+      }
+    }
   }
 
   Future<void> _generateMealImage(MealLog meal) async {
@@ -289,10 +298,74 @@ class BodyViewModel extends Notifier<BodyState> {
     }
   }
 
+  Future<void> _generateWorkoutImage(WorkoutLog workout) async {
+    try {
+      final imageService = ref.read(imageServiceProvider);
+      final workoutName = workout.name ?? workout.type.displayName;
+
+      // Create a visually compelling prompt based on workout type
+      String prompt;
+      switch (workout.type) {
+        case WorkoutType.strength:
+        case WorkoutType.hypertrophy:
+        case WorkoutType.powerlifting:
+          prompt =
+              "Athletic person performing $workoutName exercise in a modern gym, dramatic lighting, fitness photography, powerful and determined, cinematic";
+          break;
+        case WorkoutType.cardio:
+        case WorkoutType.hiit:
+          prompt =
+              "Dynamic action shot of intense $workoutName cardio workout, motion blur, energetic atmosphere, sweat, determination, fitness photography";
+          break;
+        case WorkoutType.yoga:
+        case WorkoutType.flexibility:
+          prompt =
+              "Serene $workoutName pose in a peaceful studio with natural light, mindfulness, balance and focus, wellness photography";
+          break;
+        case WorkoutType.sports:
+          prompt =
+              "Athletic $workoutName action, sports photography, competitive spirit, peak performance moment, dynamic composition";
+          break;
+        default:
+          prompt =
+              "Fitness training session, $workoutName, professional gym environment, motivation, health and wellness photography";
+      }
+
+      final imageResult = await imageService.generateImage(
+        prompt: prompt,
+        size: ImageSize.landscape,
+      );
+      final imagePath = await _saveWorkoutImage(workout, imageResult.bytes);
+
+      final updatedWorkout = workout.copyWith(imagePath: imagePath);
+      await ref.read(workoutRepositoryProvider).updateWorkout(updatedWorkout);
+
+      // Refresh local state if still valid
+      if (state.workouts.any((w) => w.id == workout.id)) {
+        final updatedWorkouts = state.workouts
+            .map((w) => w.id == workout.id ? updatedWorkout : w)
+            .toList();
+        state = state.copyWith(workouts: updatedWorkouts);
+      }
+    } catch (e) {
+      Logger.error('Failed to generate image for workout ${workout.id}',
+          tag: _tag, error: e);
+    }
+  }
+
   Future<String> _saveMealImage(MealLog meal, Uint8List bytes) async {
     final directory = await getApplicationDocumentsDirectory();
     final id = meal.id ?? DateTime.now().millisecondsSinceEpoch;
     final file = File('${directory.path}/images/meals/meal_$id.png');
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(bytes);
+    return file.path;
+  }
+
+  Future<String> _saveWorkoutImage(WorkoutLog workout, Uint8List bytes) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final id = workout.id ?? DateTime.now().millisecondsSinceEpoch;
+    final file = File('${directory.path}/images/workouts/workout_$id.png');
     await file.parent.create(recursive: true);
     await file.writeAsBytes(bytes);
     return file.path;

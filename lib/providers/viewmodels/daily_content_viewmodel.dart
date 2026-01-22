@@ -188,6 +188,7 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
   }
 
   Future<List<String>> _fetchMantras(Database db, String dateKey) async {
+    // 1. Try today's generated mantras from generation_queue
     final rows = await db.query(
       'generation_queue',
       where: "type = ? AND status = 'completed' AND content_date = ?",
@@ -199,6 +200,7 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
     final parsed = _parseMantrasRows(rows);
     if (parsed.isNotEmpty) return parsed;
 
+    // 2. Try most recent generated mantras from generation_queue
     final fallbackRows = await db.query(
       'generation_queue',
       where: "type = ? AND status = 'completed'",
@@ -209,6 +211,16 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
     final fallbackParsed = _parseMantrasRows(fallbackRows);
     if (fallbackParsed.isNotEmpty) return fallbackParsed;
 
+    // 3. Try mantras table (seeded by bootstrap from Princeps_Mantras.md)
+    final appDb = ref.read(databaseProvider);
+    final mantraRecords = await appDb.getMantras(activeOnly: true);
+    if (mantraRecords.isNotEmpty) {
+      // Shuffle and take 4 random mantras for variety
+      final shuffled = List.of(mantraRecords)..shuffle();
+      return shuffled.take(4).map((m) => m.text).toList();
+    }
+
+    // 4. Final fallback: seed mantras from service
     final service = ref.read(dailyContentServiceProvider);
     await service.initialize();
     if (service.mantras.isEmpty) return [];

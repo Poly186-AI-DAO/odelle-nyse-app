@@ -43,6 +43,8 @@ class PsychographService {
   DateTime? _prophecyDate;
   List<String> _prophecyImagePrompts = [];
   DateTime? _prophecyImageDate;
+  List<String> _prophecyImagePaths = [];
+  DateTime? _prophecyImagePathsDate;
 
   PsychographService({
     required AzureAgentService agentService,
@@ -383,13 +385,13 @@ Respond with JSON array:
   Future<String?> _saveImageFile(String filename, List<int> bytes) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/insights/$filename');
+      final file = File('${dir.path}/images/insights/$filename');
       await file.parent.create(recursive: true);
       await file.writeAsBytes(bytes);
-      Logger.debug('Saved insight image: ${file.path}', tag: _tag);
+      Logger.debug('Saved image: ${file.path}', tag: _tag);
       return file.path;
     } catch (e) {
-      Logger.warning('Failed to save insight image: $e', tag: _tag);
+      Logger.warning('Failed to save image: $e', tag: _tag);
       return null;
     }
   }
@@ -589,6 +591,71 @@ Respond with JSON array of strings:
       return _prophecyImagePrompts;
     }
   }
+
+  /// Generate actual prophecy images from prompts
+  /// Returns list of local file paths to generated images
+  Future<List<String>> generateDailyProphecyImages({int count = 6}) async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    // Return cached paths if already generated today
+    if (_prophecyImagePathsDate == todayDate &&
+        _prophecyImagePaths.isNotEmpty) {
+      return _prophecyImagePaths;
+    }
+
+    if (_imageService == null || !_imageService!.isInitialized) {
+      Logger.warning('Image service not available for prophecy images',
+          tag: _tag);
+      return [];
+    }
+
+    try {
+      final prompts = await getDailyProphecyImagePrompts(count: count);
+      final imagePaths = <String>[];
+      final dateStr = todayDate.toIso8601String().split('T')[0];
+
+      for (var i = 0; i < prompts.length; i++) {
+        try {
+          Logger.info('Generating prophecy image ${i + 1}/${prompts.length}',
+              tag: _tag);
+
+          final imageResult = await _imageService!.generateImage(
+            prompt: prompts[i],
+            size:
+                ImageSize.landscape, // Prophecy images look better in landscape
+          );
+
+          // Save to local file
+          final path = await _saveImageFile(
+            'prophecy_${i}_$dateStr.png',
+            imageResult.bytes,
+          );
+          if (path != null) {
+            imagePaths.add(path);
+          }
+        } catch (e) {
+          Logger.warning('Failed to generate prophecy image $i: $e', tag: _tag);
+        }
+
+        // Small delay to avoid rate limits
+        if (i < prompts.length - 1) {
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+
+      _prophecyImagePaths = imagePaths;
+      _prophecyImagePathsDate = todayDate;
+      Logger.info('Generated ${imagePaths.length} prophecy images', tag: _tag);
+      return imagePaths;
+    } catch (e) {
+      Logger.error('Failed to generate prophecy images: $e', tag: _tag);
+      return [];
+    }
+  }
+
+  /// Get cached prophecy image paths (returns empty if not yet generated)
+  List<String> get dailyProphecyImagePaths => _prophecyImagePaths;
 
   /// Default prophecy when generation fails
   String _getDefaultProphecy(DateTime date) {

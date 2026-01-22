@@ -15,6 +15,7 @@ mixin AppDatabaseSchema {
     await _createAgentTables(db); // v10: Agent outputs
     await _createChatTables(db); // v11: Chat messages
     await _createPsychographTables(db); // v12: Psychograph patterns
+    await _createImageTables(db); // v13: Image generation tables
     await _createIndexes(db);
     await _seedMantras(db);
 
@@ -62,6 +63,10 @@ mixin AppDatabaseSchema {
     }
     if (oldVersion < 12) {
       await _createPsychographTables(db);
+      await _createIndexes(db);
+    }
+    if (oldVersion < 13) {
+      await _createImageTables(db);
       await _createIndexes(db);
     }
   }
@@ -925,6 +930,47 @@ mixin AppDatabaseSchema {
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_psychograph_patterns_created ON psychograph_patterns(created_at)');
 
-    Logger.info('Psychograph tables created successfully', tag: AppDatabase._tag);
+    Logger.info('Psychograph tables created successfully',
+        tag: AppDatabase._tag);
+  }
+
+  /// Create image generation tables (v13)
+  Future<void> _createImageTables(Database db) async {
+    Logger.info('Creating image generation tables', tag: AppDatabase._tag);
+
+    // Mantra images
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS mantra_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mantra_text TEXT NOT NULL,
+        image_path TEXT NOT NULL,
+        date_key TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Workout images
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS workout_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        workout_type TEXT NOT NULL,
+        workout_name TEXT,
+        image_path TEXT NOT NULL,
+        date_key TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_mantra_images_text ON mantra_images(mantra_text)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_mantra_images_date ON mantra_images(date_key)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_workout_images_type ON workout_images(workout_type)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_workout_images_date ON workout_images(date_key)');
+
+    Logger.info('Image generation tables created successfully',
+        tag: AppDatabase._tag);
   }
 }

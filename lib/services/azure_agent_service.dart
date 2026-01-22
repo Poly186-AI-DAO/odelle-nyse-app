@@ -848,7 +848,7 @@ class AzureAgentService {
 
             if (finishReason != null) {
               yield StreamEvent.done(finishReason);
-              continue;
+              return; // Exit stream - don't continue to [DONE] which would emit duplicate
             }
 
             if (delta == null) continue;

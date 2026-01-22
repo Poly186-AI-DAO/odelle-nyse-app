@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/agent_output.dart';
 import '../services/azure_agent_service.dart';
 import '../services/azure_image_service.dart';
 import '../services/azure_speech_service.dart';
@@ -76,6 +77,12 @@ final dailyProphecyProvider = FutureProvider<String>((ref) async {
 final dailyProphecyImagePromptsProvider = FutureProvider<List<String>>((ref) {
   final service = ref.watch(psychographServiceProvider);
   return service.getDailyProphecyImagePrompts();
+});
+
+/// Daily prophecy generated images (actual image file paths)
+final dailyProphecyImagesProvider = FutureProvider<List<String>>((ref) {
+  final service = ref.watch(psychographServiceProvider);
+  return service.generateDailyProphecyImages();
 });
 
 /// Azure speech/voice recognition service
@@ -166,8 +173,36 @@ final bootstrapResultProvider = FutureProvider<BootstrapResult>((ref) async {
         tag: 'BootstrapResult');
   }
 
+  // Show Live Activity for bootstrap
+  try {
+    await notificationService.showAgentWorking(
+      agentType: AgentType.bootstrap,
+      message: 'Preparing your day...',
+    );
+  } catch (e) {
+    Logger.warning('Failed to show bootstrap Live Activity: $e',
+        tag: 'BootstrapResult');
+  }
+
   // Run bootstrap
   final result = await bootstrapService.run();
+
+  // Update Live Activity with result
+  try {
+    await notificationService.updateAgentStatus(
+      agentType: AgentType.bootstrap,
+      message: result.success ? 'Ready!' : 'Setup failed',
+      isComplete: result.success,
+      isError: !result.success,
+    );
+    // Hide after brief delay
+    Future.delayed(const Duration(seconds: 2), () {
+      notificationService.hideAgentStatus();
+    });
+  } catch (e) {
+    Logger.warning('Failed to update bootstrap Live Activity: $e',
+        tag: 'BootstrapResult');
+  }
 
   // After bootstrap, trigger supporting services (NOT daily content - that's handled by ViewModel)
   if (result.success) {
@@ -215,9 +250,9 @@ final syncServiceProvider = Provider<SyncService>((ref) {
   // Auto-start periodic sync when provider is first accessed
   service.startPeriodicSync();
 
-  // Clean up when disposed
+  // Clean up when disposed (closes timer and stream controller)
   ref.onDispose(() {
-    service.stopPeriodicSync();
+    service.dispose();
   });
 
   return service;

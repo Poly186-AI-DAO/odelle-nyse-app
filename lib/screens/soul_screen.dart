@@ -1311,8 +1311,7 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
   Future<void> _showProphecySheet() async {
     try {
       final prophecy = await ref.read(dailyProphecyProvider.future);
-      final imagePromptsFuture =
-          ref.read(dailyProphecyImagePromptsProvider.future);
+      final imagePaths = await ref.read(dailyProphecyImagesProvider.future);
       if (!mounted) return;
 
       showModalBottomSheet(
@@ -1375,36 +1374,13 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              FutureBuilder<List<String>>(
-                                future: imagePromptsFuture,
-                                builder: (context, snapshot) {
-                                  final prompts = snapshot.data ?? [];
-                                  final count = prompts.isEmpty
-                                      ? 6
-                                      : prompts.length.clamp(4, 6);
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildImageMosaic(prophecy, count: count),
-                                      const SizedBox(height: 16),
-                                      _buildSectionHeader('IMAGE PROMPTS'),
-                                      const SizedBox(height: 8),
-                                      if (snapshot.connectionState ==
-                                              ConnectionState.waiting &&
-                                          prompts.isEmpty)
-                                        Text(
-                                          'Image prompts are weaving...',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            color: ThemeConstants.textSecondary,
-                                          ),
-                                        )
-                                      else
-                                        _buildImagePromptList(prompts),
-                                    ],
-                                  );
-                                },
+                              _buildImageMosaic(
+                                prophecy,
+                                count: imagePaths.isNotEmpty
+                                    ? imagePaths.length.clamp(4, 6)
+                                    : 6,
+                                imagePaths:
+                                    imagePaths.isNotEmpty ? imagePaths : null,
                               ),
                               const SizedBox(height: 20),
                               Text(

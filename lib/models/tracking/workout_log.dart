@@ -29,6 +29,9 @@ class WorkoutLog {
   // For AI parsing
   final int? journalEntryId;
 
+  // Generated image
+  final String? imagePath;
+
   // Child exercises
   final List<ExerciseSet>? sets;
 
@@ -51,6 +54,7 @@ class WorkoutLog {
     this.energyLevel,
     this.mood,
     this.journalEntryId,
+    this.imagePath,
     this.sets,
   });
 
@@ -77,6 +81,7 @@ class WorkoutLog {
       energyLevel: map['energy_level'] as int?,
       mood: map['mood'] as String?,
       journalEntryId: map['journal_entry_id'] as int?,
+      imagePath: map['image_path'] as String?,
     );
   }
 
@@ -101,6 +106,7 @@ class WorkoutLog {
       'energy_level': energyLevel,
       'mood': mood,
       'journal_entry_id': journalEntryId,
+      'image_path': imagePath,
     };
   }
 
@@ -132,6 +138,7 @@ class WorkoutLog {
     int? energyLevel,
     String? mood,
     int? journalEntryId,
+    String? imagePath,
     List<ExerciseSet>? sets,
   }) {
     return WorkoutLog(
@@ -153,6 +160,7 @@ class WorkoutLog {
       energyLevel: energyLevel ?? this.energyLevel,
       mood: mood ?? this.mood,
       journalEntryId: journalEntryId ?? this.journalEntryId,
+      imagePath: imagePath ?? this.imagePath,
       sets: sets ?? this.sets,
     );
   }
