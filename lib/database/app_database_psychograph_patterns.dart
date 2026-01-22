@@ -52,9 +52,8 @@ class PsychographPatternAggregate {
 
   factory PsychographPatternAggregate.fromMap(Map<String, dynamic> map) {
     final countValue = map['count'];
-    final count = countValue is int
-        ? countValue
-        : (countValue as num?)?.toInt() ?? 0;
+    final count =
+        countValue is int ? countValue : (countValue as num?)?.toInt() ?? 0;
     return PsychographPatternAggregate(
       category: map['category'] as String? ?? 'unknown',
       observation: map['observation'] as String? ?? '',
