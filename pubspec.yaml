@@ -27,7 +27,6 @@ dependencies:
   provider: ^6.1.2
   package_info_plus: ^9.0.0
   http: ^1.6.0
-  flutter_facebook_auth: ^7.1.5
   font_awesome_flutter: ^10.7.0
   image: ^4.7.2
   image_picker: ^1.1.2
