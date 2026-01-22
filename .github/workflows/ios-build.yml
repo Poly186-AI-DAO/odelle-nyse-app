@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-14
 
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
   deploy-testflight:
     name: Deploy to TestFlight
     needs: build-ios
-    runs-on: macos-15
+    runs-on: macos-14
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
