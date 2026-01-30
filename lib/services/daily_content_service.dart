@@ -1152,7 +1152,7 @@ Respond with ONLY the image prompt, no explanations.
   /// 4. Optionally uploads to Firebase for cloud backup
   ///
   /// [forceResync] - If true, clears existing audio_path entries and re-syncs all
-  /// 
+  ///
   /// Returns a [SyncResult] with counts of synced/failed items.
   Future<SyncResult> syncFromElevenLabsHistory({
     int daysBack = 30,
@@ -1177,19 +1177,20 @@ Respond with ONLY the image prompt, no explanations.
       // If force resync, clear all audio paths first (both column and JSON)
       if (forceResync) {
         Logger.info('Force resync: clearing existing audio paths', tag: _tag);
-        
+
         // Get all meditation records and clear audioPath from output_data JSON
         final allRecords = await db.query(
           'generation_queue',
           where: 'type = ? AND status = ?',
           whereArgs: ['meditation', 'completed'],
         );
-        
+
         for (final record in allRecords) {
           final outputDataStr = record['output_data'] as String?;
           if (outputDataStr != null) {
             try {
-              final outputData = jsonDecode(outputDataStr) as Map<String, dynamic>;
+              final outputData =
+                  jsonDecode(outputDataStr) as Map<String, dynamic>;
               outputData.remove('audioPath');
               outputData.remove('audioUrl');
               await db.update(
@@ -1354,7 +1355,7 @@ Respond with ONLY the image prompt, no explanations.
           String normalizeForMatch(String text) {
             return text
                 .replaceAll(RegExp(r'[^\w\s]'), '') // Remove punctuation
-                .replaceAll(RegExp(r'\s+'), ' ')   // Collapse whitespace
+                .replaceAll(RegExp(r'\s+'), ' ') // Collapse whitespace
                 .trim()
                 .toLowerCase();
           }
@@ -1391,38 +1392,55 @@ Respond with ONLY the image prompt, no explanations.
             if (usedHistoryIds.contains(item.historyItemId)) continue;
 
             final normalizedItemText = normalizeForMatch(item.text);
-            
+
             // First check if dates match (if we have a date reference)
             // The script usually contains "january 28" or similar
             if (extractedDate != null && contentDate != null) {
               // Parse month from contentDate (YYYY-MM-DD)
               final monthStr = contentDate.split('-')[1];
               final month = int.tryParse(monthStr) ?? 0;
-              final monthNames = ['', 'january', 'february', 'march', 'april', 'may', 'june',
-                                  'july', 'august', 'september', 'october', 'november', 'december'];
-              final monthName = month > 0 && month <= 12 ? monthNames[month] : '';
-              
+              final monthNames = [
+                '',
+                'january',
+                'february',
+                'march',
+                'april',
+                'may',
+                'june',
+                'july',
+                'august',
+                'september',
+                'october',
+                'november',
+                'december'
+              ];
+              final monthName =
+                  month > 0 && month <= 12 ? monthNames[month] : '';
+
               // Check if the ElevenLabs text contains this date
               final datePattern = '$monthName $extractedDate';
-              if (monthName.isNotEmpty && !normalizedItemText.contains(datePattern)) {
+              if (monthName.isNotEmpty &&
+                  !normalizedItemText.contains(datePattern)) {
                 // Date doesn't match, skip this item
                 continue;
               }
             }
-            
+
             // Now check text similarity
             final itemPrefix = normalizedItemText.length > 50
                 ? normalizedItemText.substring(0, 50)
                 : normalizedItemText;
-            
+
             if (normalizedItemText.startsWith(scriptPrefix) ||
                 scriptPrefix.startsWith(itemPrefix) ||
                 normalizedItemText.contains(scriptPrefix) ||
                 scriptPrefix.contains(itemPrefix)) {
               match = item;
               Logger.debug('Match found via text comparison', tag: _tag, data: {
-                'scriptPrefix': scriptPrefix.substring(0, min(30, scriptPrefix.length)),
-                'itemPrefix': itemPrefix.substring(0, min(30, itemPrefix.length)),
+                'scriptPrefix':
+                    scriptPrefix.substring(0, min(30, scriptPrefix.length)),
+                'itemPrefix':
+                    itemPrefix.substring(0, min(30, itemPrefix.length)),
               });
               break;
             }
