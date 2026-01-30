@@ -58,6 +58,7 @@ class _MeditationHistoryScreenState
       final result = await dailyContentService.syncFromElevenLabsHistory(
         daysBack: 30,
         uploadToFirebase: true,
+        forceResync: true, // Force to fix corrupted data
       );
 
       if (mounted) {

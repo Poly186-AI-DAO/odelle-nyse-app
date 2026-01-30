@@ -1151,16 +1151,20 @@ Respond with ONLY the image prompt, no explanations.
   /// 3. Downloads and saves audio for matches
   /// 4. Optionally uploads to Firebase for cloud backup
   ///
+  /// [forceResync] - If true, clears existing audio_path entries and re-syncs all
+  /// 
   /// Returns a [SyncResult] with counts of synced/failed items.
   Future<SyncResult> syncFromElevenLabsHistory({
     int daysBack = 30,
     bool uploadToFirebase = true,
+    bool forceResync = false,
   }) async {
     if (!_isInitialized) await initialize();
 
     Logger.info('Starting ElevenLabs history sync', tag: _tag, data: {
       'daysBack': daysBack,
       'uploadToFirebase': uploadToFirebase,
+      'forceResync': forceResync,
     });
 
     final result = SyncResult();
@@ -1168,8 +1172,50 @@ Respond with ONLY the image prompt, no explanations.
     await elevenlabs.initialize();
 
     try {
-      // 1. Find meditation records with missing audio
       final db = await _database.database;
+
+      // If force resync, clear all audio paths first (both column and JSON)
+      if (forceResync) {
+        Logger.info('Force resync: clearing existing audio paths', tag: _tag);
+        
+        // Get all meditation records and clear audioPath from output_data JSON
+        final allRecords = await db.query(
+          'generation_queue',
+          where: 'type = ? AND status = ?',
+          whereArgs: ['meditation', 'completed'],
+        );
+        
+        for (final record in allRecords) {
+          final outputDataStr = record['output_data'] as String?;
+          if (outputDataStr != null) {
+            try {
+              final outputData = jsonDecode(outputDataStr) as Map<String, dynamic>;
+              outputData.remove('audioPath');
+              outputData.remove('audioUrl');
+              await db.update(
+                'generation_queue',
+                {
+                  'audio_path': null,
+                  'output_data': jsonEncode(outputData),
+                },
+                where: 'id = ?',
+                whereArgs: [record['id']],
+              );
+            } catch (_) {
+              // Just clear the column if JSON parsing fails
+              await db.update(
+                'generation_queue',
+                {'audio_path': null},
+                where: 'id = ?',
+                whereArgs: [record['id']],
+              );
+            }
+          }
+        }
+        Logger.info('Cleared ${allRecords.length} audio paths', tag: _tag);
+      }
+
+      // 1. Find meditation records with missing audio
       final records = await db.query(
         'generation_queue',
         where: 'type = ? AND status = ?',
@@ -1218,27 +1264,58 @@ Respond with ONLY the image prompt, no explanations.
           tag: _tag);
       result.totalToSync = missingAudio.length;
 
-      // 2. Fetch ElevenLabs history (all TTS, not filtered by voice to maximize matches)
+      // 2. Fetch ALL ElevenLabs history with pagination
       final afterDate = DateTime.now().subtract(Duration(days: daysBack));
-      final historyResult = await elevenlabs.getHistory(
-        voiceType: null, // Don't filter by voice - get all TTS history
-        pageSize: 100,
-        afterDate: afterDate,
-      );
+      final allHistoryItems = <ElevenLabsHistoryItem>[];
+      String? startAfter;
+      bool hasMore = true;
 
-      if (!historyResult.isSuccess || historyResult.isEmpty) {
-        Logger.warning('No ElevenLabs history found', tag: _tag, data: {
-          'error': historyResult.error,
+      while (hasMore) {
+        final historyResult = await elevenlabs.getHistory(
+          voiceType: null, // Don't filter by voice - get all TTS history
+          pageSize: 100,
+          afterDate: afterDate,
+          startAfter: startAfter,
+        );
+
+        if (!historyResult.isSuccess) {
+          Logger.warning('Failed to fetch ElevenLabs history page',
+              tag: _tag,
+              data: {
+                'error': historyResult.error,
+                'fetchedSoFar': allHistoryItems.length,
+              });
+          break;
+        }
+
+        allHistoryItems.addAll(historyResult.items);
+        hasMore = historyResult.hasMore;
+        startAfter = historyResult.lastItemId;
+
+        Logger.debug('Fetched history page', tag: _tag, data: {
+          'itemsInPage': historyResult.items.length,
+          'totalFetched': allHistoryItems.length,
+          'hasMore': hasMore,
         });
+
+        // Safety limit to prevent infinite loops
+        if (allHistoryItems.length >= 500) {
+          Logger.warning('Reached history fetch limit (500 items)', tag: _tag);
+          break;
+        }
+      }
+
+      if (allHistoryItems.isEmpty) {
+        Logger.warning('No ElevenLabs history found', tag: _tag);
         return result;
       }
 
       Logger.info(
-          'Found ${historyResult.items.length} ElevenLabs history items',
+          'Found ${allHistoryItems.length} total ElevenLabs history items',
           tag: _tag);
 
-      // Log the dates of history items for debugging
-      for (final item in historyResult.items) {
+      // Log the dates of history items for debugging (first 10 only)
+      for (final item in allHistoryItems.take(10)) {
         Logger.debug('ElevenLabs history item', tag: _tag, data: {
           'id': item.historyItemId,
           'date': item.dateCreated.toIso8601String(),
@@ -1273,32 +1350,80 @@ Respond with ONLY the image prompt, no explanations.
           }
 
           // Find matching history item by comparing script text
-          // Normalize and use first 80 chars for comparison (more flexible matching)
-          final normalizedScript =
-              script.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
-          final scriptPrefix = normalizedScript.length > 80
-              ? normalizedScript.substring(0, 80)
+          // Normalize: remove punctuation, extra spaces, and lowercase for flexible matching
+          String normalizeForMatch(String text) {
+            return text
+                .replaceAll(RegExp(r'[^\w\s]'), '') // Remove punctuation
+                .replaceAll(RegExp(r'\s+'), ' ')   // Collapse whitespace
+                .trim()
+                .toLowerCase();
+          }
+
+          final normalizedScript = normalizeForMatch(script);
+          // Use first 50 chars for prefix matching (more flexible)
+          final scriptPrefix = normalizedScript.length > 50
+              ? normalizedScript.substring(0, 50)
               : normalizedScript;
+
+          // Extract date info from content for better matching
+          // Script often contains the date like "january 28" or "wednesday january 28"
+          String? extractedDate;
+          if (contentDate != null) {
+            final dateParts = contentDate.split('-');
+            if (dateParts.length == 3) {
+              final day = int.tryParse(dateParts[2]) ?? 0;
+              extractedDate = day.toString(); // Just the day number
+            }
+          }
 
           Logger.debug('Searching for match', tag: _tag, data: {
             'contentDate': contentDate,
             'title': title,
             'scriptPrefixLength': scriptPrefix.length,
-            'historyItemCount': historyResult.items.length,
+            'historyItemCount': allHistoryItems.length,
             'usedHistoryIds': usedHistoryIds.length,
+            'extractedDay': extractedDate,
           });
 
           ElevenLabsHistoryItem? match;
-          for (final item in historyResult.items) {
+          for (final item in allHistoryItems) {
             // Skip if already used
             if (usedHistoryIds.contains(item.historyItemId)) continue;
 
-            final normalizedItemText =
-                item.text.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+            final normalizedItemText = normalizeForMatch(item.text);
+            
+            // First check if dates match (if we have a date reference)
+            // The script usually contains "january 28" or similar
+            if (extractedDate != null && contentDate != null) {
+              // Parse month from contentDate (YYYY-MM-DD)
+              final monthStr = contentDate.split('-')[1];
+              final month = int.tryParse(monthStr) ?? 0;
+              final monthNames = ['', 'january', 'february', 'march', 'april', 'may', 'june',
+                                  'july', 'august', 'september', 'october', 'november', 'december'];
+              final monthName = month > 0 && month <= 12 ? monthNames[month] : '';
+              
+              // Check if the ElevenLabs text contains this date
+              final datePattern = '$monthName $extractedDate';
+              if (monthName.isNotEmpty && !normalizedItemText.contains(datePattern)) {
+                // Date doesn't match, skip this item
+                continue;
+              }
+            }
+            
+            // Now check text similarity
+            final itemPrefix = normalizedItemText.length > 50
+                ? normalizedItemText.substring(0, 50)
+                : normalizedItemText;
+            
             if (normalizedItemText.startsWith(scriptPrefix) ||
-                scriptPrefix.startsWith(normalizedItemText.substring(
-                    0, min(80, normalizedItemText.length)))) {
+                scriptPrefix.startsWith(itemPrefix) ||
+                normalizedItemText.contains(scriptPrefix) ||
+                scriptPrefix.contains(itemPrefix)) {
               match = item;
+              Logger.debug('Match found via text comparison', tag: _tag, data: {
+                'scriptPrefix': scriptPrefix.substring(0, min(30, scriptPrefix.length)),
+                'itemPrefix': itemPrefix.substring(0, min(30, itemPrefix.length)),
+              });
               break;
             }
           }
@@ -1331,9 +1456,10 @@ Respond with ONLY the image prompt, no explanations.
             continue;
           }
 
-          // 5. Save locally
+          // 5. Save locally with unique timestamp to avoid overwriting
           final type = outputData['type'] as String? ?? 'meditation';
-          final filename = 'meditation_${type}_$contentDate.mp3';
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final filename = 'meditation_${type}_${contentDate}_$timestamp.mp3';
           final audioPath = await _saveLocalFile(filename, audioBytes);
 
           // 6. Upload to Firebase if enabled
