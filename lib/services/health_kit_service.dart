@@ -1,3 +1,5 @@
+import 'dart:math' show log, ln10;
+
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 
@@ -131,6 +133,7 @@ class HealthKitService {
     // Body
     HealthDataType.WEIGHT,
     HealthDataType.BODY_FAT_PERCENTAGE,
+    HealthDataType.HEIGHT,
     // Mindfulness
     HealthDataType.MINDFULNESS,
     // Water
@@ -702,6 +705,155 @@ class HealthKitService {
     }
   }
 
+  /// Get latest body fat percentage reading
+  Future<double?> getLatestBodyFat() async {
+    if (!_isAuthorized) {
+      await requestAuthorization();
+      if (!_isAuthorized) return null;
+    }
+
+    try {
+      final now = DateTime.now();
+      final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+
+      final data = await _health.getHealthDataFromTypes(
+        types: [HealthDataType.BODY_FAT_PERCENTAGE],
+        startTime: thirtyDaysAgo,
+        endTime: now,
+      );
+
+      if (data.isEmpty) return null;
+
+      // Return the most recent reading
+      final latest = data.last;
+      return (latest.value as NumericHealthValue).numericValue.toDouble();
+    } catch (e) {
+      debugPrint('[HealthKit] Error fetching body fat: $e');
+      return null;
+    }
+  }
+
+  /// Get latest height reading (in meters)
+  Future<double?> getLatestHeight() async {
+    if (!_isAuthorized) {
+      await requestAuthorization();
+      if (!_isAuthorized) return null;
+    }
+
+    try {
+      final now = DateTime.now();
+      // Height rarely changes, look back further
+      final twoYearsAgo = now.subtract(const Duration(days: 730));
+
+      final data = await _health.getHealthDataFromTypes(
+        types: [HealthDataType.HEIGHT],
+        startTime: twoYearsAgo,
+        endTime: now,
+      );
+
+      if (data.isEmpty) return null;
+
+      // Return the most recent reading (in meters)
+      final latest = data.last;
+      return (latest.value as NumericHealthValue).numericValue.toDouble();
+    } catch (e) {
+      debugPrint('[HealthKit] Error fetching height: $e');
+      return null;
+    }
+  }
+
+  /// Calculate body fat percentage using the US Navy method
+  ///
+  /// This is a tape-measure based estimation that's quite accurate (within 3-4% of DEXA).
+  ///
+  /// For men: %BF = 86.010 × log10(waist - neck) - 70.041 × log10(height) + 36.76
+  /// For women: %BF = 163.205 × log10(waist + hip - neck) - 97.684 × log10(height) - 78.387
+  ///
+  /// All measurements should be in inches.
+  ///
+  /// Parameters:
+  /// - heightInches: Height in inches
+  /// - waistInches: Waist circumference at navel (for men) or narrowest point (for women)
+  /// - neckInches: Neck circumference at narrowest point below larynx
+  /// - hipInches: Hip circumference at widest point (only needed for women)
+  /// - isMale: Whether the subject is male (default true)
+  ///
+  /// Returns: Estimated body fat percentage, or null if calculation fails
+  static double? calculateNavyBodyFat({
+    required double heightInches,
+    required double waistInches,
+    required double neckInches,
+    double? hipInches,
+    bool isMale = true,
+  }) {
+    // Validate inputs
+    if (heightInches <= 0 || waistInches <= 0 || neckInches <= 0) {
+      return null;
+    }
+
+    // For women, hip measurement is required
+    if (!isMale && (hipInches == null || hipInches <= 0)) {
+      return null;
+    }
+
+    // Waist must be greater than neck
+    if (waistInches <= neckInches) {
+      return null;
+    }
+
+    try {
+      double bodyFat;
+
+      if (isMale) {
+        // Men's formula
+        // %BF = 86.010 × log10(waist - neck) - 70.041 × log10(height) + 36.76
+        final waistMinusNeck = waistInches - neckInches;
+        if (waistMinusNeck <= 0) return null;
+
+        bodyFat = 86.010 * _log10(waistMinusNeck) -
+            70.041 * _log10(heightInches) +
+            36.76;
+      } else {
+        // Women's formula
+        // %BF = 163.205 × log10(waist + hip - neck) - 97.684 × log10(height) - 78.387
+        final circumference = waistInches + hipInches! - neckInches;
+        if (circumference <= 0) return null;
+
+        bodyFat = 163.205 * _log10(circumference) -
+            97.684 * _log10(heightInches) -
+            78.387;
+      }
+
+      // Clamp to reasonable range (1% - 60%)
+      return bodyFat.clamp(1.0, 60.0);
+    } catch (e) {
+      debugPrint('[HealthKit] Error calculating Navy body fat: $e');
+      return null;
+    }
+  }
+
+  /// Helper for log base 10
+  static double _log10(double x) {
+    return log(x) / ln10;
+  }
+
+  /// Get body fat category based on percentage and gender
+  static String getBodyFatCategory(double bodyFat, {bool isMale = true}) {
+    if (isMale) {
+      if (bodyFat < 6) return 'Essential fat';
+      if (bodyFat < 14) return 'Athletes';
+      if (bodyFat < 18) return 'Fitness';
+      if (bodyFat < 25) return 'Average';
+      return 'Obese';
+    } else {
+      if (bodyFat < 14) return 'Essential fat';
+      if (bodyFat < 21) return 'Athletes';
+      if (bodyFat < 25) return 'Fitness';
+      if (bodyFat < 32) return 'Average';
+      return 'Obese';
+    }
+  }
+
   /// Get flights climbed for a date
   Future<int> getFlightsClimbed(DateTime date) async {
     if (!_isAuthorized) {
@@ -870,6 +1022,12 @@ class HealthKitService {
       debugPrint('[HealthKit] Error writing weight: $e');
       return false;
     }
+  }
+
+  /// Write weight to HealthKit (in lbs) - convenience method
+  Future<bool> writeWeightLbs(double lbs, DateTime time) async {
+    final kg = lbs / 2.20462;
+    return writeWeight(kg, time);
   }
 
   /// Write body fat percentage to HealthKit

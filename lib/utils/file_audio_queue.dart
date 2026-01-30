@@ -2,20 +2,32 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'audio_session_helper.dart';
 import 'logger.dart';
 
 class FileAudioQueue {
   final AudioPlayer _player;
   final List<AudioSource> _sources = [];
   int _chunkIndex = 0;
+  bool _sessionConfigured = false;
 
   FileAudioQueue(this._player);
 
   Future<void> init() async {
-    // No-op, we'll set sources when adding chunks
+    // Configure audio session for playback through speaker
+    if (!_sessionConfigured) {
+      await AudioSessionHelper.configureForPlayback();
+      _sessionConfigured = true;
+    }
   }
 
   Future<void> addChunk(Uint8List pcmData) async {
+    // Ensure audio session is configured before first chunk
+    if (!_sessionConfigured) {
+      await AudioSessionHelper.configureForPlayback();
+      _sessionConfigured = true;
+    }
+
     try {
       final tempDir = await getTemporaryDirectory();
       final file = File(

@@ -11,6 +11,7 @@ class BodyStatsCard extends StatelessWidget {
   final int sleepDurationMinutes;
   final double currentWeight;
   final double currentBodyFat;
+  final double heightInches;
   final VoidCallback? onTap;
 
   const BodyStatsCard({
@@ -19,8 +20,9 @@ class BodyStatsCard extends StatelessWidget {
     required this.caloriesConsumed,
     required this.caloriesBurned,
     required this.sleepDurationMinutes,
-    this.currentWeight = 185.0,
-    this.currentBodyFat = 18.0,
+    this.currentWeight = 0.0,
+    this.currentBodyFat = 0.0,
+    this.heightInches = 72.0,
     this.onTap,
   });
 
@@ -164,9 +166,9 @@ class BodyStatsCard extends StatelessWidget {
   }
 
   double _calculateBMI(double weightLbs) {
-    // Placeholder height: 6'0" = 72 inches
     // Formula: 703 * weight(lbs) / height(in)^2
-    return 703 * weightLbs / (72 * 72);
+    if (heightInches <= 0 || weightLbs <= 0) return 0.0;
+    return 703 * weightLbs / (heightInches * heightInches);
   }
 
   Color _getReadinessColor(int score) {

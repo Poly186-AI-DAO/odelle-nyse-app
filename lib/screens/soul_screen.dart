@@ -575,7 +575,7 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
     }
 
     return SizedBox(
-      height: 170,
+      height: 220, // Increased height for longer mantras
       child: PageView.builder(
         controller: _mantraController,
         itemCount: mantras.length,
@@ -583,74 +583,163 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
           final text = mantras[index];
           return Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    ThemeConstants.polyMint400.withValues(alpha: 0.12),
-                    ThemeConstants.polyPurple200.withValues(alpha: 0.08),
-                  ],
+            child: GestureDetector(
+              onTap: () => _showMantraDetail(text, index, mantras.length),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      ThemeConstants.polyMint400.withValues(alpha: 0.12),
+                      ThemeConstants.polyPurple200.withValues(alpha: 0.08),
+                    ],
+                  ),
+                  border: Border.all(
+                      color: ThemeConstants.glassBorderWeak
+                          .withValues(alpha: 0.6)),
                 ),
-                border: Border.all(
-                    color:
-                        ThemeConstants.glassBorderWeak.withValues(alpha: 0.6)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildImageStrip(text, count: 3, height: 48),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.auto_awesome_outlined,
-                        size: 16,
-                        color: ThemeConstants.polyMint400,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.auto_awesome_outlined,
+                          size: 16,
+                          color: ThemeConstants.polyMint400,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'DAILY MANTRA ${index + 1}/${mantras.length}',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.4,
+                            color: ThemeConstants.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          '"$text"',
+                          style: GoogleFonts.playfairDisplay(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            color: ThemeConstants.textOnLight,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 5,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'DAILY MANTRA',
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'Tap to expand · Swipe for more',
                         style: GoogleFonts.inter(
                           fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.4,
                           color: ThemeConstants.textSecondary,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: Text(
-                      '"$text"',
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: ThemeConstants.textOnLight,
-                        height: 1.3,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Swipe for more',
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      color: ThemeConstants.textSecondary,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
         },
       ),
+    );
+  }
+
+  /// Show mantra in fullscreen detail view
+  void _showMantraDetail(String mantra, int index, int total) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.6,
+          decoration: BoxDecoration(
+            color: ThemeConstants.panelWhite,
+            borderRadius: ThemeConstants.borderRadiusBottomSheet,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: ThemeConstants.textMuted,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      size: 18,
+                      color: ThemeConstants.polyMint400,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'MANTRA ${index + 1} OF $total',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.5,
+                        color: ThemeConstants.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        '"$mantra"',
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w500,
+                          color: ThemeConstants.textOnLight,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Text(
+                    'Speak this aloud during your morning ritual',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: ThemeConstants.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -690,6 +779,9 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
               duration: meditation.durationMinutes,
               type: meditation.meditationType,
               audioPath: meditation.audioPath,
+              audioUrl: meditation.audioUrl,
+              imagePath: meditation.imagePath,
+              imageUrl: meditation.imageUrl,
             ),
           ),
         );
@@ -893,81 +985,55 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
     );
   }
 
-  /// Build a mosaic of images - uses generated images if available
-  Widget _buildImageMosaic(
-    String seed, {
-    int count = 6,
-    List<String>? imagePaths,
+  /// Build a tappable strip of images that opens fullscreen viewer
+  Widget _buildTappableImageStrip(
+    List<String> imagePaths, {
+    int startIndex = 0,
+    required List<String> allPaths,
+    double height = 80,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const columns = 3;
-        const gap = 12.0;
-        final tileWidth =
-            (constraints.maxWidth - gap * (columns - 1)) / columns;
+    if (imagePaths.isEmpty) return const SizedBox.shrink();
 
-        // If we have generated images, use them
-        if (imagePaths != null && imagePaths.isNotEmpty) {
-          return Wrap(
-            spacing: gap,
-            runSpacing: gap,
-            children: [
-              for (var i = 0; i < imagePaths.length && i < count; i++)
-                SizedBox(
-                  width: tileWidth,
-                  height: tileWidth * 0.75,
-                  child: _buildGeneratedImage(imagePaths[i], radius: 14),
+    return SizedBox(
+      height: height,
+      child: Row(
+        children: [
+          for (var i = 0; i < imagePaths.length; i++) ...[
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _showFullscreenImage(allPaths, startIndex + i),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: _buildGeneratedImage(imagePaths[i], radius: 10),
                 ),
-            ],
-          );
-        }
-
-        // Fallback to placeholder assets
-        final assets = _pickGalleryAssets(seed, count);
-        if (assets.isEmpty) return const SizedBox.shrink();
-
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (final asset in assets)
-              SizedBox(
-                width: tileWidth,
-                height: tileWidth * 0.75,
-                child: _buildGalleryTile(asset, radius: 14),
               ),
+            ),
+            if (i < imagePaths.length - 1) const SizedBox(width: 8),
           ],
-        );
-      },
+        ],
+      ),
     );
   }
 
-  Widget _buildImagePromptList(List<String> prompts) {
-    if (prompts.isEmpty) {
-      return Text(
-        'Image prompts are calibrating...',
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          color: ThemeConstants.textSecondary,
-        ),
-      );
-    }
+  /// Show fullscreen image viewer with gallery navigation
+  void _showFullscreenImage(List<String> imagePaths, int initialIndex) {
+    if (imagePaths.isEmpty) return;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var i = 0; i < prompts.length; i++) ...[
-          Text(
-            '${i + 1}. ${prompts[i]}',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              color: ThemeConstants.textSecondary,
-              height: 1.35,
-            ),
-          ),
-          if (i < prompts.length - 1) const SizedBox(height: 8),
-        ],
-      ],
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black.withValues(alpha: 0.95),
+        barrierDismissible: true,
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return _FullscreenImageViewer(
+            imagePaths: imagePaths,
+            initialIndex: initialIndex,
+          );
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
     );
   }
 
@@ -1182,11 +1248,6 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
   Future<void> _showInsightSheet(PsychographInsight insight) async {
     if (!mounted) return;
 
-    final prompts = insight.imagePrompts
-        .map((prompt) => prompt.trim())
-        .where((prompt) => prompt.isNotEmpty)
-        .toList();
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1254,46 +1315,103 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildImageMosaic(
-                              insight.title,
-                              count: 6,
-                              imagePaths: insight.imagePaths,
-                            ),
-                            const SizedBox(height: 16),
-                            _buildSectionHeader('IMAGE PROMPTS'),
-                            const SizedBox(height: 8),
-                            _buildImagePromptList(prompts),
-                            const SizedBox(height: 18),
+                            // Hero image - first image large
+                            if (insight.imagePaths.isNotEmpty)
+                              GestureDetector(
+                                onTap: () => _showFullscreenImage(
+                                  insight.imagePaths,
+                                  0,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: AspectRatio(
+                                    aspectRatio: 16 / 9,
+                                    child: _buildGeneratedImage(
+                                      insight.imagePaths.first,
+                                      radius: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 20),
+                            // Title
                             Text(
                               insight.title,
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
+                              style: GoogleFonts.playfairDisplay(
+                                fontSize: 22,
                                 fontWeight: FontWeight.w600,
                                 color: ThemeConstants.textOnLight,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
+                            // Body text
                             Text(
                               insight.body,
                               style: GoogleFonts.inter(
-                                fontSize: 13,
+                                fontSize: 15,
                                 color: ThemeConstants.textSecondary,
-                                height: 1.5,
+                                height: 1.6,
                               ),
                             ),
+                            // Additional images inline
+                            if (insight.imagePaths.length > 1) ...[
+                              const SizedBox(height: 20),
+                              _buildTappableImageStrip(
+                                insight.imagePaths.skip(1).toList(),
+                                startIndex: 1,
+                                allPaths: insight.imagePaths,
+                              ),
+                            ],
                             if (insight.action.trim().isNotEmpty) ...[
-                              const SizedBox(height: 16),
-                              _buildSectionHeader('SUGGESTED ACTION'),
-                              const SizedBox(height: 8),
-                              Text(
-                                insight.action,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: ThemeConstants.textOnLight,
-                                  height: 1.5,
+                              const SizedBox(height: 24),
+                              // Action card with accent styling
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: ThemeConstants.polyMint400
+                                      .withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: ThemeConstants.polyMint400
+                                        .withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.flash_on_rounded,
+                                          size: 16,
+                                          color: ThemeConstants.polyMint400,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'SUGGESTED ACTION',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: ThemeConstants.polyMint400,
+                                            letterSpacing: 1.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      insight.action,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: ThemeConstants.textOnLight,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
+                            const SizedBox(height: 20),
                           ],
                         ),
                       ),
@@ -1314,6 +1432,12 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
       final imagePaths = await ref.read(dailyProphecyImagesProvider.future);
       if (!mounted) return;
 
+      // Split prophecy into paragraphs for interspersing images
+      final paragraphs = prophecy
+          .split(RegExp(r'\n\n+'))
+          .where((p) => p.trim().isNotEmpty)
+          .toList();
+
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -1321,9 +1445,9 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
         builder: (context) {
           return DraggableScrollableSheet(
             expand: false,
-            initialChildSize: 0.7,
-            minChildSize: 0.4,
-            maxChildSize: 0.9,
+            initialChildSize: 0.85,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
@@ -1352,16 +1476,26 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
                         padding: const EdgeInsets.symmetric(
                           horizontal: ThemeConstants.spacingLarge,
                         ),
-                        child: Text(
-                          'Daily Prophecy',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: ThemeConstants.textOnLight,
-                          ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.auto_awesome,
+                              size: 18,
+                              color: const Color(0xFFF59E0B),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Daily Prophecy',
+                              style: GoogleFonts.playfairDisplay(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: ThemeConstants.textOnLight,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: ThemeConstants.spacingSmall),
+                      const SizedBox(height: ThemeConstants.spacingMedium),
                       Expanded(
                         child: SingleChildScrollView(
                           controller: scrollController,
@@ -1374,23 +1508,58 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildImageMosaic(
-                                prophecy,
-                                count: imagePaths.isNotEmpty
-                                    ? imagePaths.length.clamp(4, 6)
-                                    : 6,
-                                imagePaths:
-                                    imagePaths.isNotEmpty ? imagePaths : null,
-                              ),
-                              const SizedBox(height: 20),
-                              Text(
-                                prophecy,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: ThemeConstants.textSecondary,
-                                  height: 1.5,
+                              // Hero image at top
+                              if (imagePaths.isNotEmpty)
+                                GestureDetector(
+                                  onTap: () =>
+                                      _showFullscreenImage(imagePaths, 0),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: AspectRatio(
+                                      aspectRatio: 16 / 10,
+                                      child: _buildGeneratedImage(
+                                        imagePaths.first,
+                                        radius: 16,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              const SizedBox(height: 24),
+                              // Intersperse paragraphs with images
+                              for (var i = 0; i < paragraphs.length; i++) ...[
+                                Text(
+                                  paragraphs[i].trim(),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    color: ThemeConstants.textSecondary,
+                                    height: 1.7,
+                                  ),
+                                ),
+                                // Add image pair after first paragraph
+                                if (i == 0 && imagePaths.length > 2) ...[
+                                  const SizedBox(height: 20),
+                                  _buildTappableImageStrip(
+                                    imagePaths.skip(1).take(2).toList(),
+                                    startIndex: 1,
+                                    allPaths: imagePaths,
+                                    height: 100,
+                                  ),
+                                  const SizedBox(height: 20),
+                                ] else if (i < paragraphs.length - 1) ...[
+                                  const SizedBox(height: 16),
+                                ],
+                              ],
+                              // Remaining images at bottom
+                              if (imagePaths.length > 3) ...[
+                                const SizedBox(height: 20),
+                                _buildTappableImageStrip(
+                                  imagePaths.skip(3).toList(),
+                                  startIndex: 3,
+                                  allPaths: imagePaths,
+                                  height: 90,
+                                ),
+                              ],
+                              const SizedBox(height: 20),
                             ],
                           ),
                         ),
@@ -1543,6 +1712,124 @@ class _SoulScreenState extends ConsumerState<SoulScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Fullscreen image viewer with swipe navigation
+class _FullscreenImageViewer extends StatefulWidget {
+  final List<String> imagePaths;
+  final int initialIndex;
+
+  const _FullscreenImageViewer({
+    required this.imagePaths,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_FullscreenImageViewer> createState() => _FullscreenImageViewerState();
+}
+
+class _FullscreenImageViewerState extends State<_FullscreenImageViewer> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Stack(
+          children: [
+            // Image PageView
+            PageView.builder(
+              controller: _pageController,
+              itemCount: widget.imagePaths.length,
+              onPageChanged: (index) {
+                setState(() => _currentIndex = index);
+              },
+              itemBuilder: (context, index) {
+                final file = File(widget.imagePaths[index]);
+                return Center(
+                  child: GestureDetector(
+                    onTap: () {}, // Prevent closing when tapping image
+                    child: InteractiveViewer(
+                      minScale: 0.5,
+                      maxScale: 4.0,
+                      child: file.existsSync()
+                          ? Image.file(file, fit: BoxFit.contain)
+                          : const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.white54,
+                              size: 64,
+                            ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Close button
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              right: 16,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+            // Page indicator
+            if (widget.imagePaths.length > 1)
+              Positioned(
+                bottom: MediaQuery.of(context).padding.bottom + 32,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < widget.imagePaths.length; i++)
+                      Container(
+                        width: i == _currentIndex ? 24 : 8,
+                        height: 8,
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        decoration: BoxDecoration(
+                          color: i == _currentIndex
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

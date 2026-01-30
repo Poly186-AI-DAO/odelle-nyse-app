@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../models/tracking/meditation_log.dart';
+import '../../services/daily_content_service.dart';
+import '../../services/media_storage_service.dart';
+import '../../utils/logger.dart';
 import '../service_providers.dart';
 
 class DailyMeditation {
@@ -14,7 +19,9 @@ class DailyMeditation {
   final int durationMinutes;
   final String type;
   final String? imagePath;
+  final String? imageUrl; // Firebase Storage URL
   final String? audioPath;
+  final String? audioUrl; // Firebase Storage URL
 
   const DailyMeditation({
     required this.title,
@@ -22,8 +29,40 @@ class DailyMeditation {
     required this.durationMinutes,
     required this.type,
     this.imagePath,
+    this.imageUrl,
     this.audioPath,
+    this.audioUrl,
   });
+
+  /// Get the effective audio path - downloads from Firebase if local doesn't exist
+  Future<String?> getEffectiveAudioPath() async {
+    // Check if local file exists
+    if (audioPath != null && audioPath!.isNotEmpty) {
+      final file = File(audioPath!);
+      if (await file.exists()) {
+        return audioPath;
+      }
+    }
+    // Fallback to downloading from Firebase
+    if (audioUrl != null && audioUrl!.isNotEmpty) {
+      return MediaStorageService.instance.downloadAudio(audioUrl!);
+    }
+    return null;
+  }
+
+  /// Get the effective image path - downloads from Firebase if local doesn't exist
+  Future<String?> getEffectiveImagePath() async {
+    if (imagePath != null && imagePath!.isNotEmpty) {
+      final file = File(imagePath!);
+      if (await file.exists()) {
+        return imagePath;
+      }
+    }
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return MediaStorageService.instance.getLocalPath(imageUrl!);
+    }
+    return null;
+  }
 
   MeditationType get meditationType => _mapMeditationType(type);
 
@@ -47,6 +86,9 @@ class DailyContentState {
   final List<DailyMeditation> meditations;
   final bool isLoading;
   final bool isGenerating;
+  final bool
+      pendingGeneration; // True when content needs to be generated but awaiting approval
+  final Map<String, dynamic>? quotaInfo; // ElevenLabs quota info
   final String? error;
 
   const DailyContentState({
@@ -55,6 +97,8 @@ class DailyContentState {
     this.meditations = const [],
     this.isLoading = false,
     this.isGenerating = false,
+    this.pendingGeneration = false,
+    this.quotaInfo,
     this.error,
   });
 
@@ -64,6 +108,8 @@ class DailyContentState {
     List<DailyMeditation>? meditations,
     bool? isLoading,
     bool? isGenerating,
+    bool? pendingGeneration,
+    Map<String, dynamic>? quotaInfo,
     String? error,
   }) {
     return DailyContentState(
@@ -72,6 +118,8 @@ class DailyContentState {
       meditations: meditations ?? this.meditations,
       isLoading: isLoading ?? this.isLoading,
       isGenerating: isGenerating ?? this.isGenerating,
+      pendingGeneration: pendingGeneration ?? this.pendingGeneration,
+      quotaInfo: quotaInfo ?? this.quotaInfo,
       error: error,
     );
   }
@@ -137,24 +185,83 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
     final mantras = await _fetchMantras(dbInstance, dateKey);
     final shouldGenerate = await service.shouldGenerateForToday();
 
-    if (shouldGenerate || missingTypes.isNotEmpty || mantras.isEmpty) {
-      state = state.copyWith(isGenerating: true);
-      try {
-        if (shouldGenerate || mantras.isEmpty) {
-          await service.generateDailyMantras(count: 4);
-        }
+    final needsGeneration =
+        shouldGenerate || missingTypes.isNotEmpty || mantras.isEmpty;
 
-        if (shouldGenerate || missingTypes.isNotEmpty) {
-          await service.generateDailyMeditations(
-            types:
-                missingTypes.isEmpty ? _defaultMeditationTypes : missingTypes,
-          );
-        }
+    if (needsGeneration) {
+      // Check if auto-generation is enabled
+      final prefs = await SharedPreferences.getInstance();
+      final autoGenerate = prefs.getBool('autoGenerateMeditations') ?? false;
 
-        await service.markGeneratedToday();
-      } finally {
-        state = state.copyWith(isGenerating: false);
+      if (autoGenerate) {
+        // Auto-generate (user has opted in)
+        await _performGeneration(
+          service: service,
+          shouldGenerate: shouldGenerate,
+          mantras: mantras,
+          missingTypes: missingTypes,
+        );
+      } else {
+        // Mark as pending - require user approval
+        // Fetch quota info to show user
+        final quotaInfo = await service.checkQuota();
+        state = state.copyWith(
+          pendingGeneration: true,
+          quotaInfo: quotaInfo,
+        );
       }
+    }
+  }
+
+  /// Manually trigger generation (called when user approves)
+  Future<void> generateContent() async {
+    final service = ref.read(dailyContentServiceProvider);
+    final db = ref.read(databaseProvider);
+    final dateKey = _dateKey(DateTime.now());
+
+    final dbInstance = await db.database;
+    final meditationRows = await _fetchMeditationRows(dbInstance, dateKey);
+    final existingTypes = _extractMeditationTypes(meditationRows);
+    final missingTypes = _defaultMeditationTypes
+        .where((type) => !existingTypes.contains(type))
+        .toList();
+
+    final mantras = await _fetchMantras(dbInstance, dateKey);
+    final shouldGenerate = await service.shouldGenerateForToday();
+
+    await _performGeneration(
+      service: service,
+      shouldGenerate: shouldGenerate,
+      mantras: mantras,
+      missingTypes: missingTypes,
+    );
+
+    // Reload content after generation
+    await _loadFromDatabase(state.selectedDate);
+  }
+
+  /// Internal method to perform the actual generation
+  Future<void> _performGeneration({
+    required DailyContentService service,
+    required bool shouldGenerate,
+    required List<String> mantras,
+    required List<String> missingTypes,
+  }) async {
+    state = state.copyWith(isGenerating: true, pendingGeneration: false);
+    try {
+      if (shouldGenerate || mantras.isEmpty) {
+        await service.generateDailyMantras(count: 4);
+      }
+
+      if (shouldGenerate || missingTypes.isNotEmpty) {
+        await service.generateDailyMeditations(
+          types: missingTypes.isEmpty ? _defaultMeditationTypes : missingTypes,
+        );
+      }
+
+      await service.markGeneratedToday();
+    } finally {
+      state = state.copyWith(isGenerating: false);
     }
   }
 
@@ -284,8 +391,10 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
         final duration = (decoded['duration_minutes'] as num?)?.toInt() ?? 10;
         final imagePath =
             decoded['imagePath']?.toString() ?? row['image_path']?.toString();
+        final imageUrl = decoded['imageUrl']?.toString();
         final audioPath =
             decoded['audioPath']?.toString() ?? row['audio_path']?.toString();
+        final audioUrl = decoded['audioUrl']?.toString();
 
         byType[type] = DailyMeditation(
           title: title,
@@ -293,7 +402,9 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
           durationMinutes: duration,
           type: type,
           imagePath: imagePath,
+          imageUrl: imageUrl,
           audioPath: audioPath,
+          audioUrl: audioUrl,
         );
       } catch (_) {
         continue;
@@ -376,6 +487,73 @@ class DailyContentViewModel extends Notifier<DailyContentState> {
 
   String _dateKey(DateTime date) {
     return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  /// Fetches all meditation history from the database (up to [limit] records).
+  /// Returns a map grouped by date key (yyyy-MM-dd) for easy display.
+  Future<Map<String, List<DailyMeditation>>> fetchMeditationHistory({
+    int limit = 100,
+  }) async {
+    final dbInstance = await ref.read(databaseProvider).database;
+    final rows = await dbInstance.query(
+      'generation_queue',
+      where: "type = ? AND status = 'completed'",
+      whereArgs: ['meditation'],
+      orderBy: 'content_date DESC, created_at DESC',
+      limit: limit,
+    );
+
+    final grouped = <String, List<DailyMeditation>>{};
+
+    Logger.debug('Fetching meditation history', tag: 'AudioDebug', data: {
+      'rowCount': rows.length,
+    });
+
+    for (final row in rows) {
+      final dateKey =
+          row['content_date']?.toString() ?? _dateKey(DateTime.now());
+      final output = row['output_data']?.toString();
+      if (output == null || output.isEmpty) continue;
+
+      try {
+        final decoded = jsonDecode(output) as Map<String, dynamic>;
+        final type = _extractTypeFromRow(row, decoded);
+        final title = decoded['title']?.toString() ??
+            _fallbackTitleForType(type ?? 'meditation');
+        final description = _extractDescription(decoded);
+        final audioPath =
+            decoded['audioPath']?.toString() ?? row['audio_path']?.toString();
+        final audioUrl = decoded['audioUrl']?.toString();
+        final imagePath =
+            decoded['imagePath']?.toString() ?? row['image_path']?.toString();
+        final imageUrl = decoded['imageUrl']?.toString();
+        final durationMin = (decoded['duration_minutes'] as num?)?.toInt() ??
+            (decoded['durationMinutes'] as num?)?.toInt() ??
+            5;
+
+        Logger.debug('Parsed meditation from DB', tag: 'AudioDebug', data: {
+          'title': title,
+          'audioPath': audioPath,
+          'rowAudioPath': row['audio_path'],
+          'decodedAudioPath': decoded['audioPath'],
+        });
+
+        final meditation = DailyMeditation(
+          title: title,
+          description: description,
+          durationMinutes: durationMin,
+          type: type ?? 'meditation',
+          audioPath: audioPath,
+          audioUrl: audioUrl,
+          imagePath: imagePath,
+          imageUrl: imageUrl,
+        );
+
+        grouped.putIfAbsent(dateKey, () => []).add(meditation);
+      } catch (_) {}
+    }
+
+    return grouped;
   }
 }
 

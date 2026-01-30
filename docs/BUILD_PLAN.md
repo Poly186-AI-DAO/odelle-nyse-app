@@ -315,6 +315,8 @@ By end of stream, the app should:
 - **Tools/Function Calling** - Agent can log protocols via voice
 - **Health Integrations** - Apple Health, Google Fit sync
 - **Push Notifications** - Protocol reminders
+- **AI Body Fat Estimation** - Use progress photos + LLM to estimate body fat % (research-backed: Cambridge 3D BodyShape, SCULPT). User takes front/side photos → Odelle analyzes with height/weight context → estimates body composition with ~3-5% accuracy
+- **LiDAR Body Scanning** - For iPhone Pro users: 3D body measurements using ARKit (waist, chest, etc.)
 
 ---
 

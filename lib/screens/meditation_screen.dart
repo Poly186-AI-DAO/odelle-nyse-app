@@ -7,6 +7,7 @@ import '../constants/theme_constants.dart';
 import '../providers/viewmodels/viewmodels.dart';
 import '../widgets/atoms/odelle_button.dart';
 import 'meditation_detail_screen.dart';
+import 'meditation_history_screen.dart';
 
 class MeditationScreen extends ConsumerStatefulWidget {
   const MeditationScreen({super.key});
@@ -24,6 +25,9 @@ class _MeditationScreenState extends ConsumerState<MeditationScreen> {
     final suggestions = meditations.length > 1
         ? meditations.sublist(1)
         : const <DailyMeditation>[];
+    final pendingGeneration = dailyState.pendingGeneration;
+    final isGenerating = dailyState.isGenerating;
+    final quotaInfo = dailyState.quotaInfo;
 
     return Scaffold(
       backgroundColor: ThemeConstants.panelWhite,
@@ -47,7 +51,11 @@ class _MeditationScreenState extends ConsumerState<MeditationScreen> {
           IconButton(
             icon: Icon(Icons.history, color: ThemeConstants.textOnLight),
             onPressed: () {
-              // TODO: Navigate to history
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const MeditationHistoryScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -61,6 +69,11 @@ class _MeditationScreenState extends ConsumerState<MeditationScreen> {
             _buildHeroCard(),
             const SizedBox(height: 32),
 
+            // Pending Generation Approval Card
+            if (pendingGeneration && !isGenerating)
+              _buildPendingGenerationCard(quotaInfo),
+            if (isGenerating) _buildGeneratingCard(),
+
             // Today's Recommendation
             Text(
               "TODAY'S MEDITATION",
@@ -72,6 +85,10 @@ class _MeditationScreenState extends ConsumerState<MeditationScreen> {
             const SizedBox(height: 16),
             if (featured != null)
               _buildFeaturedCard(featured)
+            else if (pendingGeneration || isGenerating)
+              _buildEmptyCard(isGenerating
+                  ? 'Generating your meditation...'
+                  : 'Tap above to generate today\'s meditation')
             else
               _buildEmptyCard('Today\'s meditation is still generating...'),
             const SizedBox(height: 32),
@@ -91,6 +108,156 @@ class _MeditationScreenState extends ConsumerState<MeditationScreen> {
               ...suggestions.map((data) => _buildSuggestionCard(data)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPendingGenerationCard(Map<String, dynamic>? quotaInfo) {
+    final remaining = quotaInfo?['remaining'];
+    final quotaText = remaining != null
+        ? '${(remaining / 1000).toStringAsFixed(0)}k characters remaining'
+        : 'Quota info unavailable';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFE8F5E9),
+            const Color(0xFFC8E6C9),
+          ],
+        ),
+        border: Border.all(color: const Color(0xFF81C784), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text('✨', style: TextStyle(fontSize: 24)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Generate Today\'s Meditations',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: ThemeConstants.textOnLight,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      quotaText,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: const Color(0xFF388E3C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Create personalized meditation sessions with AI-generated scripts and calming voice guidance.',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: ThemeConstants.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                ref
+                    .read(dailyContentViewModelProvider.notifier)
+                    .generateContent();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Generate Meditations',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeneratingCard() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFFF5F5F5),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Generating your meditations...',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConstants.textOnLight,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Creating scripts and voice audio. This may take a moment.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: ThemeConstants.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -292,7 +459,9 @@ class _MeditationScreenState extends ConsumerState<MeditationScreen> {
           duration: data.durationMinutes,
           type: data.meditationType,
           audioPath: data.audioPath,
+          audioUrl: data.audioUrl,
           imagePath: data.imagePath,
+          imageUrl: data.imageUrl,
         ),
       ),
     );

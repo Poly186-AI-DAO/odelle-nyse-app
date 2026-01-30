@@ -10,8 +10,6 @@ abstract class SettingsEvent extends Equatable {
 
 class LoadSettingsEvent extends SettingsEvent {}
 
-
-
 // Digital Worker Settings Events
 class UpdateVoiceEvent extends SettingsEvent {
   final DigitalWorkerVoice voice;
@@ -81,3 +79,6 @@ class UpdateInstructionsEvent extends SettingsEvent {
   @override
   List<Object?> get props => [instructions];
 }
+
+// Content Generation Settings Events
+class ToggleAutoGenerateMeditationsEvent extends SettingsEvent {}

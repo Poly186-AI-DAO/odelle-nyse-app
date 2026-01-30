@@ -8,6 +8,8 @@ import '../providers/viewmodels/bonds_viewmodel.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
 
+import 'chat_screen.dart';
+
 /// Bonds Screen - Relationships pillar
 /// Track connections with people who matter.
 /// Uses same Hero Card pattern as other pillars.
@@ -227,6 +229,9 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildHeaderRow(context),
+        const SizedBox(height: 16),
+
         // Week Day Picker
         WeekDayPicker(
           selectedDate: bondsState.selectedDate,
@@ -493,6 +498,79 @@ class _BondsScreenState extends ConsumerState<BondsScreen> {
     if (diff.inHours > 0) return '${diff.inHours}h ago';
     if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
     return 'Just now';
+  }
+
+  Widget _buildHeaderRow(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            'Nurture your connections',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textOnLight,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Row(
+          children: [
+            _buildHeaderAction(
+              icon: Icons.person_add_outlined,
+              label: 'Add',
+              color: ThemeConstants.polyPurple300,
+              onTap: () => _showAddContactHint(context),
+            ),
+            const SizedBox(width: 8),
+            _buildHeaderAction(
+              icon: Icons.chat_bubble_outline,
+              label: 'NTS',
+              color: ThemeConstants.accentBlue,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ChatScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconBadge(
+            icon: icon,
+            color: color,
+            size: 34,
+            iconSize: 18,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSectionHeader(String title) {

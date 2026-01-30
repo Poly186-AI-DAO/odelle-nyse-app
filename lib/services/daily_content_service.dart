@@ -15,6 +15,8 @@ import '../models/tracking/meditation_log.dart';
 import '../utils/logger.dart';
 import 'azure_agent_service.dart';
 import 'azure_image_service.dart';
+import 'elevenlabs_service.dart';
+import 'media_storage_service.dart';
 import 'notification_service.dart';
 import 'weather_service.dart';
 
@@ -241,8 +243,9 @@ class DailyContentService {
       );
 
       // Save image locally
-      final imagePath =
-          await _saveLocalFile('meditation_$today.png', imageResult.bytes);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final imagePath = await _saveLocalFile(
+          'meditation_${today}_$timestamp.png', imageResult.bytes);
 
       // 4. Generate Audio
       final audioBytes = await _generateAudio(
@@ -251,8 +254,8 @@ class DailyContentService {
       );
 
       // Save audio locally
-      final audioPath =
-          await _saveLocalFile('meditation_$today.mp3', audioBytes);
+      final audioPath = await _saveLocalFile(
+          'meditation_${today}_$timestamp.mp3', audioBytes);
 
       // 5. Persist generation metadata (date-linked assets)
       final createdAt = DateTime.now().toIso8601String();
@@ -325,35 +328,56 @@ class DailyContentService {
 
     for (final type in selectedTypes) {
       final preset = _buildMeditationPreset(type);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
       try {
         final script =
             await _generateMeditationScript(preset.mood, preset.focus, weather);
         final imagePrompt = await _generateImagePrompt(script, weather);
 
         String? imagePath;
+        String? imageUrl;
         try {
           final imageResult = await _imageService.generateImage(
             prompt: imagePrompt,
             size: ImageSize.portrait,
           );
+          // Save locally first
           imagePath = await _saveLocalFile(
-            'meditation_${type}_$today.png',
+            'meditation_${type}_${today}_$timestamp.png',
             imageResult.bytes,
+          );
+          // Upload to Firebase Storage for cloud backup
+          imageUrl = await MediaStorageService.instance.uploadMeditationImage(
+            filename: 'meditation_$today',
+            imageBytes: imageResult.bytes,
+            meditationType: type,
+            contentDate: today,
           );
         } catch (e) {
           Logger.warning('Failed to generate meditation image: $e', tag: _tag);
         }
 
         String? audioPath;
+        String? audioUrl;
         try {
           final audioBytes = await _generateAudio(
             text: script,
             voiceType: VoiceType.meditation,
           );
+          // Save locally first
           audioPath = await _saveLocalFile(
-            'meditation_${type}_$today.mp3',
+            'meditation_${type}_${today}_$timestamp.mp3',
             audioBytes,
           );
+          // Upload to Firebase Storage for cloud backup
+          audioUrl = await MediaStorageService.instance.uploadMeditationAudio(
+            filename: 'meditation_$today',
+            audioBytes: audioBytes,
+            meditationType: type,
+            contentDate: today,
+          );
+          Logger.info('Uploaded meditation audio to Firebase',
+              tag: _tag, data: {'type': type, 'url': audioUrl});
         } catch (e) {
           Logger.warning('Failed to generate meditation audio: $e', tag: _tag);
         }
@@ -370,7 +394,9 @@ class DailyContentService {
           'mood': preset.mood,
           'focus': preset.focus,
           'imagePath': imagePath,
+          'imageUrl': imageUrl, // Firebase Storage URL
           'audioPath': audioPath,
+          'audioUrl': audioUrl, // Firebase Storage URL
         };
 
         final db = await _database.database;
@@ -416,21 +442,30 @@ class DailyContentService {
     final arch = archetypes;
 
     final prompt = '''
-Create $count original daily mantras.
+Create $count powerful, transformative daily mantras.
 
-Context:
+CONTEXT:
 - Weather: ${weather['emoji']} ${weather['condition']} (${weather['description']})
-- Archetypes: ${arch['ego']}, ${arch['soul']}, ${arch['self']}
-- Mood: ${mood ?? 'Open'}
-- Focus: ${focus ?? 'Presence and awareness'}
+- Archetypes: ${arch['ego']} (Hero), ${arch['soul']} (Creator), ${arch['self']} (Magician)
+- Mood: ${mood ?? 'Open to possibility'}
+- Focus: ${focus ?? 'Presence, awareness, and conscious growth'}
+- Mission: Raising conscious awareness through data-driven self-actualization
 
-Seed inspiration (do not repeat verbatim):
+SEED INSPIRATION (do not repeat verbatim, but draw from the energy):
 ${seedMantras.map((m) => '- "$m"').join('\n')}
 
-Requirements:
-- First person ("I am...", "I...")
-- 8-16 words each
-- Distinct from each other
+REQUIREMENTS:
+- First person voice ("I am...", "I choose...", "I create...", "My...")
+- 15-30 words each (substantial, not shallow)
+- Each mantra should feel like a complete thought, not a fragment
+- Include elements of:
+  * CBT reframing (thoughts shape reality)
+  * Archetypal power (Hero courage, Creator vision, Magician transformation)
+  * Present-moment awareness
+  * Self-actualization journey
+- Make them feel powerful when spoken aloud
+- NEVER use em-dashes (—) or en-dashes (–)
+- Distinct from each other in focus and energy
 - Return ONLY a JSON array of strings
 ''';
 
@@ -440,12 +475,23 @@ Requirements:
         prompt: prompt,
         deployment: AzureAIDeployment.gpt5,
         temperature: 0.7,
-        maxTokens: 800,
+        maxTokens: 1200,
         responseFormat: 'json',
       );
 
-      final decoded = jsonDecode(response) as List;
-      mantras = decoded.map((m) => m.toString()).toList();
+      final decoded = jsonDecode(response);
+      // Handle both List and Map responses from the AI
+      if (decoded is List) {
+        mantras = decoded.map((m) => m.toString()).toList();
+      } else if (decoded is Map<String, dynamic>) {
+        // AI sometimes wraps arrays in objects like {"mantras": [...]}
+        final list = decoded['mantras'] as List? ??
+            decoded.values.firstWhere(
+              (v) => v is List,
+              orElse: () => <dynamic>[],
+            ) as List;
+        mantras = list.map((m) => m.toString()).toList();
+      }
     } catch (e) {
       Logger.warning('Mantra generation failed, using seed mantras: $e',
           tag: _tag);
@@ -561,7 +607,7 @@ Return ONLY the image prompt, nothing else.
     try {
       final response = await _agentService.complete(
         prompt: prompt,
-        deployment: AzureAIDeployment.gpt5Nano,
+        deployment: AzureAIDeployment.gpt5,
         maxTokens: 100,
       );
       return response.trim();
@@ -741,7 +787,7 @@ Output: ONLY the image prompt string, nothing else.
     // Use GPT-5 for quality image prompts
     final response = await _agentService.complete(
       prompt: prompt,
-      deployment: AzureAIDeployment.gpt5Nano,
+      deployment: AzureAIDeployment.gpt5,
     );
 
     return response;
@@ -1073,7 +1119,7 @@ Respond with ONLY the image prompt, no explanations.
       prompt: prompt,
       systemPrompt:
           'You are an expert at creating concise, beautiful image prompts for AI art generation.',
-      deployment: AzureAIDeployment.gpt5Nano,
+      deployment: AzureAIDeployment.gpt5,
       maxTokens: 200,
     );
 
@@ -1096,6 +1142,259 @@ Respond with ONLY the image prompt, no explanations.
     if (firstSentence.length <= 100) return firstSentence;
     return '${firstSentence.substring(0, 97)}...';
   }
+
+  /// Sync missing meditation audio from ElevenLabs generation history.
+  ///
+  /// This method:
+  /// 1. Fetches meditation records that are missing audio files
+  /// 2. Queries ElevenLabs history for matching generations
+  /// 3. Downloads and saves audio for matches
+  /// 4. Optionally uploads to Firebase for cloud backup
+  ///
+  /// Returns a [SyncResult] with counts of synced/failed items.
+  Future<SyncResult> syncFromElevenLabsHistory({
+    int daysBack = 30,
+    bool uploadToFirebase = true,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    Logger.info('Starting ElevenLabs history sync', tag: _tag, data: {
+      'daysBack': daysBack,
+      'uploadToFirebase': uploadToFirebase,
+    });
+
+    final result = SyncResult();
+    final elevenlabs = ElevenLabsService();
+    await elevenlabs.initialize();
+
+    try {
+      // 1. Find meditation records with missing audio
+      final db = await _database.database;
+      final records = await db.query(
+        'generation_queue',
+        where: 'type = ? AND status = ?',
+        whereArgs: ['meditation', 'completed'],
+        orderBy: 'content_date DESC',
+      );
+
+      final missingAudio = <Map<String, dynamic>>[];
+      for (final record in records) {
+        final audioPath = record['audio_path'] as String?;
+        final contentDate = record['content_date'] as String?;
+        final outputDataStr = record['output_data'] as String?;
+        String? title;
+        if (outputDataStr != null) {
+          try {
+            final decoded = jsonDecode(outputDataStr) as Map<String, dynamic>?;
+            title = decoded?['title'] as String?;
+          } catch (_) {}
+        }
+
+        if (audioPath == null || audioPath.isEmpty) {
+          Logger.debug('Record missing audio_path', tag: _tag, data: {
+            'contentDate': contentDate,
+            'title': title,
+          });
+          missingAudio.add(record);
+          continue;
+        }
+        final file = File(audioPath);
+        if (!await file.exists()) {
+          Logger.debug('Audio file does not exist', tag: _tag, data: {
+            'contentDate': contentDate,
+            'title': title,
+            'audioPath': audioPath,
+          });
+          missingAudio.add(record);
+        }
+      }
+
+      if (missingAudio.isEmpty) {
+        Logger.info('No missing audio files found', tag: _tag);
+        return result;
+      }
+
+      Logger.info('Found ${missingAudio.length} records with missing audio',
+          tag: _tag);
+      result.totalToSync = missingAudio.length;
+
+      // 2. Fetch ElevenLabs history (all TTS, not filtered by voice to maximize matches)
+      final afterDate = DateTime.now().subtract(Duration(days: daysBack));
+      final historyResult = await elevenlabs.getHistory(
+        voiceType: null, // Don't filter by voice - get all TTS history
+        pageSize: 100,
+        afterDate: afterDate,
+      );
+
+      if (!historyResult.isSuccess || historyResult.isEmpty) {
+        Logger.warning('No ElevenLabs history found', tag: _tag, data: {
+          'error': historyResult.error,
+        });
+        return result;
+      }
+
+      Logger.info(
+          'Found ${historyResult.items.length} ElevenLabs history items',
+          tag: _tag);
+
+      // Log the dates of history items for debugging
+      for (final item in historyResult.items) {
+        Logger.debug('ElevenLabs history item', tag: _tag, data: {
+          'id': item.historyItemId,
+          'date': item.dateCreated.toIso8601String(),
+          'textPreview': item.text.length > 50
+              ? '${item.text.substring(0, 50)}...'
+              : item.text,
+        });
+      }
+
+      // Track used history items to prevent duplicate matches
+      final usedHistoryIds = <String>{};
+
+      // 3. Match and download
+      for (final record in missingAudio) {
+        try {
+          final outputDataStr = record['output_data'] as String?;
+          if (outputDataStr == null) continue;
+
+          final outputData = jsonDecode(outputDataStr) as Map<String, dynamic>?;
+          if (outputData == null) continue;
+
+          final script = outputData['script'] as String?;
+          final contentDate = record['content_date'] as String?;
+          final title = outputData['title'] as String? ?? 'Unknown';
+
+          if (script == null || script.isEmpty) {
+            Logger.debug('Record has no script to match', tag: _tag, data: {
+              'contentDate': contentDate,
+              'title': title,
+            });
+            continue;
+          }
+
+          // Find matching history item by comparing script text
+          // Normalize and use first 80 chars for comparison (more flexible matching)
+          final normalizedScript =
+              script.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+          final scriptPrefix = normalizedScript.length > 80
+              ? normalizedScript.substring(0, 80)
+              : normalizedScript;
+
+          Logger.debug('Searching for match', tag: _tag, data: {
+            'contentDate': contentDate,
+            'title': title,
+            'scriptPrefixLength': scriptPrefix.length,
+            'historyItemCount': historyResult.items.length,
+            'usedHistoryIds': usedHistoryIds.length,
+          });
+
+          ElevenLabsHistoryItem? match;
+          for (final item in historyResult.items) {
+            // Skip if already used
+            if (usedHistoryIds.contains(item.historyItemId)) continue;
+
+            final normalizedItemText =
+                item.text.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+            if (normalizedItemText.startsWith(scriptPrefix) ||
+                scriptPrefix.startsWith(normalizedItemText.substring(
+                    0, min(80, normalizedItemText.length)))) {
+              match = item;
+              break;
+            }
+          }
+
+          if (match == null) {
+            Logger.debug('No matching history item found', tag: _tag, data: {
+              'contentDate': contentDate,
+              'title': title,
+              'scriptPrefix':
+                  scriptPrefix.substring(0, min(40, scriptPrefix.length)),
+            });
+            continue;
+          }
+
+          // Mark as used so we don't match it again
+          usedHistoryIds.add(match.historyItemId);
+
+          Logger.info('Found matching history item', tag: _tag, data: {
+            'contentDate': contentDate,
+            'historyItemId': match.historyItemId,
+          });
+
+          // 4. Download audio
+          final audioBytes =
+              await elevenlabs.downloadHistoryAudio(match.historyItemId);
+          if (audioBytes == null) {
+            Logger.warning('Failed to download audio for: $contentDate',
+                tag: _tag);
+            result.failed++;
+            continue;
+          }
+
+          // 5. Save locally
+          final type = outputData['type'] as String? ?? 'meditation';
+          final filename = 'meditation_${type}_$contentDate.mp3';
+          final audioPath = await _saveLocalFile(filename, audioBytes);
+
+          // 6. Upload to Firebase if enabled
+          String? audioUrl;
+          if (uploadToFirebase && contentDate != null) {
+            audioUrl = await MediaStorageService.instance.uploadMeditationAudio(
+              filename: 'meditation_$contentDate',
+              audioBytes: audioBytes,
+              meditationType: type,
+              contentDate: contentDate,
+            );
+          }
+
+          // 7. Update database record
+          final updatedOutput = Map<String, dynamic>.from(outputData);
+          updatedOutput['audioPath'] = audioPath;
+          if (audioUrl != null) updatedOutput['audioUrl'] = audioUrl;
+
+          await db.update(
+            'generation_queue',
+            {
+              'audio_path': audioPath,
+              'output_data': jsonEncode(updatedOutput),
+            },
+            where: 'id = ?',
+            whereArgs: [record['id']],
+          );
+
+          Logger.info('Synced audio for: $contentDate', tag: _tag);
+          result.synced++;
+        } catch (e) {
+          Logger.error('Error syncing record', tag: _tag, error: e);
+          result.failed++;
+        }
+      }
+
+      Logger.info('ElevenLabs sync complete', tag: _tag, data: {
+        'synced': result.synced,
+        'failed': result.failed,
+        'total': result.totalToSync,
+      });
+
+      return result;
+    } finally {
+      elevenlabs.dispose();
+    }
+  }
+}
+
+/// Result of syncing audio from ElevenLabs history
+class SyncResult {
+  int totalToSync = 0;
+  int synced = 0;
+  int failed = 0;
+
+  bool get isComplete => synced + failed >= totalToSync;
+  bool get hasFailures => failed > 0;
+
+  @override
+  String toString() =>
+      'SyncResult(synced: $synced, failed: $failed, total: $totalToSync)';
 }
 
 class _MeditationPreset {

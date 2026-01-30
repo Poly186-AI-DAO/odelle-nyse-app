@@ -274,18 +274,34 @@ Respond with ONLY the psychograph text, no JSON or formatting.
     }
 
     final prompt = '''
-Based on the user's psychograph and data, generate 1-3 actionable insights.
+Generate 1-3 deep, transformative insights based on this user's psychograph and data.
 
-User Data:
-- Archetypes: ${_characterStats?['archetypes'] ?? []}
+USER DATA:
+- Archetypes: ${_characterStats?['archetypes'] ?? [
+              'Hero',
+              'Creator',
+              'Magician'
+            ]}
 - Stats: ${_characterStats?['stats'] ?? {}}
 - Mantras: ${_mantras?.take(3).join(', ') ?? 'None'}
+- Mission: To raise the conscious awareness of the human race through data-driven self-actualization
 
-Each insight should:
-1. Notice a pattern
-2. Suggest a small action
-3. Connect to their growth
-4. Include 3 concise image prompts (no text in the image)
+EACH INSIGHT MUST INCLUDE:
+1. "title": A compelling 4-7 word title that captures the essence
+2. "body": A substantial paragraph (5-8 sentences) that:
+   - Notices a meaningful pattern in their behavior or psychology
+   - Connects it to their archetypal journey (Hero/Creator/Magician)
+   - Explains WHY this matters for their growth
+   - Uses the CBT framework: how thoughts influence emotions and behaviors
+   - Feels like wisdom from a trusted mentor, not generic advice
+3. "action": A specific, measurable action (2-3 sentences) they can take TODAY
+4. "category": One of "presence", "awareness", or "integration"
+5. "image_prompts": 3 cinematic image prompts (no text in images)
+
+FORMATTING RULES:
+- NEVER use em-dashes (—) or en-dashes (–). Use commas or colons instead.
+- No markdown formatting
+- Write in second person ("You", "Your")
 
 Respond with JSON array:
 [{"title": "...", "body": "...", "action": "...", "category": "presence|awareness|integration", "image_prompts": ["...", "...", "..."]}]
@@ -296,7 +312,10 @@ Respond with JSON array:
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt:
-            'You are a wise mentor generating concise, actionable insights.',
+            '''You are a wise mentor and depth psychologist who generates profound, actionable insights.
+Your insights feel like revelations, not platitudes.
+You understand Jungian archetypes, CBT cognitive reframing, and the journey of self-actualization.
+NEVER use em-dashes (—) or en-dashes (–) in your output.''',
         deployment: AzureAIDeployment.gpt5,
         temperature: 0.6,
         responseFormat: 'json',
@@ -459,12 +478,34 @@ Respond with JSON array:
       final response = await _agentService.complete(
         prompt: prompt,
         systemPrompt:
-            '''You are an ancient oracle who speaks in mythological, prophetic language.
-You weave together astrology, numerology, and Jungian archetypes into inspiring prophecies.
-Speak directly to the user in second person ("You are...").
-Be specific to THEIR cosmic profile - avoid generic horoscope language.
-Make it feel like a wise sage speaking eternal truths about their unique path.
-Keep it 2-3 paragraphs, poetic but not flowery.''',
+            '''You are an ancient oracle channeling the wisdom of Jungian archetypes, astrology, and numerology into transformative prophecies.
+
+FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- NEVER use em-dashes (—) or en-dashes (–). Use commas, colons, or periods instead.
+- NEVER use markdown formatting (no **, *, #, or bullet points)
+- Write in flowing, readable prose only
+- Use proper punctuation with spaces
+
+CONTENT STRUCTURE:
+- Write 3-4 substantial paragraphs (not 2-3 short ones)
+- Each paragraph should be 4-6 sentences
+- First paragraph: Set the cosmic stage for today
+- Second paragraph: Connect their archetypes to today's energy
+- Third paragraph: The transformation or opportunity available
+- Fourth paragraph: Close with an actionable insight or mantra
+
+VOICE & TONE:
+- Speak in second person ("You are...", "Today you...")
+- Be SPECIFIC to their cosmic profile, never generic
+- Mythic and powerful, not vague or fluffy
+- Like a wise sage who truly knows them
+- Reference specific aspects of their chart (Sun/Moon/Rising, Life Path, etc.)
+
+INTEGRATION:
+- Connect to their mission of raising conscious awareness
+- Reference the journey of self-actualization
+- Weave in their Hero/Creator/Magician archetype blend
+- Make it feel personally relevant, not like a newspaper horoscope''',
         deployment: AzureAIDeployment.gpt5,
         temperature: 0.8,
       );

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Physical iPhone Development**: Enabled automatic code signing for Debug builds to allow running on physical devices
+- **XcodeSystemResources Fix**: Documented fix for "developer disk image could not be mounted" error
+
+### Documentation
+- **LOCAL_DEVELOPMENT.md**: Complete rewrite with physical iPhone as primary development method
+- Documented one-time setup steps for physical device development
+- Added expected output logs and troubleshooting for common errors
+
 ## [1.9.0] - 2026-01-22
 
 ### Added

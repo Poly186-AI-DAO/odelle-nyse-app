@@ -8,6 +8,8 @@ import '../providers/viewmodels/wealth_viewmodel.dart';
 import '../widgets/widgets.dart';
 import '../widgets/effects/breathing_card.dart';
 
+import 'chat_screen.dart';
+
 /// Wealth Screen - Finance pillar
 /// Track bills, subscriptions, and income.
 /// Uses same Hero Card pattern as other pillars.
@@ -260,6 +262,9 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildHeaderRow(context),
+        const SizedBox(height: 16),
+
         // Month selector (using WeekDayPicker pattern)
         WeekDayPicker(
           selectedDate: DateTime.now(),
@@ -624,6 +629,79 @@ class _WealthScreenState extends ConsumerState<WealthScreen> {
       case IncomeFrequency.oneTime:
         return 'One-time';
     }
+  }
+
+  Widget _buildHeaderRow(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            'Manage your finances',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textOnLight,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Row(
+          children: [
+            _buildHeaderAction(
+              icon: Icons.add_card,
+              label: 'Add',
+              color: ThemeConstants.accentGreen,
+              onTap: () => _showAddBillHint(context),
+            ),
+            const SizedBox(width: 8),
+            _buildHeaderAction(
+              icon: Icons.chat_bubble_outline,
+              label: 'NTS',
+              color: ThemeConstants.accentBlue,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ChatScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconBadge(
+            icon: icon,
+            color: color,
+            size: 34,
+            iconSize: 18,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSectionHeader(String title) {

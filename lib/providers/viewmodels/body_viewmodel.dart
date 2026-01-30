@@ -40,6 +40,11 @@ class BodyState {
   // Sleep (from HealthKit)
   final int sleepDurationMinutes; // Actual sleep duration in minutes
 
+  // Body Measurements (from HealthKit)
+  final double? currentWeight; // lbs
+  final double? currentBodyFat; // percentage
+  final double? heightInches; // inches
+
   // Computed / Content stats
   final int trainingReadiness; // 0-100
   final int recoveryScore; // 0-100
@@ -66,6 +71,9 @@ class BodyState {
     this.waterLiters = 0,
     this.restingHeartRate,
     this.sleepDurationMinutes = 0,
+    this.currentWeight,
+    this.currentBodyFat,
+    this.heightInches,
     this.trainingReadiness = 85,
     this.recoveryScore = 80,
     this.sleepScore = 75,
@@ -92,6 +100,9 @@ class BodyState {
     double? waterLiters,
     int? restingHeartRate,
     int? sleepDurationMinutes,
+    double? currentWeight,
+    double? currentBodyFat,
+    double? heightInches,
     int? trainingReadiness,
     int? recoveryScore,
     int? sleepScore,
@@ -117,6 +128,9 @@ class BodyState {
       waterLiters: waterLiters ?? this.waterLiters,
       restingHeartRate: restingHeartRate ?? this.restingHeartRate,
       sleepDurationMinutes: sleepDurationMinutes ?? this.sleepDurationMinutes,
+      currentWeight: currentWeight ?? this.currentWeight,
+      currentBodyFat: currentBodyFat ?? this.currentBodyFat,
+      heightInches: heightInches ?? this.heightInches,
       trainingReadiness: trainingReadiness ?? this.trainingReadiness,
       recoveryScore: recoveryScore ?? this.recoveryScore,
       sleepScore: sleepScore ?? this.sleepScore,
@@ -179,9 +193,7 @@ class BodyViewModel extends Notifier<BodyState> {
         workoutCals += workout.caloriesBurned ?? 0;
       }
 
-      // Fetch HealthKit Data (only if today, or if we have historical support)
-      // For now, HealthKitService mostly fetches "now" or specific queries.
-      // Assuming we want data for [date].
+      // Fetch HealthKit Data
       int hkSteps = 0;
       int hkActiveCals = 0;
       int hkBasalCals = 0;
@@ -190,6 +202,9 @@ class BodyViewModel extends Notifier<BodyState> {
       double hkWater = 0;
       int? hkHR;
       int hkSleepMinutes = 0;
+      double? hkWeight;
+      double? hkBodyFat;
+      double? hkHeightInches;
 
       bool authorized = await healthKit.requestAuthorization();
       if (authorized) {
@@ -202,6 +217,9 @@ class BodyViewModel extends Notifier<BodyState> {
           healthKit.getWaterIntake(date),
           healthKit.getRestingHeartRate(),
           healthKit.getLastNightSleep(),
+          healthKit.getLatestWeight(),
+          healthKit.getLatestBodyFat(),
+          healthKit.getLatestHeight(),
         ]);
 
         hkSteps = hkResults[0] as int;
@@ -213,6 +231,16 @@ class BodyViewModel extends Notifier<BodyState> {
         hkHR = hkResults[6] as int?;
         final sleepData = hkResults[7] as SleepData?;
         hkSleepMinutes = sleepData?.totalDuration.inMinutes ?? 0;
+
+        // Weight from HealthKit is in kg, convert to lbs
+        final weightKg = hkResults[8] as double?;
+        hkWeight = weightKg != null ? weightKg * 2.20462 : null;
+
+        hkBodyFat = hkResults[9] as double?;
+
+        // Height from HealthKit is in meters, convert to inches
+        final heightMeters = hkResults[10] as double?;
+        hkHeightInches = heightMeters != null ? heightMeters * 39.3701 : null;
       }
 
       state = state.copyWith(
@@ -233,6 +261,9 @@ class BodyViewModel extends Notifier<BodyState> {
         waterLiters: hkWater,
         restingHeartRate: hkHR,
         sleepDurationMinutes: hkSleepMinutes,
+        currentWeight: hkWeight,
+        currentBodyFat: hkBodyFat,
+        heightInches: hkHeightInches,
       );
 
       // Trigger image generation checks (fire and forget)

@@ -16,7 +16,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         super(const SettingsState()) {
     on<LoadSettingsEvent>(_onLoadSettings);
 
-
     // Digital Worker Settings
     on<UpdateVoiceEvent>(_onUpdateVoice);
     on<ToggleNoiseSuppressionEvent>(_onToggleNoiseSuppression);
@@ -28,6 +27,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<UpdateMaxRecordingDurationEvent>(_onUpdateMaxRecordingDuration);
     on<UpdateConnectionTimeoutEvent>(_onUpdateConnectionTimeout);
     on<UpdateInstructionsEvent>(_onUpdateInstructions);
+
+    // Content Generation Settings
+    on<ToggleAutoGenerateMeditationsEvent>(_onToggleAutoGenerateMeditations);
   }
 
   // Digital Worker Settings Handlers
@@ -111,6 +113,16 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     emit(state.copyWith(instructions: event.instructions));
   }
 
+  // Content Generation Settings Handler
+  void _onToggleAutoGenerateMeditations(
+    ToggleAutoGenerateMeditationsEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    final newValue = !state.autoGenerateMeditations;
+    _prefs.setBool('autoGenerateMeditations', newValue);
+    emit(state.copyWith(autoGenerateMeditations: newValue));
+  }
+
   Future<void> _onLoadSettings(
     LoadSettingsEvent event,
     Emitter<SettingsState> emit,
@@ -145,6 +157,10 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       final connectionTimeout =
           _prefs.getInt('connectionTimeout') ?? defaultConfig.connectionTimeout;
 
+      // Content Generation Settings (default OFF for quota safety)
+      final autoGenerateMeditations =
+          _prefs.getBool('autoGenerateMeditations') ?? false;
+
       emit(state.copyWith(
         appVersion: packageInfo.version,
         buildNumber: packageInfo.buildNumber,
@@ -152,6 +168,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         isDriveEnabled: false,
         isGmailEnabled: false,
         isLoading: false,
+        autoGenerateMeditations: autoGenerateMeditations,
         instructions: instructions,
         voice: voice,
         enableNoiseSuppression: enableNoiseSuppression,
@@ -167,6 +184,4 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       emit(state.copyWith(isLoading: false));
     }
   }
-
-
 }

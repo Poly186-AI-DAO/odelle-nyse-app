@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:just_audio/just_audio.dart';
 import '../constants/theme_constants.dart';
 import '../models/tracking/meditation_log.dart';
+import '../utils/audio_session_helper.dart';
 import '../utils/logger.dart';
 import '../widgets/effects/breathing_card.dart';
 import 'meditation_completion_screen.dart';
@@ -57,12 +58,39 @@ class _ActiveMeditationScreenState extends State<ActiveMeditationScreen>
   }
 
   Future<void> _prepareAudio() async {
+    // Configure audio session to route through speaker (not earpiece)
+    await AudioSessionHelper.configureForPlayback();
+
     final path = widget.audioPath;
-    if (path == null || path.isEmpty) return;
+    Logger.debug('ActiveMeditationScreen preparing audio',
+        tag: 'AudioDebug',
+        data: {
+          'title': widget.title,
+          'audioPath': path,
+        });
+    if (path == null || path.isEmpty) {
+      Logger.warning('No audio path provided!', tag: 'AudioDebug');
+      return;
+    }
 
     try {
       await _audioPlayer.setFilePath(path);
       _audioReady = true;
+
+      // Use actual audio duration if available
+      final actualDuration = _audioPlayer.duration;
+      if (actualDuration != null && actualDuration.inSeconds > 0) {
+        Logger.debug('Using actual audio duration', tag: 'AudioDebug', data: {
+          'presetSeconds': widget.durationSeconds,
+          'actualSeconds': actualDuration.inSeconds,
+        });
+        if (mounted) {
+          setState(() {
+            _remainingSeconds = actualDuration.inSeconds;
+          });
+        }
+      }
+
       await _audioPlayer.setVolume(_isMuted ? 0.0 : 1.0);
       if (_isPlaying) {
         await _audioPlayer.play();

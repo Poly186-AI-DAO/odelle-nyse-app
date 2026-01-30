@@ -1,27 +1,37 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 enum AzureAIDeployment {
   transcription,
   tts,
   realtimeVoice,
   realtimeMini,
   gpt5,
+  gpt5Chat,
   gpt5Nano,
 }
 
 extension AzureAIDeploymentInfo on AzureAIDeployment {
+  /// Returns the actual deployment name from env vars or falls back to defaults.
+  /// Azure deployment names must match exactly what's deployed in Azure AI Foundry.
   String get deploymentName {
     switch (this) {
       case AzureAIDeployment.transcription:
-        return 'gpt-4o-transcribe';
+        return dotenv.env['AZURE_TRANSCRIBE_DEPLOYMENT'] ?? 'gpt-4o-transcribe';
       case AzureAIDeployment.tts:
-        return 'gpt-audio';
+        return dotenv.env['AZURE_TTS_DEPLOYMENT'] ?? 'gpt-audio';
       case AzureAIDeployment.realtimeVoice:
-        return 'gpt-realtime';
+        return dotenv.env['AZURE_REALTIME_DEPLOYMENT'] ?? 'gpt-realtime';
       case AzureAIDeployment.realtimeMini:
-        return 'gpt-realtime-mini';
+        return dotenv.env['AZURE_REALTIME_MINI_DEPLOYMENT'] ??
+            'gpt-realtime-mini';
       case AzureAIDeployment.gpt5:
-        return 'gpt-5.2';
+        // GPT-5.2 base model - main workhorse
+        return dotenv.env['AZURE_GPT_5_2_DEPLOYMENT'] ?? 'gpt-5.2';
+      case AzureAIDeployment.gpt5Chat:
+        // GPT-5.2-chat - optimized for conversation
+        return dotenv.env['AZURE_GPT_5_2_CHAT_DEPLOYMENT'] ?? 'gpt-5.2-chat';
       case AzureAIDeployment.gpt5Nano:
-        return 'gpt-5-nano';
+        return dotenv.env['AZURE_GPT_5_NANO_DEPLOYMENT'] ?? 'gpt-5-nano';
     }
   }
 
@@ -36,14 +46,18 @@ extension AzureAIDeploymentInfo on AzureAIDeployment {
       case AzureAIDeployment.realtimeMini:
         return 'Realtime mini';
       case AzureAIDeployment.gpt5:
-        return 'GPT-5.2 Chat (heavy reasoning)';
+        return 'GPT-5.2 (main)';
+      case AzureAIDeployment.gpt5Chat:
+        return 'GPT-5.2-chat (conversation)';
       case AzureAIDeployment.gpt5Nano:
         return 'GPT-5 Nano (fast/cheap)';
     }
   }
 
   bool get isChat {
-    return this == AzureAIDeployment.gpt5 || this == AzureAIDeployment.gpt5Nano;
+    return this == AzureAIDeployment.gpt5 ||
+        this == AzureAIDeployment.gpt5Chat ||
+        this == AzureAIDeployment.gpt5Nano;
   }
 }
 

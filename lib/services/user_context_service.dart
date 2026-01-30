@@ -25,6 +25,7 @@ class UserContextService {
   String? _architectureContent;
   String? _masterAlgorithmContent;
   String? _metaAwarenessContent;
+  String? _characterDesignContent;
   Map<String, dynamic>? _genesisProfile;
 
   // Parsed data
@@ -53,6 +54,7 @@ class UserContextService {
           await _loadAsset('docs/The_Master_Algorithm.md');
       _metaAwarenessContent =
           await _loadAsset('docs/META_Awareness_Framework.md');
+      _characterDesignContent = await _loadAsset('docs/CHARACTER_DESIGN.MD');
 
       // Load genesis profile JSON
       final genesisJson = await _loadAsset('data/user/genesis_profile.json');
@@ -263,6 +265,200 @@ class UserContextService {
 
     return buffer.toString().trimRight();
   }
+
+  /// Get essential context for chat - distilled but complete enough for personalization.
+  /// Includes character design (for images), identity, mission, and sample mantras.
+  /// ~15KB total (~4k tokens) - fits comfortably in any context window.
+  String getEssentialContext() {
+    final buffer = StringBuffer();
+
+    buffer.writeln('# USER: PRINCEPS POLYCAP');
+    buffer.writeln('');
+
+    // Character Design - FULL (needed for image generation)
+    if (_characterDesignContent != null) {
+      buffer.writeln('## CHARACTER DESIGN (for visual/image generation)');
+      buffer.writeln(_characterDesignContent);
+      buffer.writeln('');
+    }
+
+    // Identity from genesis profile
+    if (_genesisProfile != null) {
+      final identity = _genesisProfile!['identity'] as Map<String, dynamic>?;
+      final mission = _genesisProfile!['mission'] as Map<String, dynamic>?;
+      final archetypes =
+          _genesisProfile!['archetypes'] as Map<String, dynamic>?;
+      final cosmic = _genesisProfile!['cosmicProfile'] as Map<String, dynamic>?;
+
+      buffer.writeln('## Identity');
+      buffer.writeln('- Name: ${identity?['name'] ?? 'Princeps Polycap'}');
+      buffer.writeln('- DOB: ${identity?['dateOfBirth'] ?? '1996-06-18'}');
+      buffer.writeln('- MBTI: ${identity?['mbti'] ?? 'INTJ'}');
+      buffer.writeln('');
+
+      final zodiac = identity?['zodiac'] as Map<String, dynamic>?;
+      if (zodiac != null) {
+        buffer.writeln('## Astrology');
+        buffer.writeln('- Sun: ${zodiac['sun']} (The Communicator)');
+        buffer.writeln('- Moon: ${zodiac['moon']} (Emotional harmony seeker)');
+        buffer.writeln(
+            '- Rising: ${zodiac['rising']} (Intense, magnetic presence)');
+        buffer.writeln('');
+      }
+
+      final numerology = identity?['numerology'] as Map<String, dynamic>?;
+      if (numerology != null) {
+        buffer.writeln('## Numerology');
+        buffer.writeln(
+            '- Life Path: ${numerology['lifePathNumber']} (The Builder)');
+        buffer.writeln(
+            '- Birth Number: ${numerology['birthNumber']} (The Diplomat)');
+        buffer
+            .writeln('- Destiny: ${numerology['destinyNumber']} (The Seeker)');
+        buffer.writeln('');
+      }
+
+      final primary = archetypes?['primary'] as Map<String, dynamic>?;
+      if (primary != null) {
+        buffer.writeln('## Archetypes');
+        buffer.writeln('- Ego: ${primary['ego']} (The Hero)');
+        buffer.writeln('- Soul: ${primary['soul']} (The Creator)');
+        buffer.writeln('- Self: ${primary['self']} (The Magician)');
+        buffer.writeln('');
+      }
+
+      if (cosmic != null) {
+        buffer.writeln('## Cosmic Synthesis');
+        buffer.writeln(cosmic['synthesis']);
+        buffer.writeln('');
+      }
+
+      if (mission != null) {
+        buffer.writeln('## Mission');
+        buffer.writeln('- Primary: ${mission['primary']}');
+        buffer.writeln('- Vision: ${mission['vision']}');
+        buffer.writeln('');
+      }
+    }
+
+    // Sample mantras (more than quick context - 5 categories, 4 each)
+    if (_mantraCategories != null && _mantraCategories!.isNotEmpty) {
+      buffer.writeln('## Sample Mantras');
+      for (final category in _mantraCategories!.take(5)) {
+        buffer.writeln('### ${category.name}');
+        for (final mantra in category.mantras.take(4)) {
+          buffer.writeln('- $mantra');
+        }
+      }
+      buffer.writeln('');
+    }
+
+    return buffer.toString();
+  }
+
+  /// Search documents by query and optional document name.
+  /// Returns relevant sections from the bundled documents.
+  /// Used by the AI as a tool to retrieve deeper context when needed.
+  String searchDocuments(String query, {String? documentName}) {
+    final results = StringBuffer();
+    final queryLower = query.toLowerCase();
+
+    // Map of document names to content
+    final docs = <String, String?>{
+      'whitepaper': _whitepaperContent,
+      'mantras': _mantrasContent,
+      'prime': _primeContent,
+      'architecture': _architectureContent,
+      'master_algorithm': _masterAlgorithmContent,
+      'meta_awareness': _metaAwarenessContent,
+      'character_design': _characterDesignContent,
+    };
+
+    // If specific document requested, only search that one
+    final docsToSearch = documentName != null
+        ? {documentName.toLowerCase(): docs[documentName.toLowerCase()]}
+        : docs;
+
+    for (final entry in docsToSearch.entries) {
+      final content = entry.value;
+      if (content == null) continue;
+
+      // Split into sections by headers
+      final sections = _extractRelevantSections(content, queryLower);
+      if (sections.isNotEmpty) {
+        results.writeln('=== FROM ${entry.key.toUpperCase()} ===');
+        results.writeln(sections);
+        results.writeln('');
+      }
+    }
+
+    if (results.isEmpty) {
+      return 'No relevant sections found for query: "$query"';
+    }
+
+    // Limit output to ~8000 chars (~2k tokens) to avoid bloating context
+    final resultStr = results.toString();
+    if (resultStr.length > 8000) {
+      return '${resultStr.substring(0, 8000)}\n\n[... truncated, refine your query for more specific results]';
+    }
+    return resultStr;
+  }
+
+  /// Extract sections from a document that contain the query terms.
+  String _extractRelevantSections(String content, String query) {
+    final buffer = StringBuffer();
+    final lines = content.split('\n');
+    final queryTerms = query.split(' ').where((t) => t.length > 2).toList();
+
+    String currentSection = '';
+    final sectionBuffer = StringBuffer();
+    bool sectionIsRelevant = false;
+
+    for (final line in lines) {
+      // Detect section headers (lines starting with #)
+      if (line.startsWith('#')) {
+        // Save previous section if relevant
+        if (sectionIsRelevant && sectionBuffer.isNotEmpty) {
+          buffer.writeln(currentSection);
+          buffer.writeln(sectionBuffer.toString().trim());
+          buffer.writeln('');
+        }
+        // Start new section
+        currentSection = line;
+        sectionBuffer.clear();
+        sectionIsRelevant = _lineMatchesQuery(line, queryTerms);
+      } else {
+        sectionBuffer.writeln(line);
+        if (_lineMatchesQuery(line, queryTerms)) {
+          sectionIsRelevant = true;
+        }
+      }
+    }
+
+    // Don't forget last section
+    if (sectionIsRelevant && sectionBuffer.isNotEmpty) {
+      buffer.writeln(currentSection);
+      buffer.writeln(sectionBuffer.toString().trim());
+    }
+
+    return buffer.toString().trim();
+  }
+
+  bool _lineMatchesQuery(String line, List<String> queryTerms) {
+    final lineLower = line.toLowerCase();
+    return queryTerms.any((term) => lineLower.contains(term));
+  }
+
+  /// Get list of available documents for search
+  List<String> get availableDocuments => [
+        'whitepaper',
+        'mantras',
+        'prime',
+        'architecture',
+        'master_algorithm',
+        'meta_awareness',
+        'character_design',
+      ];
 
   /// Get genesis profile data
   Map<String, dynamic>? get genesisProfile => _genesisProfile;

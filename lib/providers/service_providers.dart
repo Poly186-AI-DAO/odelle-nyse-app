@@ -5,6 +5,7 @@ import '../services/azure_image_service.dart';
 import '../services/azure_speech_service.dart';
 import '../services/bootstrap_service.dart';
 import '../services/daily_content_service.dart';
+import '../services/elevenlabs_service.dart';
 import '../services/psychograph_service.dart';
 import '../services/user_context_service.dart';
 import '../services/voice_action_service.dart';
@@ -113,6 +114,14 @@ final weatherServiceProvider = Provider<WeatherService>((ref) {
 /// User Context Service - loads full documents for LLM context
 final userContextServiceProvider = Provider<UserContextService>((ref) {
   return UserContextService();
+});
+
+/// ElevenLabs TTS service for meditation audio generation
+/// Centralized service with quota checking and retry logic
+final elevenLabsServiceProvider = Provider<ElevenLabsService>((ref) {
+  final service = ElevenLabsService();
+  ref.onDispose(() => service.dispose());
+  return service;
 });
 
 /// Daily Content Generation Service

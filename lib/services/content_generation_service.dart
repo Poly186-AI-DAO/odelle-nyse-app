@@ -384,7 +384,18 @@ Make them powerful, personal, and actionable.
         responseFormat: 'json',
       );
 
-      final mantras = jsonDecode(response) as List;
+      final decoded = jsonDecode(response);
+      List mantras;
+      if (decoded is List) {
+        mantras = decoded;
+      } else if (decoded is Map<String, dynamic>) {
+        // AI sometimes wraps arrays in objects like {"mantras": [...]}
+        mantras = decoded['mantras'] as List? ??
+            decoded.values.firstWhere((v) => v is List,
+                orElse: () => <dynamic>[]) as List;
+      } else {
+        mantras = [];
+      }
 
       _notifyProgress(
           ContentType.mantras, 'Saving mantras to database...', 0.8);
@@ -455,7 +466,18 @@ Return JSON array with:
         responseFormat: 'json',
       );
 
-      final exercises = jsonDecode(response) as List;
+      final decodedExercises = jsonDecode(response);
+      List exercises;
+      if (decodedExercises is List) {
+        exercises = decodedExercises;
+      } else if (decodedExercises is Map<String, dynamic>) {
+        // AI sometimes wraps arrays in objects like {"exercises": [...]}
+        exercises = decodedExercises['exercises'] as List? ??
+            decodedExercises.values.firstWhere((v) => v is List,
+                orElse: () => <dynamic>[]) as List;
+      } else {
+        exercises = [];
+      }
 
       // Generate images for each exercise (in batches to avoid rate limits)
       final db = await _database.database;

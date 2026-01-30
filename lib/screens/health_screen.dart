@@ -9,6 +9,7 @@ import '../widgets/effects/breathing_card.dart';
 import '../widgets/dashboard/body_stats_card.dart';
 import '../providers/viewmodels/viewmodels.dart';
 
+import 'chat_screen.dart';
 import 'meal_plan_screen.dart';
 
 class HealthScreen extends ConsumerStatefulWidget {
@@ -96,8 +97,9 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                               ? state.caloriesBurned
                               : state.activeCalories,
                           sleepDurationMinutes: state.sleepDurationMinutes,
-                          currentWeight: 185.0,
-                          currentBodyFat: 18.0,
+                          currentWeight: state.currentWeight ?? 0.0,
+                          currentBodyFat: state.currentBodyFat ?? 0.0,
+                          heightInches: state.heightInches ?? 72.0,
                           onTap: _navigateToBodyDetails,
                         )
                       : CompactBodyStatsBar(
@@ -129,6 +131,9 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildHeaderRow(context),
+        const SizedBox(height: 16),
+
         // Week Day Picker
         WeekDayPicker(
           selectedDate: state.selectedDate,
@@ -313,6 +318,79 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHeaderRow(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            'Track your health',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textOnLight,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Row(
+          children: [
+            _buildHeaderAction(
+              icon: Icons.restaurant_menu,
+              label: 'Log Meal',
+              color: ThemeConstants.accentGreen,
+              onTap: () => _openMealPlan(context),
+            ),
+            const SizedBox(width: 8),
+            _buildHeaderAction(
+              icon: Icons.chat_bubble_outline,
+              label: 'NTS',
+              color: ThemeConstants.accentBlue,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ChatScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconBadge(
+            icon: icon,
+            color: color,
+            size: 34,
+            iconSize: 18,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: ThemeConstants.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

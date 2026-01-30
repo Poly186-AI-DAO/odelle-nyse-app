@@ -30,6 +30,7 @@ jobs:
           echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
           echo "AZURE_AI_FOUNDRY_KEY=${{ secrets.AZURE_AI_FOUNDRY_KEY }}" >> .env
           echo "AZURE_AI_FOUNDRY_ENDPOINT=${{ secrets.AZURE_AI_FOUNDRY_ENDPOINT }}" >> .env
+          echo "AZURE_GPT_5_2_DEPLOYMENT=${{ secrets.AZURE_GPT_5_2_DEPLOYMENT }}" >> .env
           echo "AZURE_GPT_5_2_CHAT_DEPLOYMENT=${{ secrets.AZURE_GPT_5_2_CHAT_DEPLOYMENT }}" >> .env
           echo "AZURE_GPT_5_NANO_DEPLOYMENT=${{ secrets.AZURE_GPT_5_NANO_DEPLOYMENT }}" >> .env
           echo "FLUX_2_PRO_AZURE_URL=${{ secrets.FLUX_2_PRO_AZURE_URL }}" >> .env
@@ -127,6 +128,7 @@ jobs:
           echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" > .env
           echo "AZURE_AI_FOUNDRY_KEY=${{ secrets.AZURE_AI_FOUNDRY_KEY }}" >> .env
           echo "AZURE_AI_FOUNDRY_ENDPOINT=${{ secrets.AZURE_AI_FOUNDRY_ENDPOINT }}" >> .env
+          echo "AZURE_GPT_5_2_DEPLOYMENT=${{ secrets.AZURE_GPT_5_2_DEPLOYMENT }}" >> .env
           echo "AZURE_GPT_5_2_CHAT_DEPLOYMENT=${{ secrets.AZURE_GPT_5_2_CHAT_DEPLOYMENT }}" >> .env
           echo "AZURE_GPT_5_NANO_DEPLOYMENT=${{ secrets.AZURE_GPT_5_NANO_DEPLOYMENT }}" >> .env
           echo "FLUX_2_PRO_AZURE_URL=${{ secrets.FLUX_2_PRO_AZURE_URL }}" >> .env

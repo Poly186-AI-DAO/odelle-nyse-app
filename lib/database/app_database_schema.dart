@@ -72,6 +72,23 @@ mixin AppDatabaseSchema {
     if (oldVersion < 14) {
       await _addMantrasImagePath(db);
     }
+    if (oldVersion < 15) {
+      await _addWorkoutLogsImagePath(db);
+    }
+  }
+
+  /// v15: Add image_path column to workout_logs table
+  Future<void> _addWorkoutLogsImagePath(Database db) async {
+    Logger.info('Adding image_path column to workout_logs table',
+        tag: AppDatabase._tag);
+    try {
+      await db.execute('ALTER TABLE workout_logs ADD COLUMN image_path TEXT');
+      Logger.info('Added image_path column to workout_logs table',
+          tag: AppDatabase._tag);
+    } catch (e) {
+      Logger.warning('Could not add image_path to workout_logs: $e',
+          tag: AppDatabase._tag);
+    }
   }
 
   /// v14: Add image_path column to mantras table
@@ -279,6 +296,7 @@ mixin AppDatabaseSchema {
         energy_level INTEGER,
         mood TEXT,
         journal_entry_id INTEGER,
+        image_path TEXT,
         FOREIGN KEY (program_id) REFERENCES training_programs(id),
         FOREIGN KEY (block_id) REFERENCES training_blocks(id),
         FOREIGN KEY (journal_entry_id) REFERENCES journal_entries(id)

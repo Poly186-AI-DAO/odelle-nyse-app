@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../constants/theme_constants.dart';
 import '../providers/viewmodels/chat_viewmodel.dart';
+import '../widgets/debug/debug_log_dialog.dart';
 import '../widgets/effects/breathing_card.dart';
 import '../widgets/chat/chat_markdown.dart';
 import '../widgets/glass/glass_card_modern.dart';
@@ -200,11 +201,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 : _buildMessagesList(state),
           ),
 
-          // Floating composer at bottom
+          // Floating composer at bottom - positioned inside the breathing card
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
+            left: 8, // Match breathing card horizontal margin
+            right: 8,
+            bottom: 6, // Match breathing card bottom margin
             child: _buildComposer(state),
           ),
 
@@ -228,29 +229,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.1),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+            // Double-tap icon to open debug logs
+            GestureDetector(
+              onDoubleTap: () => DebugLogDialog.show(context),
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
                 ),
-              ),
-              child: Icon(
-                Icons.psychology_outlined,
-                size: 32,
-                color: Colors.white.withValues(alpha: 0.7),
+                child: Icon(
+                  Icons.psychology_outlined,
+                  size: 32,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Digital Twin',
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+            // Double-tap title to open debug logs
+            GestureDetector(
+              onDoubleTap: () => DebugLogDialog.show(context),
+              child: Text(
+                'Digital Twin',
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -269,38 +278,58 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildMessagesList(ChatState state) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.only(
-        left: ThemeConstants.spacingMedium,
-        right: ThemeConstants.spacingMedium,
-        top: ThemeConstants.spacingSmall,
-        bottom: 120, // Space for input composer
+    return GestureDetector(
+      // Triple-tap anywhere in messages list to open debug logs
+      onDoubleTap: () => DebugLogDialog.show(context),
+      behavior: HitTestBehavior.translucent,
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.only(
+          left: ThemeConstants.spacingMedium,
+          right: ThemeConstants.spacingMedium,
+          top: ThemeConstants.spacingSmall,
+          bottom: 120, // Space for input composer
+        ),
+        itemCount: state.messages.length,
+        itemBuilder: (context, index) {
+          final message = state.messages[index];
+          return _ChatBubble(message: message);
+        },
       ),
-      itemCount: state.messages.length,
-      itemBuilder: (context, index) {
-        final message = state.messages[index];
-        return _ChatBubble(message: message);
-      },
     );
   }
 
   Widget _buildComposer(ChatState state) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
+    // Position composer inside the breathing card's curved bottom
+    // Breathing card: borderRadius 48, positioned at left:8, right:8, bottom:6
+    // Corner curve inset ≈ 48 - 48*cos(45°) ≈ 14px at diagonal
+    // We need padding that clears the curve while respecting home indicator
+
+    // Calculate bottom padding:
+    // - Card bottom edge is at screen bottom - 6
+    // - Home indicator is bottomInset (~34 on iPhone)
+    // - Card radius is 48, so inner curve starts ~14px from edge
+    // - We want composer to sit inside the curve with some breathing room
+
+    final bottomPad = bottomInset > 0
+        ? bottomInset - 6.0 + 8.0 // Home indicator area + buffer to clear curve
+        : 20.0; // No home indicator: just clear the curve
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        ThemeConstants.spacingMedium,
-        ThemeConstants.spacingSmall,
-        ThemeConstants.spacingMedium,
-        bottomInset + 8,
+        12, // Inset from card edge to clear corner curve
+        4,
+        12, // Symmetric
+        bottomPad, // Clear home indicator + card curve
       ),
       child: GlassCardModern(
-        borderRadius: 18,
-        blurStrength: 25,
-        backgroundColor: Colors.black.withValues(alpha: 0.4),
-        borderColor: Colors.white.withValues(alpha: 0.15),
-        padding: EdgeInsets.all(ThemeConstants.spacingSmall),
+        borderRadius: 20,
+        blurStrength: 20,
+        backgroundColor: Colors.black.withValues(alpha: 0.35),
+        borderColor: Colors.white.withValues(alpha: 0.1),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -364,50 +393,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildInputRow(ChatState state) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Image picker button
-        IconButton(
-          icon: Icon(
-            Icons.add_photo_alternate_outlined,
-            color: state.hasPendingImage
-                ? ThemeConstants.polyPurple500
-                : ThemeConstants.mutedTextColor,
+        // Image picker button - compact
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            icon: Icon(
+              Icons.add_photo_alternate_outlined,
+              size: 20,
+              color: state.hasPendingImage
+                  ? ThemeConstants.polyPurple500
+                  : Colors.white.withValues(alpha: 0.5),
+            ),
+            onPressed: _showImagePicker,
           ),
-          onPressed: _showImagePicker,
         ),
 
-        // Text input
+        // Text input - minimal styling
         Expanded(
           child: Container(
-            constraints: const BoxConstraints(maxHeight: 100),
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(ThemeConstants.radiusLarge),
-              border: Border.all(
-                color: ThemeConstants.glassBorder,
-                width: ThemeConstants.borderWidthThin,
-              ),
-            ),
+            constraints: const BoxConstraints(maxHeight: 80),
             child: TextField(
               controller: _textController,
               focusNode: _focusNode,
               style: GoogleFonts.inter(
-                color: ThemeConstants.textColor,
-                fontSize: 16,
+                color: Colors.white,
+                fontSize: 15,
               ),
               decoration: InputDecoration(
                 hintText: state.hasPendingImage
                     ? 'Add a message...'
                     : 'What\'s on your mind?',
                 hintStyle: GoogleFonts.inter(
-                  color: ThemeConstants.mutedTextColor,
-                  fontSize: 16,
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 15,
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: ThemeConstants.spacingMedium,
-                  vertical: ThemeConstants.spacingSmall,
+                  horizontal: 8,
+                  vertical: 8,
                 ),
               ),
               textInputAction: TextInputAction.send,
@@ -417,23 +444,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
           ),
         ),
-        const SizedBox(width: ThemeConstants.spacingSmall),
+        const SizedBox(width: 4),
 
-        // Send button
+        // Send button - compact circle
         GestureDetector(
           onTap: state.isLoading ? null : _sendMessage,
           child: Container(
-            width: 44,
-            height: 44,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               gradient: state.isLoading ? null : ThemeConstants.buttonGradient,
               color:
-                  state.isLoading ? ThemeConstants.glassBackgroundStrong : null,
+                  state.isLoading ? Colors.white.withValues(alpha: 0.1) : null,
               shape: BoxShape.circle,
             ),
             child: state.isLoading
                 ? const Padding(
-                    padding: EdgeInsets.all(10),
+                    padding: EdgeInsets.all(8),
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
@@ -442,7 +469,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 : const Icon(
                     Icons.arrow_upward,
                     color: Colors.white,
-                    size: 20,
+                    size: 18,
                   ),
           ),
         ),
@@ -451,32 +478,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildErrorBanner(String error) {
-    return Material(
-      elevation: 8,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red.shade200),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                error,
-                style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+    return GestureDetector(
+      onLongPress: () => DebugLogDialog.show(context),
+      child: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  error,
+                  style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+                ),
               ),
-            ),
-            GestureDetector(
-              onTap: () =>
-                  ref.read(chatViewModelProvider.notifier).clearError(),
-              child: Icon(Icons.close, color: Colors.red.shade700, size: 20),
-            ),
-          ],
+              GestureDetector(
+                onTap: () =>
+                    ref.read(chatViewModelProvider.notifier).clearError(),
+                child: Icon(Icons.close, color: Colors.red.shade700, size: 20),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -101,7 +101,7 @@ class AgentSchedulerService {
         systemPrompt:
             'You are a fast, efficient AI assistant doing background processing. '
             'Respond concisely with actionable insights. Always respond in valid JSON.',
-        deployment: AzureAIDeployment.gpt5Nano,
+        deployment: AzureAIDeployment.gpt5,
       );
 
       // Store the output

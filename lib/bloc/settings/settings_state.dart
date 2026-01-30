@@ -10,6 +10,9 @@ class SettingsState extends Equatable {
   final String buildNumber;
   final bool isLoading;
 
+  // Content Generation Settings
+  final bool autoGenerateMeditations;
+
   // Digital Worker Settings
   final String instructions;
   final DigitalWorkerVoice voice;
@@ -29,6 +32,7 @@ class SettingsState extends Equatable {
     this.appVersion = '',
     this.buildNumber = '',
     this.isLoading = false,
+    this.autoGenerateMeditations = false,
     this.instructions = OdelleSystemPrompt.chatMode,
     this.voice = DigitalWorkerVoice.alloy,
     this.enableNoiseSuppression = true,
@@ -48,6 +52,7 @@ class SettingsState extends Equatable {
     String? appVersion,
     String? buildNumber,
     bool? isLoading,
+    bool? autoGenerateMeditations,
     String? instructions,
     DigitalWorkerVoice? voice,
     bool? enableNoiseSuppression,
@@ -66,6 +71,8 @@ class SettingsState extends Equatable {
       appVersion: appVersion ?? this.appVersion,
       buildNumber: buildNumber ?? this.buildNumber,
       isLoading: isLoading ?? this.isLoading,
+      autoGenerateMeditations:
+          autoGenerateMeditations ?? this.autoGenerateMeditations,
       instructions: instructions ?? this.instructions,
       voice: voice ?? this.voice,
       enableNoiseSuppression:
@@ -90,6 +97,7 @@ class SettingsState extends Equatable {
         appVersion,
         buildNumber,
         isLoading,
+        autoGenerateMeditations,
         instructions,
         voice,
         enableNoiseSuppression,
